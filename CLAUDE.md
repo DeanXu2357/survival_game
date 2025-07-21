@@ -2,117 +2,197 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Development Commands
+## Project Requirements
 
-### Backend (Go Server)
+### Language Requirements
+- **Documentation**: Use American English for all documentation, comments, and user-facing text
+- **Code**: Use English for all variable names, function names, and code comments
+- **Avoid**: Do not use Chinese (Traditional or Simplified) in any project files
+
+### Technology Stack Requirements
+- **Backend**: Go with WebSocket for game logic and networking
+- **Frontend**: TypeScript + PixiJS for high-performance 2D rendering  
+- **Desktop Framework**: Wails v2 for cross-platform desktop application packaging
+- **Communication**: WebSocket for real-time multiplayer synchronization
+
+When implementing any features, ensure adherence to these technology choices.
+
+## Development commands
+
+### Wails Development
 ```bash
-cd server
-go run main.go
+# Start development with hot reload
+wails dev
+
+# Build desktop application
+wails build
+
+# Check development environment
+wails doctor
 ```
-Server runs on port 8030
 
-### Frontend
-Visit http://localhost:8030 (served by Go server)
-
-### Dependencies
+### Backend (Go)
 ```bash
-cd server
-go mod tidy
+cd backend
+go mod tidy          # Install dependencies
+go run main.go       # Run backend standalone
+go test ./...        # Run tests
+```
+
+### Frontend (TypeScript + PixiJS)
+```bash
+cd frontend
+npm install          # Install dependencies
+npm run dev          # Development server
+npm run build        # Build for production
+npm run test         # Run tests
 ```
 
 ## Project Architecture
 
 ### Technology Stack
-- **Backend**: Go with Gorilla WebSocket
-- **Frontend**: HTML5 Canvas with vanilla JavaScript
+- **Backend**: Go with WebSocket for game logic and networking
+- **Frontend**: TypeScript + PixiJS for high-performance 2D rendering
+- **Desktop Framework**: Wails v2 for cross-platform desktop application
 - **Communication**: WebSocket for real-time multiplayer
 
+### Project Structure
+```
+survival/
+├── frontend/        # TypeScript + PixiJS frontend
+│   ├── src/
+│   │   ├── game/    # Game logic and rendering
+│   │   ├── ui/      # User interface components
+│   │   └── types/   # TypeScript type definitions
+│   ├── assets/      # Game assets (sprites, sounds)
+│   └── package.json
+├── backend/         # Go backend with game logic
+│   ├── internal/    # Internal packages
+│   │   ├── game/    # Game state and logic
+│   │   ├── network/ # WebSocket handling
+│   │   └── types/   # Go type definitions
+│   ├── pkg/         # Public packages
+│   └── main.go
+├── shared/          # Shared types and constants
+├── build/           # Wails build configuration
+├── wails.json       # Wails configuration
+└── app.go           # Wails application entry point
+```
+
 ### Core Architecture
-- **Server Authoritative**: All game logic, player positions, and combat calculations happen on the Go server
-- **Client Rendering**: Frontend only handles input, rendering, and UI
+- **Server Authoritative**: All game logic, player positions, and combat calculations in Go backend
+- **Client Rendering**: TypeScript frontend handles input, PixiJS rendering, and UI
 - **Real-time Sync**: 60 FPS game loop on server broadcasts state to all clients
+- **Desktop Integration**: Wails provides native desktop features and packaging
 
 ### Key Components
 
-#### Server (`server/main.go`)
-- `Player`: Represents player state (position, angle, health, connection)
-- `GameState`: Global game state with all players
-- `gameLoop()`: 60 FPS update loop for physics and state updates
-- WebSocket handlers for client communication
+#### Backend (`backend/`)
+- `GameState`: Global game state with all players, projectiles, and events
+- `GameLogic`: Core game mechanics and update loop
+- `NetworkManager`: WebSocket communication handling
+- `Player`: Player state (position, angle, health, connection)
 
-#### Client (`client/game.js`)
-- `Game` class: Main game controller
-- Vision system: Fog of war with circular + cone visibility
-- Input handling: WASD movement, mouse aiming
-- Rendering: Canvas-based 2D graphics
+#### Frontend (`frontend/src/`)
+- `GameRenderer`: PixiJS-based rendering system
+- `InputManager`: WASD movement and mouse input handling
+- `NetworkClient`: WebSocket client for server communication
+- `UIManager`: Game menus and interface components
+
+#### Wails Integration (`app.go`)
+- Application lifecycle management
+- Frontend-backend communication bridge
+- Native desktop features (file dialogs, system notifications)
 
 ### Game Mechanics
 
 #### Vision System
 - **Close Vision**: 1 player body-length radius (20px) around player
 - **Cone Vision**: 45-degree cone extending 10 body-lengths (200px) forward
-- **Fog of War**: Everything outside vision is black
+- **Fog of War**: PixiJS shaders for efficient fog rendering
+
+#### Sound System (Planned)
+- **Three-Layer Sound Rings**: Visual representation of audio events
+- **Eight-Directional Audio**: Sound cues divided into 8 compass directions
+- **Event Types**: Footsteps, weapon fire, environmental interactions
 
 #### Player Movement
 - Server processes WASD input at 60 FPS
-- 120 pixels/second movement speed (reduced for better control)
+- 120 pixels/second movement speed
 - Boundary checking within map limits
 - Server-side rotation smoothing (4.0 radians/second)
 
-#### Combat (To be implemented)
+#### Combat System (To be implemented)
 - Melee: 1 body-length range knife attack
-- Ranged: Small pistol
-- One-hit kill system initially
+- Ranged: Small pistol with projectile physics
+- One-hit kill system initially, expandable to health system
 
-### Message Protocol
+### Network Protocol
 
 #### Client → Server
-- `input`: Player keyboard/mouse input
-- `attack`: Attack command with target coordinates
+```typescript
+interface PlayerInput {
+  isPressingW: boolean;
+  isPressingA: boolean;
+  isPressingS: boolean;
+  isPressingD: boolean;
+  isShooting: boolean;
+  mousePosition: { x: number; y: number };
+}
+```
 
-#### Server → Client  
-- `init`: Initial player ID and map dimensions
-- `gameState`: Complete game state with all players
+#### Server → Client
+```go
+type GameState struct {
+    Players     map[string]*Player
+    Projectiles []*Projectile
+    Walls       []*Wall
+    SoundEvents []*SoundEvent
+    Timestamp   int64
+}
+```
 
 ### Map System
 - 800x600 pixel game area
-- Building floor plan with walls and doors (to be implemented)
-- Triangle-shaped players
+- Building floor plan with walls and doors
+- Triangle-shaped players rendered with PixiJS sprites
+- Collision detection and pathfinding
 
 ## Current Development Status
 
-### Completed Features
-- ✅ Project structure setup (client/server/shared directories)
-- ✅ Go backend with WebSocket server (port 8030)
-- ✅ HTML5 Canvas frontend with game loop
+### Completed Features (Legacy Canvas Implementation)
+- ✅ Basic Go backend with WebSocket server
+- ✅ HTML5 Canvas frontend with game loop (to be migrated)
 - ✅ Basic player movement (WASD input)
 - ✅ Mouse aiming system
 - ✅ Real-time multiplayer synchronization
-- ✅ Player spawn system with random positions
-- ✅ **Vision System**: Fog of war with circular + cone visibility
-- ✅ **Movement/Rotation Speed**: Balanced and smooth controls
-- ✅ **Main Menu System**: Complete game flow (Menu → Game → Results → Menu)
-- ✅ **Game State Management**: Multiple screens with proper transitions
-- ✅ **Result Screen**: Statistics tracking and display
-- ✅ **Game Modes**: Solo, Multiplayer, Practice mode selection
+- ✅ Vision system: Fog of war with circular + cone visibility
+- ✅ Main menu system and game state management
+- ✅ Game mode selection (Solo, Multiplayer, Practice)
 
-### Recent Fixes
-- ✅ **Vision System Fixed**: Player triangles now visible with proper fog rendering
-  - Issue resolved: Used `evenodd` fill rule for fog holes instead of `destination-out`
-  - Background contrast improved (#666 vs black fog)
-  - Rendering order corrected: players → fog → UI
-- ✅ **Speed Balancing**: Movement (120px/s) and rotation (4.0 rad/s) now coordinated
-- ✅ **Architecture Consistency**: Both movement and rotation controlled server-side
+### Migration to New Tech Stack
+- 🚧 **Wails Integration**: Convert to desktop application
+- 🚧 **TypeScript Migration**: Rewrite frontend in TypeScript
+- 🚧 **PixiJS Rendering**: High-performance 2D graphics
+- 🚧 **Modern UI Framework**: Component-based UI system
 
-### Next Steps
-1. Implement basic map obstacles and collision detection
-2. Add melee combat system
-3. Add enemy AI and spawning
-4. Implement health/damage system
-5. Add sound effects and better graphics
+### Next Development Priorities
+1. **Wails Setup**: Initialize Wails project structure
+2. **TypeScript Frontend**: Migrate from vanilla JS to TypeScript
+3. **PixiJS Integration**: Replace Canvas with PixiJS rendering
+4. **Sound Event System**: Visual audio cue implementation
+5. **Map System**: Obstacles, walls, and collision detection
+6. **Combat System**: Melee and ranged weapon mechanics
+7. **AI System**: Enemy spawning and behavior
+
+### Performance Targets
+- 60 FPS rendering with PixiJS
+- Sub-50ms network latency for multiplayer
+- Smooth client-side prediction and reconciliation
+- Efficient fog of war rendering with shaders
 
 ### Technical Notes
-- Server runs on port 8030 with 60 FPS game loop
-- Client-server communication via WebSocket
-- Server-authoritative architecture for consistency
-- Game automatically ends after 30 seconds (demo mode)
+- Use Wails context for frontend-backend communication
+- Implement TypeScript interfaces matching Go structs
+- Leverage PixiJS texture atlases for sprite optimization
+- Consider WebAssembly for shared game logic between frontend/backend
