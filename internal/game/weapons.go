@@ -90,3 +90,17 @@ type Inventory struct {
 	Magazines     []Magazine
 	MaxSlots      int
 }
+
+type Projectile struct {
+	ID        string
+	Position  Vector2D
+	Direction Vector2D
+	Speed     float64
+	Range     float64
+	Damage    int
+	OwnerID   string
+}
+
+func (p *Projectile) GetPosition() Vector2D {
+	return p.Position
+}

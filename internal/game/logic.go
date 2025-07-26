@@ -1,7 +1,13 @@
 package game
 
-const targetTickRate = 60.0
-const deltaTime = 1.0 / targetTickRate
+import "survival/internal/protocol"
+
+const (
+	targetTickRate = 60.0
+	deltaTime      = 1.0 / targetTickRate
+
+	maxResolutionIteration = 5
+)
 
 type Logic struct {
 }
@@ -10,20 +16,63 @@ func NewGameLogic() *Logic {
 	return &Logic{}
 }
 
-func (gl *Logic) Update(state *State, playerInputs map[string]PlayerInput, dt float64) {
-	// Placeholder for game logic update
-	// This function will handle player inputs, update game state, etc.
+func (gl *Logic) Update(state *State, playerInputs map[string]protocol.PlayerInput, dt float64) {
+	for playerID, input := range playerInputs {
+		// OPTIMIZE: If user react moving sticky we can use Wall Sliding to make it more smooth
+		player := state.Players[playerID]
+		moveVector := player.Move(&input, dt)
+		desiredPosition := player.Position.Add(moveVector)
+
+		for i := 0; i < maxResolutionIteration; i++ {
+			collisionOccurred := false
+
+			// Query the spatial grid using the player's circular bounding box to retrieve potentially intersecting objects
+			nearObjects := state.ObjectGrid.NearbyPositions(
+				Vector2D{max(0, desiredPosition.X-player.Radius), max(0, desiredPosition.Y-player.Radius)},
+				Vector2D{max(0, desiredPosition.X-player.Radius), desiredPosition.Y + player.Radius},
+				Vector2D{desiredPosition.X + player.Radius, max(0, desiredPosition.Y-player.Radius)},
+				Vector2D{desiredPosition.X + player.Radius, desiredPosition.Y + player.Radius},
+			)
+
+			// Narrow Phase
+			for _, obj := range nearObjects {
+				if obj.IsRectangle() {
+					isCollisionOccurred, mtv := detectCircleAABBCollision(obj, desiredPosition, player.Radius)
+					if isCollisionOccurred {
+						collisionOccurred = true
+						desiredPosition = desiredPosition.Add(mtv)
+					}
+				}
+			}
+
+			if !collisionOccurred {
+				break
+			}
+		}
+
+		player.Position = desiredPosition
+	}
 }
 
-type PlayerInput struct {
-	MoveUp       bool
-	MoveDown     bool
-	MoveLeft     bool
-	MoveRight    bool
-	RotateLeft   bool
-	RotateRight  bool
-	SwitchWeapon bool
-	Reload       bool
-	FastReload   bool
-	Fire         bool
+func detectCircleAABBCollision(obj MapObject, desiredPosition Vector2D, radius float64) (bool, Vector2D) {
+	boundingMin, boundingMax := obj.BoundingBox()
+
+	closestPoint := Vector2D{
+		X: max(boundingMin.X, min(desiredPosition.X, boundingMax.X)),
+		Y: max(boundingMin.Y, min(desiredPosition.Y, boundingMax.Y)),
+	}
+
+	vector2Center := desiredPosition.Sub(closestPoint)
+
+	distanceSquared := vector2Center.X*vector2Center.X + vector2Center.Y*vector2Center.Y
+
+	if distanceSquared == 0 {
+		// TODO: Handle case where the player is exactly at the center of the object
+	}
+
+	if distanceSquared < radius*radius { // is colliding
+		penetration := radius - desiredPosition.DistanceTo(closestPoint)
+		return true, vector2Center.Normalize().Scale(penetration)
+	}
+	return false, Vector2D{}
 }

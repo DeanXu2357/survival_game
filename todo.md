@@ -9,23 +9,26 @@
 - [x] Room-based session management
 - [x] WebSocket communication foundation
 
-## Phase 1: Core Game Objects & Basic Controls (High Priority)
+## Phase 1: Connection and Infrastructure (High Priority)
 
-### 1.1 Game Objects Definition
-- [ ] **Wall Structure Definition** - Define Wall struct with position, dimensions, and collision bounds
-- [ ] **Projectile Structure Definition** - Bullet physics, trajectory, and lifetime
-- [ ] **Update State Structure** - Add Projectiles and Walls arrays to game state
+### 1.1 WebSocket Client Implementation
+- [ ] **ReadPump Implementation** - Handle incoming messages from clients
+- [ ] **WritePump Implementation** - Send messages to clients with proper buffering
+- [ ] **Send Method** - Send specific data to client with context handling
+- [ ] **SetPlayerID Method** - Notify client of assigned Player ID and handle storage
+- [ ] **Close Method** - Clean connection shutdown
 
-### 1.2 Player Movement System
-- [ ] **Basic Player Movement** - WASD movement processing (120 pixels/second)
-- [ ] **Player Rotation** - Left/Right rotation controls (4.0 radians/second)
-- [ ] **Movement-Wall Collision** - Prevent players from walking through walls
-- [ ] **Boundary Checking** - Keep players within map limits (800x600)
+### 1.2 Hub Registration Logic
+- [ ] **RegisterConnection Implementation** - Complete client registration with ID mapping
+- [ ] **UnregisterClient Implementation** - Clean client removal and room cleanup
+- [ ] **Client-Room Assignment** - Map clients to game rooms
+- [ ] **Player ID Management** - Generate/restore Player IDs from Client IDs
 
-### 1.3 Weapon System
-- [ ] **Weapon Switching Logic** - Toggle between knife and pistol
-- [ ] **Player Initialization** - Default weapon setup and magazine inventory
-- [ ] **Weapon State Management** - Track current weapon and availability
+### 1.3 Message Protocol Design
+- [ ] **Client Message Types** - Define input, join, leave message structures
+- [ ] **Server Message Types** - Define game state, player updates, notifications
+- [ ] **Message Routing** - Route messages between Hub, Room, and Clients
+- [ ] **Error Handling** - Connection loss, invalid messages, room full scenarios
 
 ## Phase 2: Combat System (High Priority)
 

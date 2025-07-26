@@ -101,27 +101,34 @@ survival/
 ## Current Implementation Status
 
 ### ✅ Completed Features
-- Complete project structure with Go backend
-- HTML5 Canvas frontend (to be migrated to PixiJS)
-- Real-time multiplayer synchronization
-- Player movement and mouse aiming system
-- Vision system with fog of war (circular + cone visibility)
-- Main menu system with game state management
-- Result screen with statistics tracking
-- Game mode selection (Solo, Multiplayer, Practice)
+- Basic project structure with Go backend and TypeScript frontend
+- Game data structures (Vector2D, Player, State, Projectile, Wall)
+- Spatial grid collision detection system
+- Player movement and collision logic
+- Room-based game session management
+- WebSocket server infrastructure
+- Weapon system design (Knife, Pistol with magazine system)
 
-### 🚧 Migration to New Tech Stack
-1. **Frontend Migration**: HTML5 Canvas → TypeScript + PixiJS
-2. **Wails Integration**: Desktop app packaging and native features
-3. **Performance Optimization**: PixiJS rendering pipeline
-4. **UI Framework**: Modern TypeScript UI components
+### 🚧 Client Connection Architecture
+**Connection Flow**:
+1. **Client ID Generation**: Client generates unique ID (e.g., MAC address hash) on installation
+2. **WebSocket Connection**: Client connects to server with client ID in request
+3. **Hub Registration**: Server creates Client object with provided ID, Hub assigns Player ID
+4. **Session Management**: Client receives Player ID for reconnection purposes
+5. **Invite System**: Future - invite codes for legitimate client access (development phase bypassed)
+
+**Key Design Decisions**:
+- Client-provided IDs (not server-generated) for better client control
+- Hub manages Client ↔ Player mapping without direct WebSocket dependency
+- SetPlayerID() method handles Player ID assignment and client notification
+- Session persistence through client-side storage of Player ID
 
 ### 🚧 Next Development Priorities
-1. **Sound Event System**: Visual representation of audio events
-2. **Map System**: Obstacles, walls, and collision detection
-3. **Combat System**: Melee and ranged weapon implementation
-4. **AI System**: Enemy spawning and behavior
-5. **Desktop Features**: Native file system access, notifications
+1. **Complete WebSocket Client Implementation**: ReadPump, WritePump, Send, SetPlayerID methods
+2. **Hub Registration Logic**: Client-to-room assignment and Player ID management
+3. **Message Protocol**: Define client-server communication messages
+4. **Frontend Connection**: TypeScript WebSocket client with PixiJS rendering
+5. **Combat System Integration**: Weapon switching, firing, and reloading
 
 ## Game Modes
 

@@ -21,10 +21,9 @@ Players must master the tactical cycle:
 
 ### Vision System
 
-#### Display Range (Screen Area)
-- **Display Area**: 15x15 square grid that follows the player
-- **Player Position**: Player positioned 3 units from the bottom edge of the display square
-- **Direction-Based**: Display square rotates with player's facing direction
+#### Camera System
+- **Display Area**: 25x25 square grid centered on the player
+- **Camera Position**: Player positioned at screen center
 - **Always Rendered**: This area is always displayed on screen regardless of lighting
 
 #### Vision Range (Actual Sight)
@@ -43,7 +42,9 @@ Players must master the tactical cycle:
   - Player death/elimination
 
 ### Player Representation
-- Triangle-shaped entities for all players
+- **Visual**: Triangle-shaped entities for all players
+- **Collision**: Circular hitbox with diameter 1.0 meter (radius 0.5m)
+- **Unit System**: Backend uses 1 float = 1 meter for all calculations
 - Server-authoritative positioning and rotation
 - Smooth interpolation for movement rendering
 
@@ -51,23 +52,8 @@ Players must master the tactical cycle:
 
 ### 1. Game State Layer
 **Responsibility**: Store complete game world snapshot at any given moment
-```go
-type GameState struct {
-    Players     map[string]*Player
-    Projectiles []*Projectile
-    Walls       []*Wall
-    SoundEvents []*SoundEvent
-}
 
-type Player struct {
-    ID       string
-    IsAlive  bool
-    Position Vector2D
-    Rotation float64
-    Health   int
-    Lives    int
-}
-```
+The game state contains all players, projectiles, walls, and other game objects. The actual implementation includes additional fields for thread safety, spatial optimization, and game management. See `internal/game/state.go` for the complete structure.
 
 ### 2. Game Logic Layer
 **Responsibility**: Update and advance game state based on player input and game rules
@@ -105,89 +91,109 @@ func main() {
 }
 ```
 
-## Network Architecture: Host-Authoritative
+## Network Architecture: Server-Authoritative
 
 ### Network Model
-- **Host Player**: Acts as both player and authoritative server
-- **Client Players**: Send input, receive and render authoritative game state
+- **Dedicated Server**: Go server handles all game logic and state
+- **Client Players**: Send input, receive and render authoritative game state  
 - **Communication**: WebSocket for real-time bidirectional communication
 
+### Client Connection Flow
+1. **Client ID Generation**: Client generates unique ID on installation (MAC hash, etc.)
+2. **WebSocket Connection**: Client connects with connection data in request body (JSON format)
+3. **Hub Registration**: Server assigns Player ID and maps to Client ID
+4. **Session Management**: Client stores Player ID for reconnection
+5. **Game Participation**: Client sends input, receives game state updates
+
+### Connection Management
+- **Client-Provided IDs**: Clients generate and provide their own unique identifiers
+- **Hub Architecture**: Central hub manages multiple game rooms and client connections
+- **Player Mapping**: Hub maintains Client ID ↔ Player ID relationships
+- **Reconnection Support**: Clients can reconnect using stored Player ID
+- **Invite System**: Future feature for secure client access (bypassed in development)
+
 ### Network Synchronization
-- **Client-Side Prediction**: Local player actions feel immediate
-- **Entity Interpolation**: Smooth movement for remote players
-- **Authoritative Reconciliation**: Server state resolves conflicts
+- **Server Authority**: All game logic, collision, and state updates on server
+- **Client Rendering**: Clients handle input, rendering, and UI only
+- **Real-time Updates**: 60 FPS server tick rate with state broadcasting
+- **Message Protocol**: JSON messages for development, binary for production
 
-### Network Optimization Strategy
+### Communication Requirements
 
-#### Phase 1: JSON Full State (Development)
-- Human-readable format for debugging
-- Full `GameState` broadcast each frame
-- Simple implementation for initial testing
+#### Development Phase
+- WebSocket + JSON for easy debugging and development
+- Client-provided connection identifiers for session management
+- Simple message routing between Hub, Room, and Client layers
+- Basic error handling and connection recovery
 
-#### Phase 2: Delta Updates (Optimization)
-- Send only changed data between frames
-- Event-driven system for one-time actions (shooting, death)
-- Reduced network bandwidth usage
+#### Production Phase  
+- Desktop application integration with Wails framework
+- Protocol Buffers for optimized binary serialization
+- Advanced reconnection and state synchronization
+- Native desktop features and performance optimizations
 
-#### Phase 3: Binary Protocol (Production)
-- Protocol Buffers (Protobuf) or MessagePack
-- Maximum compression for production deployment
-- Optimized for minimal latency
+## Technical Requirements
 
-## Technical Stack
+### Core Technologies
+- **Backend**: Go for game logic and server
+- **Frontend**: TypeScript + PixiJS for 2D graphics
+- **Architecture**: Server-authoritative multiplayer
+- **Target Platform**: Cross-platform desktop application
 
-### Backend
-- **Language**: Go with WebSocket for game logic and networking
-- **Architecture**: Server-authoritative with 60 FPS game loop
-- **Communication**: WebSocket for real-time multiplayer synchronization
+### Development Approach
+- Start with web-based frontend and standalone backend for rapid iteration
+- Migrate to integrated desktop application for production release
+- Maintain consistent game logic throughout development phases
 
-### Frontend
-- **Language**: TypeScript for type-safe development
-- **Rendering**: PixiJS for high-performance 2D graphics
-- **Input**: WASD movement, mouse aiming and shooting
-- **UI**: Modern TypeScript UI components with game state management
+### Camera System Requirements
+- Fixed upward-facing camera with player always at screen center
+- World rotates around player instead of player rotating on screen
+- Smooth camera movement and rotation
+- Efficient coordinate transformation for all game objects
 
-### Desktop Application
-- **Framework**: Wails v2 for cross-platform desktop deployment
-- **Integration**: Go backend + TypeScript frontend in native desktop app
-- **Distribution**: Single executable for Windows, macOS, and Linux
 
 ### Controls
-- **Movement**: WASD keys (120 pixels/second)
-- **Aiming**: Mouse cursor controls player rotation (4.0 radians/second)
+- **Movement**: WASD keys at 1.0 meters/second
+- **Aiming**: Mouse cursor controls player rotation at 2.0 radians/second 
 - **Combat**: Left click for attacks
 - **UI Navigation**: Mouse for menu interactions
 
-## Development Roadmap
+## Acceptance Criteria
 
-### Phase 1: Core Gameplay & Single-Player Validation
-**Objective**: Complete core gameplay implementation in single-player environment
-- Implement `GameState` and `GameLogic` structure
-- Vision system with fog of war
-- Sound event system with visual representation
-- Basic combat and movement mechanics
+### Core Gameplay Requirements
+- [ ] Real-time multiplayer with 2-8 players
+- [ ] Vision system with fog of war (circular + cone visibility)
+- [ ] Sound event system with visual 3-ring representation
+- [ ] Combat system with melee (knife) and ranged (pistol) weapons
+- [ ] Player collision and map boundaries
+- [ ] 60 FPS smooth gameplay with minimal network latency
 
-### Phase 2: Basic Networking & Functional Synchronization
-**Objective**: Enable multiplayer "connection and play" capability
-- WebSocket implementation with Host-Authoritative model
-- JSON format for complete `GameState` broadcasting
-- Basic client-server communication
+### Game Modes
+- [ ] Solo mode for single-player practice
+- [ ] Multiplayer mode with player vs player combat
+- [ ] Practice mode for testing and experimentation
 
-### Phase 3: Smooth Experience & Optimization
-**Objective**: Eliminate lag and improve game feel
-- Client-side entity interpolation
-- Client-side prediction for local player
-- Network latency handling and reconciliation
+### User Interface
+- [ ] Main menu with mode selection
+- [ ] In-game HUD with player status
+- [ ] Game state transitions (Menu → Game → Results → Menu)
+- [ ] Settings and configuration options
 
-### Phase 4: Network Performance Optimization
-**Objective**: Reduce network load for scalability
-1. **Content Optimization**: Delta updates and event-driven messaging
-2. **Format Optimization**: Binary protocol implementation (Protobuf)
+### Technical Performance
+- [ ] Sub-50ms network latency for multiplayer
+- [ ] Smooth 60 FPS rendering
+- [ ] Cross-platform desktop application
+- [ ] Stable multiplayer sessions without disconnections
+
+### Final Deliverable
+- Cross-platform desktop application (Windows, macOS, Linux)
+- Complete game with all specified features
+- Optimized performance and user experience
 
 ## Map and Combat Design
 
 ### Map Design
-- Building floor plan layout (800x600 pixels)
+- Building floor plan layout (200x200 meters)
 - Walls and obstacles for tactical positioning
 - Doors and chokepoints for strategic control
 - Spawn points distributed for balanced encounters
@@ -195,9 +201,10 @@ func main() {
 ### Combat System
 
 #### Initial Weapon Implementation (Development Phase)
-- **Melee Weapon**: Knife with 1 body-length attack range
+- **Melee Weapon**: Knife with 1.0 meter attack range (player diameter)
 - **Ranged Weapon**: Pistol with projectile physics and advanced magazine system
 - **Damage Model**: One-hit kills initially, expandable to health system
+- **Friendly Fire**: All weapons can damage teammates - no distinction between enemy and ally targeting
 
 #### Pistol-Specific Mechanics
 **Magazine System:**
@@ -209,7 +216,7 @@ func main() {
 **Reload System (Pistol-Only):**
 - **Normal Reload**: 3 seconds duration, preserves the partially-used magazine
 - **Fast Reload**: 1 second duration, but discards the current magazine entirely
-- **Range**: 7 units effective shooting distance
+- **Range**: 7.0 meters effective shooting distance
 - **Strategic Decision**: Players must choose between speed and resource conservation
 
 **Resource Management:**
@@ -228,27 +235,3 @@ func main() {
 - Ambush tactics and positioning
 - Resource and ammunition management
 
-## Current Implementation Status
-
-### Completed Features ✅
-- Project structure (client/server/shared directories)
-- Go backend with WebSocket server (port 8030)
-- HTML5 Canvas frontend with game loop
-- Basic player movement (WASD input)
-- Mouse aiming system
-- Real-time multiplayer synchronization
-- Player spawn system with random positions
-- Vision system: Fog of war with circular + cone visibility
-- Movement/Rotation speed balancing (120px/s, 4.0 rad/s)
-- Main menu system: Complete game flow (Menu → Game → Results → Menu)
-- Game state management with proper transitions
-- Result screen with statistics tracking
-- Game mode selection (Solo, Multiplayer, Practice)
-
-### Next Development Priorities
-1. Sound event system implementation
-2. Basic map obstacles and collision detection
-3. Combat system (melee and ranged)
-4. Enemy AI and spawning
-5. Health/damage system
-6. Enhanced graphics and sound effects
