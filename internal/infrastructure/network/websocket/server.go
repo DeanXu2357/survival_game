@@ -38,10 +38,6 @@ func (s *server) Shutdown(ctx context.Context) error {
 		log.Printf("Error shutting down hub: %v", err)
 		return err
 	}
-	if err := s.http.Shutdown(c); err != nil {
-		log.Printf("Error shutting down HTTP server: %v", err)
-		return err
-	}
 
 	log.Println("WebSocket server shut down gracefully")
 	return nil
@@ -55,11 +51,33 @@ type ConnectionRequest struct {
 }
 
 func (s *server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
-	// Read connection data from request body
-	var connReq ConnectionRequest
-	if err := json.NewDecoder(r.Body).Decode(&connReq); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+	// Add CORS headers
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Connection, Upgrade, Sec-WebSocket-Key, Sec-WebSocket-Version, Sec-WebSocket-Protocol")
+
+	// Handle preflight OPTIONS request
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
 		return
+	}
+
+	// For WebSocket upgrade, get connection data from query parameters
+	var connReq ConnectionRequest
+	if r.Header.Get("Upgrade") == "websocket" {
+		// WebSocket connection - use query parameters
+		connReq = ConnectionRequest{
+			ClientID:  r.URL.Query().Get("client_id"),
+			GameName:  r.URL.Query().Get("game_name"),
+			Name:      r.URL.Query().Get("name"),
+			SessionID: r.URL.Query().Get("session_id"),
+		}
+	} else {
+		// Regular POST request - read from body
+		if err := json.NewDecoder(r.Body).Decode(&connReq); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
 	}
 
 	// Validate required fields

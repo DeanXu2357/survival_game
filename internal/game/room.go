@@ -2,6 +2,7 @@ package game
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"sync"
@@ -67,7 +68,15 @@ func (r *Room) Run() {
 	for {
 		select {
 		case cmd := <-r.commands:
-			currentInputs[r.clientToPlayerMap[cmd.ClientID]] = cmd.Input
+			r.mu.RLock() // TODO: use private method package logics of reading clientToPlayerMap
+			defer r.mu.RUnlock()
+			playerID := r.clientToPlayerMap[cmd.ClientID]
+			if playerID == "" {
+				log.Printf("Warning: No player ID found for client %s", cmd.ClientID)
+				continue
+			}
+			currentInputs[playerID] = cmd.Input
+			log.Printf("Received input from client %s (player %s): %+v", cmd.ClientID, playerID, cmd.Input)
 		case <-ticker.C:
 			r.logic.Update(r.state, currentInputs, deltaTime)
 
@@ -75,6 +84,7 @@ func (r *Room) Run() {
 
 			// todo: survey how to do incremental updates
 			// Broadcast game update to all clients in this room
+			r.broadcastGameUpdate()
 		}
 	}
 }
@@ -83,11 +93,18 @@ func (r *Room) Shutdown(ctx context.Context) error {
 	_, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
+	defer func() {
+		log.Printf("Room %s shutdown completed", r.ID)
+	}()
+
 	// save game state if needed
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	log.Println("clients", r.clients)
+
 	for _, client := range r.clients {
+		log.Printf("Closing client %s in room %s", client.ID(), r.ID)
 		if err := client.Close(ctx); err != nil {
 			log.Printf("Error closing client %s: %v", client.ID(), err)
 		}
@@ -116,10 +133,55 @@ func (r *Room) AddClient(_ context.Context, client Sender) error {
 	r.clientToPlayerMap[client.ID()] = player.ID
 	r.playerToClientMap[player.ID] = client.ID()
 
+	log.Printf("Player created successfully - Client: %s, Player: %s, Position: %+v",
+		client.ID(), player.ID, player.Position)
+	log.Printf("Total players in room: %d", len(r.state.Players))
+
 	return nil
 }
 
-func (r *Room) RemoveClientID(ctx context.Context, clientID string) {
-	// todo: how to remove client?
-	panic("Implete me")
+func (r *Room) broadcastGameUpdate() {
+	// Create game state update
+	gameUpdate := r.state.ToClientState()
+
+	// Marshal to JSON
+	payloadBytes, err := json.Marshal(gameUpdate)
+	if err != nil {
+		log.Printf("Failed to marshal game update: %v", err)
+		return
+	}
+
+	envelope := protocol.ResponseEnvelope{
+		Type:    protocol.GameUpdateEnvelope,
+		Payload: json.RawMessage(payloadBytes),
+	}
+
+	r.mu.RLock()
+
+	// Send to all clients (create a snapshot to avoid modification during iteration)
+	clientSnapshot := make(map[string]Sender)
+	for k, v := range r.clients {
+		clientSnapshot[k] = v
+	}
+
+	r.mu.RUnlock()
+
+	for clientID, client := range clientSnapshot {
+		go func(cID string, c Sender) {
+			defer func() {
+				if panicVal := recover(); panicVal != nil {
+					log.Printf("Recovered from panic while sending to client %s: %v", cID, panicVal)
+					// TODO: Remove failed client from room
+				}
+			}()
+
+			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			defer cancel()
+
+			if err := c.Send(ctx, envelope); err != nil {
+				log.Printf("Failed to send game update to client %s: %v", c.ID(), err)
+				// TODO: Consider removing disconnected clients from the room
+			}
+		}(clientID, client)
+	}
 }

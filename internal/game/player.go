@@ -38,3 +38,12 @@ func (p *Player) Move(input *protocol.PlayerInput, dt float64) Vector2D {
 
 	return movementVector.Normalize().Scale(p.MovementSpeed * dt)
 }
+
+func (p *Player) UpdateRotation(input *protocol.PlayerInput, dt float64) {
+	if input.RotateLeft {
+		p.Direction -= p.RotationSpeed * dt
+	}
+	if input.RotateRight {
+		p.Direction += p.RotationSpeed * dt
+	}
+}

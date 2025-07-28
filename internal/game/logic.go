@@ -1,6 +1,10 @@
 package game
 
-import "survival/internal/protocol"
+import (
+	"log"
+
+	"survival/internal/protocol"
+)
 
 const (
 	targetTickRate = 60.0
@@ -20,8 +24,19 @@ func (gl *Logic) Update(state *State, playerInputs map[string]protocol.PlayerInp
 	for playerID, input := range playerInputs {
 		// OPTIMIZE: If user react moving sticky we can use Wall Sliding to make it more smooth
 		player := state.Players[playerID]
+
+		// Store old values for comparison
+		oldDirection := player.Direction
+		oldPosition := player.Position
+
+		// Handle rotation
+		player.UpdateRotation(&input, dt)
+
+		// Handle movement
 		moveVector := player.Move(&input, dt)
 		desiredPosition := player.Position.Add(moveVector)
+
+		// Movement processing (debug logs removed)
 
 		for i := 0; i < maxResolutionIteration; i++ {
 			collisionOccurred := false
@@ -48,6 +63,15 @@ func (gl *Logic) Update(state *State, playerInputs map[string]protocol.PlayerInp
 			if !collisionOccurred {
 				break
 			}
+		}
+
+		// DEBUG: Log the final desired position after collision resolution
+		// Position updated
+		if oldDirection != player.Direction {
+			log.Printf("Player %s rotated from %.2f to %.2f", player.ID, oldDirection, player.Direction)
+		}
+		if oldPosition != desiredPosition {
+			log.Printf("Player %s moved from (%.2f, %.2f) to (%.2f, %.2f)", player.ID, oldPosition.X, oldPosition.Y, desiredPosition.X, desiredPosition.Y)
 		}
 
 		player.Position = desiredPosition

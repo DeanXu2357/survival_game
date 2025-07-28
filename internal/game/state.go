@@ -16,9 +16,10 @@ type State struct {
 
 func NewGameState() *State {
 	return &State{
-		Players:     make(map[string]*Player),
-		Walls:       make([]*Wall, 0),
-		Projectiles: make([]*Projectile, 0),
+		Players:          make(map[string]*Player),
+		Walls:            make([]*Wall, 0),
+		Projectiles:      make([]*Projectile, 0),
+		allowToAddPlayer: true,
 		ObjectGrid: &Grid{
 			CellSize: 50.0,
 			Cells:    make(map[GridCoord][]MapObject),

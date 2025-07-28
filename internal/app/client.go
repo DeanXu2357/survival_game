@@ -4,12 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"sync"
 
 	"survival/internal/protocol"
 )
 
-var ErrSendFailed = errors.New("failed to send message to client")
+var (
+	ErrSendFailed             = errors.New("failed to send message to client")
+	ErrClientConnectionClosed = errors.New("client connection is closed")
+	ErrClientNotServing       = errors.New("client is not serving requests")
+)
 
 func newWebsocketClient(ctx context.Context, id, name string, conn protocol.RawConnection, codec protocol.Codec) *websocketClient {
 	clientCTX, cancel := context.WithCancel(ctx)
@@ -38,6 +43,7 @@ type websocketClient struct {
 	codec      protocol.Codec
 	responseCh chan protocol.ResponseEnvelope
 	commandCh  chan protocol.Command
+	serving    bool
 
 	cancel    context.CancelFunc
 	wg        sync.WaitGroup
@@ -62,13 +68,27 @@ func (c *websocketClient) SetSessionID(sessionID string) error {
 	return nil
 }
 
-func (c *websocketClient) Send(ctx context.Context, envelope protocol.ResponseEnvelope) error {
+func (c *websocketClient) Send(ctx context.Context, envelope protocol.ResponseEnvelope) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			// Handle panic gracefully
+			err = fmt.Errorf("%w: %v", ErrSendFailed, r)
+		}
+	}()
+
+	if !c.serving {
+		return ErrClientNotServing
+	}
+
 	select {
 	case c.responseCh <- envelope:
 		// Successfully sent response to channel
 		return nil
 	case <-ctx.Done():
 		return fmt.Errorf("Send failed: %w", ctx.Err())
+	case <-c.clientCTX.Done():
+		// Client is being closed, don't attempt to send
+		return ErrClientConnectionClosed
 	}
 }
 
@@ -78,6 +98,7 @@ func (c *websocketClient) SetReceiveChannel(ch chan protocol.Command) {
 
 func (c *websocketClient) Close(ctx context.Context) error {
 	c.closeOnce.Do(func() {
+		log.Println("Closing websocket client:", c.id)
 		c.cancel()
 	})
 
@@ -103,6 +124,11 @@ func (c *websocketClient) Pump() (pumpErr error) {
 	c.wg.Add(2)
 	go c.readPump(c.clientCTX, errCh)
 	go c.writePump(c.clientCTX, errCh)
+
+	c.serving = true
+	defer func() {
+		c.serving = false
+	}()
 
 	select {
 	case err := <-errCh:

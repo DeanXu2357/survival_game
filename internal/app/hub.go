@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 
 	"survival/internal/game"
@@ -35,6 +36,7 @@ func (h *Hub) Run() error {
 
 func (h *Hub) Shutdown(ctx context.Context) error {
 	for _, room := range h.rooms {
+		log.Printf("Shutting down room: %s", room.ID)
 		if err := room.Shutdown(ctx); err != nil {
 			return err
 		}
@@ -82,6 +84,9 @@ func (h *Hub) DispatchConnection(ctx context.Context, conn protocol.RawConnectio
 	}
 	client.SetReceiveChannel(room.CommandsChannel())
 
+	defer func() {
+		log.Println("clean up for client:", client.ID())
+	}()
 	return client.Pump()
 }
 
