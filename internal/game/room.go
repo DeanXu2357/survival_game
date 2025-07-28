@@ -29,23 +29,32 @@ type Room struct {
 	commands chan protocol.Command
 	outgoing chan OutgoingMessage
 
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	clients           map[string]Sender // maps client ID to Sender interface
 	clientToPlayerMap map[string]string // maps client ID to Player ID
 	playerToClientMap map[string]string // maps Player ID to client ID
 	mu                sync.RWMutex
 }
 
-func NewRoom(id string) *Room {
+func NewRoom(ctx context.Context, id string) *Room {
+	roomCTX, cancel := context.WithCancel(ctx)
+
 	return &Room{
-		ID:                id,
-		state:             NewGameState(),
-		logic:             NewGameLogic(),
-		commands:          make(chan protocol.Command, 200),
-		outgoing:          make(chan OutgoingMessage, 400),
+		ID:       id,
+		state:    NewGameState(),
+		logic:    NewGameLogic(),
+		commands: make(chan protocol.Command, 200),
+		outgoing: make(chan OutgoingMessage, 400),
+
 		mu:                sync.RWMutex{},
 		clients:           make(map[string]Sender),
 		clientToPlayerMap: make(map[string]string), // maps client ID to Player ID
 		playerToClientMap: make(map[string]string), // maps Player ID to client ID
+
+		ctx:    roomCTX,
+		cancel: cancel,
 	}
 }
 
@@ -85,11 +94,15 @@ func (r *Room) Run() {
 			// todo: survey how to do incremental updates
 			// Broadcast game update to all clients in this room
 			r.broadcastGameUpdate()
+		case <-r.ctx.Done():
+			return
 		}
 	}
 }
 
 func (r *Room) Shutdown(ctx context.Context) error {
+	defer r.cancel()
+
 	_, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 

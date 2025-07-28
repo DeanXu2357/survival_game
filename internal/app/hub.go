@@ -87,14 +87,16 @@ func (h *Hub) DispatchConnection(ctx context.Context, conn protocol.RawConnectio
 	defer func() {
 		log.Println("clean up for client:", client.ID())
 	}()
+
+	// todo: it's wired that a client handle connection here, but it is used in the room. Where should I close the connection , in Room or Hub?
 	return client.Pump()
 }
 
-func NewHub(idGen IDGenerator) *Hub {
+func NewHub(ctx context.Context, idGen IDGenerator) *Hub {
 	return &Hub{
 		clientsMU: sync.RWMutex{},
 		rooms: map[string]*game.Room{
-			DefaultRoomName: game.NewRoom(DefaultRoomName),
+			DefaultRoomName: game.NewRoom(ctx, DefaultRoomName),
 		},
 		idGen: idGen,
 	}

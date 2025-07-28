@@ -39,6 +39,10 @@ func (s *server) Shutdown(ctx context.Context) error {
 		return err
 	}
 
+	if err := s.http.Shutdown(c); err != nil {
+		return fmt.Errorf("failed to shutdown HTTP server: %w", err)
+	}
+
 	log.Println("WebSocket server shut down gracefully")
 	return nil
 }
@@ -117,7 +121,7 @@ func (s *server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("OK"))
 }
 
-func NewServer(port string) app.Server {
+func NewServer(ctx context.Context, port string) app.Server {
 	upgrader := websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
 			return true // TODO: Add proper origin validation
@@ -127,7 +131,7 @@ func NewServer(port string) app.Server {
 	idGen := utils.NewSequentialIDGenerator("session")
 
 	s := &server{
-		hub:      app.NewHub(idGen),
+		hub:      app.NewHub(ctx, idGen),
 		upgrader: upgrader,
 	}
 

@@ -14,7 +14,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	srv := websocket.NewServer("3033")
+	srv := websocket.NewServer(ctx, "3033")
 
 	// Handle graceful shutdown
 	sigChan := make(chan os.Signal, 1)
