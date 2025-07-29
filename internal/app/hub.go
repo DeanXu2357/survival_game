@@ -42,10 +42,14 @@ func (h *Hub) Shutdown(ctx context.Context) error {
 		}
 	}
 
+	defer log.Printf("Hub clean up")
+
 	h.clientsMU.Lock()
 	defer h.clientsMU.Unlock()
 
 	h.sessionMap = make(map[string]string) // Clear session map
+
+	defer log.Printf("Session map cleared")
 
 	return nil
 }
@@ -55,11 +59,9 @@ func (h *Hub) generateSessionID() string {
 }
 
 func (h *Hub) DispatchConnection(ctx context.Context, conn protocol.RawConnection, gameName, clientID, name, sessionID string) error {
-	h.clientsMU.Lock()
-	defer h.clientsMU.Unlock()
-
 	client := newWebsocketClient(ctx, clientID, name, conn, protocol.NewJsonCodec())
 
+	h.clientsMU.Lock()
 	if id, exists := h.sessionMap[sessionID]; exists { // reconnection
 		if id != clientID {
 			return fmt.Errorf("session ID %s is already in use by another client", sessionID)
@@ -74,6 +76,9 @@ func (h *Hub) DispatchConnection(ctx context.Context, conn protocol.RawConnectio
 	if err := client.SetSessionID(sessionID); err != nil {
 		return fmt.Errorf("failed to set session ID for client %s: %w", clientID, err)
 	}
+	h.sessionMap[sessionID] = clientID // Store the session ID in the session map
+
+	h.clientsMU.Unlock()
 
 	room, exists := h.rooms[gameName]
 	if !exists {
@@ -98,6 +103,7 @@ func NewHub(ctx context.Context, idGen IDGenerator) *Hub {
 		rooms: map[string]*game.Room{
 			DefaultRoomName: game.NewRoom(ctx, DefaultRoomName),
 		},
-		idGen: idGen,
+		sessionMap: make(map[string]string),
+		idGen:      idGen,
 	}
 }

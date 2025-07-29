@@ -65,6 +65,8 @@ func (c *websocketClient) SessionID() string {
 
 func (c *websocketClient) SetSessionID(sessionID string) error {
 	c.sessionID = sessionID
+
+	// todo: need to notify the client about the session ID change
 	return nil
 }
 

@@ -78,8 +78,8 @@ func (r *Room) Run() {
 		select {
 		case cmd := <-r.commands:
 			r.mu.RLock() // TODO: use private method package logics of reading clientToPlayerMap
-			defer r.mu.RUnlock()
 			playerID := r.clientToPlayerMap[cmd.ClientID]
+			r.mu.RUnlock()
 			if playerID == "" {
 				log.Printf("Warning: No player ID found for client %s", cmd.ClientID)
 				continue

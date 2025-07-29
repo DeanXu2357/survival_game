@@ -21,16 +21,16 @@ func main() {
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		<-sigChan
-		log.Println("Received shutdown signal")
-		if err := srv.Shutdown(ctx); err != nil {
-			log.Printf("Error shutting down server: %v", err)
+		log.Println("Starting server on port 3033...")
+		if err := srv.Start(); err != nil {
+			log.Fatalf("Server failed: %v", err)
 		}
 	}()
 
-	log.Println("Starting server on port 3033...")
-	if err := srv.Start(); err != nil {
-		log.Fatalf("Server failed: %v", err)
+	<-sigChan
+	log.Println("Received shutdown signal")
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Printf("Error shutting down server: %v", err)
 	}
 
 	log.Println("Server shut down successfully")
