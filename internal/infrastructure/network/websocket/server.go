@@ -21,9 +21,11 @@ type server struct {
 }
 
 func (s *server) Start() error {
-	if err := s.hub.Run(); err != nil {
-		return fmt.Errorf("failed to start hub: %w", err)
-	}
+	go func() {
+		if err := s.hub.Run(); err != nil {
+			log.Printf("Hub error: %v", err)
+		}
+	}()
 
 	log.Printf("WebSocket server starting on port %s", s.http.Addr)
 

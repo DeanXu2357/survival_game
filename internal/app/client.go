@@ -16,6 +16,17 @@ var (
 	ErrClientNotServing       = errors.New("client is not serving requests")
 )
 
+type Client interface {
+	ID() string
+	Name() string
+	SessionID() string
+	SetSessionID(sessionID string) error
+	Send(ctx context.Context, envelope protocol.ResponseEnvelope) error
+	SetHubChannel(hubCh chan<- protocol.Command)
+	Close(ctx context.Context) error
+	Pump() error
+}
+
 func newWebsocketClient(ctx context.Context, id, name string, conn protocol.RawConnection, codec protocol.Codec) *websocketClient {
 	clientCTX, cancel := context.WithCancel(ctx)
 
@@ -26,7 +37,7 @@ func newWebsocketClient(ctx context.Context, id, name string, conn protocol.RawC
 		conn:       conn,
 		codec:      codec,
 		responseCh: make(chan protocol.ResponseEnvelope, 100), // Buffered channel for responses
-		commandCh:  nil,                                       // Buffered channel for commands, assigned by SetReceiveChannel()
+		hubCh:      nil,                                       // Channel to send commands to the hubz
 
 		cancel:    cancel,
 		clientCTX: clientCTX,
@@ -42,7 +53,7 @@ type websocketClient struct {
 	conn       protocol.RawConnection
 	codec      protocol.Codec
 	responseCh chan protocol.ResponseEnvelope
-	commandCh  chan protocol.Command
+	hubCh      chan<- protocol.Command // Renamed from commandCh to hubCh for clarity
 	serving    bool
 
 	cancel    context.CancelFunc
@@ -94,8 +105,9 @@ func (c *websocketClient) Send(ctx context.Context, envelope protocol.ResponseEn
 	}
 }
 
-func (c *websocketClient) SetReceiveChannel(ch chan protocol.Command) {
-	c.commandCh = ch
+// SetHubChannel sets the channel for sending commands to the hub.
+func (c *websocketClient) SetHubChannel(hubCh chan<- protocol.Command) {
+	c.hubCh = hubCh
 }
 
 func (c *websocketClient) Close(ctx context.Context) error {
@@ -164,7 +176,7 @@ func (c *websocketClient) readPump(ctx context.Context, errCh chan error) {
 		}
 
 		select {
-		case c.commandCh <- command:
+		case c.hubCh <- command: // Send command to the hub's channel
 			// Successfully sent command to channel
 		case <-ctx.Done():
 			return

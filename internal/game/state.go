@@ -43,7 +43,7 @@ func (s *State) generatePlayerID() string {
 	return fmt.Sprintf("player-%d", len(s.Players)+1)
 }
 
-func (s *State) newPlayer() (*Player, error) {
+func (s *State) NewPlayer() (*Player, error) {
 	if !s.allowToAddPlayer {
 		return nil, fmt.Errorf("adding new players is not allowed")
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"time"
 
 	"survival/internal/game"
 	"survival/internal/protocol"
@@ -19,38 +20,142 @@ const (
 	LocalUser       = "localhost"
 )
 
+// clientJoinRequest is a struct to hold a client and the gameName for joining a room.
+type clientJoinRequest struct {
+	client   Client
+	gameName string
+}
+
 type Hub struct {
-	rooms      map[string]*game.Room // Map of room names to Room objects
-	clientsMU  sync.RWMutex
-	sessionMap map[string]string // Map of session IDs to Client id
-	idGen      IDGenerator
+	rooms        map[string]*game.Room
+	clients      *ClientRegistry
+	idGen        IDGenerator
+	hubCh        chan protocol.Command
+	clientJoins  chan clientJoinRequest
+	clientLeaves chan Client
+	ctx          context.Context
+	cancel       context.CancelFunc
+	shutdownOnce sync.Once
+}
+
+func NewHub(ctx context.Context, idGen IDGenerator) *Hub {
+	hubCtx, cancel := context.WithCancel(ctx)
+	return &Hub{
+		rooms: map[string]*game.Room{
+			DefaultRoomName: game.NewRoom(hubCtx, DefaultRoomName),
+		},
+		clients:      NewClientRegistry(),
+		idGen:        idGen,
+		hubCh:        make(chan protocol.Command, 256),
+		clientJoins:  make(chan clientJoinRequest, 10),
+		clientLeaves: make(chan Client, 10),
+		ctx:          hubCtx,
+		cancel:       cancel,
+	}
 }
 
 func (h *Hub) Run() error {
+	log.Println("Hub is running...")
 	for _, room := range h.rooms {
 		go room.Run()
+		go h.routeOutgoing(room)
 	}
 
-	return nil
+	return h.hubLoop()
+}
+
+func (h *Hub) hubLoop() error {
+	for {
+		select {
+		case cmd := <-h.hubCh:
+			// For now, we assume all commands go to the default room.
+			// This could be expanded to route to different rooms based on client state.
+			if room, ok := h.rooms[DefaultRoomName]; ok {
+				room.CommandsChannel() <- cmd
+			} else {
+				log.Printf("Warning: Room not found for command from client %s", cmd.ClientID)
+			}
+		case req := <-h.clientJoins:
+			h.handleJoin(req)
+		case client := <-h.clientLeaves:
+			h.handleLeave(client)
+		case <-h.ctx.Done():
+			log.Println("Hub context is done, shutting down loop.")
+			return h.ctx.Err()
+		}
+	}
+}
+
+func (h *Hub) routeOutgoing(room *game.Room) {
+	outgoingCh := room.OutgoingChannel()
+	for {
+		select {
+		case msg := <-outgoingCh:
+			for _, clientID := range msg.TargetClientIDs {
+				if client, ok := h.clients.Get(clientID); ok {
+					ctx, cancel := context.WithTimeout(h.ctx, 2*time.Second)
+					if err := client.Send(ctx, msg.Envelope); err != nil {
+						log.Printf("Failed to send message to client %s: %v", clientID, err)
+					}
+					cancel()
+				}
+			}
+		case <-h.ctx.Done():
+			log.Printf("Stopping outgoing router for room %s", room.ID)
+			return
+		}
+	}
+}
+
+func (h *Hub) handleJoin(req clientJoinRequest) {
+	client := req.client
+	gameName := req.gameName
+
+	log.Printf("Client %s joining hub for game '%s'", client.ID(), gameName)
+	h.clients.Add(client)
+
+	if room, ok := h.rooms[gameName]; ok {
+		if err := room.AddPlayer(client.ID()); err != nil {
+			log.Printf("Failed to add player for client %s to room %s: %v", client.ID(), room.ID, err)
+			client.Close(h.ctx)
+		}
+	} else {
+		log.Printf("Room '%s' not found for joining client %s", gameName, client.ID())
+		client.Close(h.ctx)
+	}
+}
+
+func (h *Hub) handleLeave(client Client) {
+	log.Printf("Client %s leaving hub", client.ID())
+	h.clients.Remove(client.ID())
+	// TODO: This needs to know which room the client was in.
+	if room, ok := h.rooms[DefaultRoomName]; ok {
+		room.RemovePlayer(client.ID())
+	}
+	client.Close(h.ctx) // Ensure client resources are cleaned up
 }
 
 func (h *Hub) Shutdown(ctx context.Context) error {
-	for _, room := range h.rooms {
-		log.Printf("Shutting down room: %s", room.ID)
-		if err := room.Shutdown(ctx); err != nil {
-			return err
+	h.shutdownOnce.Do(func() {
+		log.Println("Hub shutdown initiated.")
+		h.cancel() // Cancel the hub's context to stop loops
+
+		// Close all client connections
+		for _, client := range h.clients.All() {
+			log.Printf("Closing client %s during hub shutdown", client.ID())
+			client.Close(ctx)
 		}
-	}
+		h.clients.Clear()
 
-	defer log.Printf("Hub clean up")
-
-	h.clientsMU.Lock()
-	defer h.clientsMU.Unlock()
-
-	h.sessionMap = make(map[string]string) // Clear session map
-
-	defer log.Printf("Session map cleared")
-
+		// Shutdown all rooms
+		for _, room := range h.rooms {
+			log.Printf("Shutting down room: %s", room.ID)
+			if err := room.Shutdown(ctx); err != nil {
+				log.Printf("Error shutting down room %s: %v", room.ID, err)
+			}
+		}
+		log.Println("Hub shutdown complete.")
+	})
 	return nil
 }
 
@@ -59,51 +164,34 @@ func (h *Hub) generateSessionID() string {
 }
 
 func (h *Hub) DispatchConnection(ctx context.Context, conn protocol.RawConnection, gameName, clientID, name, sessionID string) error {
-	client := newWebsocketClient(ctx, clientID, name, conn, protocol.NewJsonCodec())
-
-	h.clientsMU.Lock()
-	if id, exists := h.sessionMap[sessionID]; exists { // reconnection
-		if id != clientID {
-			return fmt.Errorf("session ID %s is already in use by another client", sessionID)
+	if client, ok := h.clients.Get(clientID); ok {
+		if client.SessionID() == sessionID {
+			log.Printf("Client %s reconnected with session %s", clientID, sessionID)
+			// TODO: Handle reconnection logic
+			return nil
+		} else {
+			return fmt.Errorf("client ID %s already exists with a different session", clientID)
 		}
-		if err := client.SetSessionID(sessionID); err != nil {
-			return fmt.Errorf("failed to set session ID for client %s: %w", clientID, err)
-		}
-		return nil
 	}
 
-	sessionID = h.generateSessionID() // Generate a new session ID if not provided
-	if err := client.SetSessionID(sessionID); err != nil {
+	client := newWebsocketClient(h.ctx, clientID, name, conn, protocol.NewJsonCodec())
+	client.SetHubChannel(h.hubCh)
+
+	newSessionID := h.generateSessionID()
+	if err := client.SetSessionID(newSessionID); err != nil {
 		return fmt.Errorf("failed to set session ID for client %s: %w", clientID, err)
 	}
-	h.sessionMap[sessionID] = clientID // Store the session ID in the session map
 
-	h.clientsMU.Unlock()
+	h.clientJoins <- clientJoinRequest{client: client, gameName: gameName}
 
-	room, exists := h.rooms[gameName]
-	if !exists {
-		return fmt.Errorf("room %s does not exist", gameName)
-	}
-	if err := room.AddClient(ctx, client); err != nil {
-		return fmt.Errorf("failed to add client to room %s: %w", gameName, err)
-	}
-	client.SetReceiveChannel(room.CommandsChannel())
-
-	defer func() {
-		log.Println("clean up for client:", client.ID())
+	go func() {
+		defer func() {
+			h.clientLeaves <- client
+		}()
+		if err := client.Pump(); err != nil {
+			log.Printf("Client %s pump error: %v", client.ID(), err)
+		}
 	}()
 
-	// todo: it's wired that a client handle connection here, but it is used in the room. Where should I close the connection , in Room or Hub?
-	return client.Pump()
-}
-
-func NewHub(ctx context.Context, idGen IDGenerator) *Hub {
-	return &Hub{
-		clientsMU: sync.RWMutex{},
-		rooms: map[string]*game.Room{
-			DefaultRoomName: game.NewRoom(ctx, DefaultRoomName),
-		},
-		sessionMap: make(map[string]string),
-		idGen:      idGen,
-	}
+	return nil
 }
