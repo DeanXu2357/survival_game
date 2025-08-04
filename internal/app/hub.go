@@ -117,11 +117,11 @@ func (h *Hub) handleJoin(req clientJoinRequest) {
 	if room, ok := h.rooms[gameName]; ok {
 		if err := room.AddPlayer(client.ID()); err != nil {
 			log.Printf("Failed to add player for client %s to room %s: %v", client.ID(), room.ID, err)
-			client.Close(h.ctx)
+			client.Close()
 		}
 	} else {
 		log.Printf("Room '%s' not found for joining client %s", gameName, client.ID())
-		client.Close(h.ctx)
+		client.Close()
 	}
 }
 
@@ -132,7 +132,7 @@ func (h *Hub) handleLeave(client Client) {
 	if room, ok := h.rooms[DefaultRoomName]; ok {
 		room.RemovePlayer(client.ID())
 	}
-	client.Close(h.ctx) // Ensure client resources are cleaned up
+	client.Close() // Ensure client resources are cleaned up
 }
 
 func (h *Hub) Shutdown(ctx context.Context) error {
@@ -143,7 +143,11 @@ func (h *Hub) Shutdown(ctx context.Context) error {
 		// Close all client connections
 		for _, client := range h.clients.All() {
 			log.Printf("Closing client %s during hub shutdown", client.ID())
-			client.Close(ctx)
+			if err := client.Close(); err != nil {
+				log.Printf("Error closing client %s: %v", client.ID(), err)
+			} else {
+				log.Printf("Client %s closed successfully", client.ID())
+			}
 		}
 		h.clients.Clear()
 
@@ -175,7 +179,13 @@ func (h *Hub) DispatchConnection(ctx context.Context, conn protocol.RawConnectio
 	}
 
 	client := newWebsocketClient(h.ctx, clientID, name, conn, protocol.NewJsonCodec())
-	client.SetHubChannel(h.hubCh)
+
+	_, err := client.Subscribe(func(cmd protocol.Command) {
+		h.hubCh <- cmd
+	})
+	if err != nil {
+		return fmt.Errorf("failed to subscribe to client %s: %w", clientID, err)
+	}
 
 	newSessionID := h.generateSessionID()
 	if err := client.SetSessionID(newSessionID); err != nil {
@@ -188,8 +198,9 @@ func (h *Hub) DispatchConnection(ctx context.Context, conn protocol.RawConnectio
 		defer func() {
 			h.clientLeaves <- client
 		}()
-		if err := client.Pump(); err != nil {
-			log.Printf("Client %s pump error: %v", client.ID(), err)
+		for err := range client.Errors() {
+			log.Printf("Client %s error: %v", client.ID(), err)
+			return
 		}
 	}()
 
