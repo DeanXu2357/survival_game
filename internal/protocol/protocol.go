@@ -7,8 +7,9 @@ import (
 const (
 	PlayerInputEnvelope RequestEnvelopeType = "player_input"
 
-	GameUpdateEnvelope  ResponseEnvelopeType = "game_update"
-	SystemNotifyEnvelop ResponseEnvelopeType = "system_notify"
+	GameUpdateEnvelope       ResponseEnvelopeType = "game_update"
+	SystemNotifyEnvelop      ResponseEnvelopeType = "system_notify"
+	SystemSetSessionEnvelope ResponseEnvelopeType = "system_set_session"
 )
 
 type ResponseEnvelopeType string
@@ -58,4 +59,9 @@ type PlayerInput struct {
 
 type SystemNotify struct {
 	Message string `json:"message"`
+}
+
+type SystemSetSessionPayload struct {
+	ClientID  string `json:"client_id"`
+	SessionID string `json:"session_id"`
 }
