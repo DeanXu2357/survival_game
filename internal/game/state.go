@@ -27,6 +27,28 @@ func NewGameState() *State {
 	}
 }
 
+func NewGameStateFromMap(mapConfig *MapConfig) *State {
+	state := &State{
+		Players:          make(map[string]*Player),
+		Walls:            make([]*Wall, 0),
+		Projectiles:      make([]*Projectile, 0),
+		allowToAddPlayer: true,
+		ObjectGrid: &Grid{
+			CellSize: mapConfig.GridSize,
+			Cells:    make(map[GridCoord][]MapObject),
+		},
+	}
+
+	// Create walls from map configuration
+	for _, wallConfig := range mapConfig.Walls {
+		wall := NewWall(wallConfig.ID, wallConfig.Center, wallConfig.HalfSize, wallConfig.Rotation)
+		state.Walls = append(state.Walls, wall)
+		state.ObjectGrid.AddObject(wall)
+	}
+
+	return state
+}
+
 func (s *State) ToClientState() *ClientGameState {
 	return &ClientGameState{
 		Players:     s.Players,
@@ -44,6 +66,10 @@ func (s *State) generatePlayerID() string {
 }
 
 func (s *State) NewPlayer() (*Player, error) {
+	return s.NewPlayerAtPosition(Vector2D{X: 400, Y: 300}) // Default center position
+}
+
+func (s *State) NewPlayerAtPosition(position Vector2D) (*Player, error) {
 	if !s.allowToAddPlayer {
 		return nil, fmt.Errorf("adding new players is not allowed")
 	}
@@ -58,7 +84,7 @@ func (s *State) NewPlayer() (*Player, error) {
 
 	player := &Player{
 		ID:            playerID,
-		Position:      Vector2D{X: 400, Y: 300}, // Center of 800x600 map
+		Position:      position,
 		Direction:     0,
 		Radius:        10,
 		RotationSpeed: playerBaseRotationSpeed,

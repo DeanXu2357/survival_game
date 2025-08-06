@@ -16,12 +16,13 @@ type OutgoingMessage struct {
 }
 
 type Room struct {
-	ID       string
-	state    *State
-	logic    *Logic
-	players  *PlayerRegistry
-	commands chan protocol.Command
-	outgoing chan OutgoingMessage
+	ID        string
+	mapConfig *MapConfig
+	state     *State
+	logic     *Logic
+	players   *PlayerRegistry
+	commands  chan protocol.Command
+	outgoing  chan OutgoingMessage
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -31,12 +32,30 @@ func NewRoom(ctx context.Context, id string) *Room {
 	roomCTX, cancel := context.WithCancel(ctx)
 
 	return &Room{
-		ID:       id,
-		state:    NewGameState(),
-		logic:    NewGameLogic(),
-		players:  NewPlayerRegistry(),
-		commands: make(chan protocol.Command, 200),
-		outgoing: make(chan OutgoingMessage, 400),
+		ID:        id,
+		mapConfig: nil, // No map configuration
+		state:     NewGameState(),
+		logic:     NewGameLogic(),
+		players:   NewPlayerRegistry(),
+		commands:  make(chan protocol.Command, 200),
+		outgoing:  make(chan OutgoingMessage, 400),
+
+		ctx:    roomCTX,
+		cancel: cancel,
+	}
+}
+
+func NewRoomWithMap(ctx context.Context, id string, mapConfig *MapConfig) *Room {
+	roomCTX, cancel := context.WithCancel(ctx)
+
+	return &Room{
+		ID:        id,
+		mapConfig: mapConfig,
+		state:     NewGameStateFromMap(mapConfig),
+		logic:     NewGameLogic(),
+		players:   NewPlayerRegistry(),
+		commands:  make(chan protocol.Command, 200),
+		outgoing:  make(chan OutgoingMessage, 400),
 
 		ctx:    roomCTX,
 		cancel: cancel,
@@ -100,7 +119,21 @@ func (r *Room) Shutdown(ctx context.Context) error {
 
 // AddPlayer creates a new player in the game state and associates it with a client ID.
 func (r *Room) AddPlayer(clientID string) error {
-	player, err := r.state.NewPlayer()
+	var player *Player
+	var err error
+
+	// Use spawn point if map is configured
+	if r.mapConfig != nil {
+		spawnPoint := r.mapConfig.GetRandomSpawnPoint()
+		if spawnPoint != nil {
+			player, err = r.state.NewPlayerAtPosition(spawnPoint.Position)
+		} else {
+			player, err = r.state.NewPlayer() // fallback to default position
+		}
+	} else {
+		player, err = r.state.NewPlayer()
+	}
+
 	if err != nil {
 		return fmt.Errorf("failed to create new player: %w", err)
 	}

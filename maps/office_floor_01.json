@@ -1,0 +1,217 @@
+{
+  "map": {
+    "id": "office_floor_01",
+    "name": "Office Building - Floor 1",
+    "dimensions": {
+      "x": 1200,
+      "y": 800
+    },
+    "grid_size": 50,
+    "spawn_points": [
+      {
+        "id": "main_entrance",
+        "position": { "x": 600, "y": 750 }
+      },
+      {
+        "id": "side_entrance_east",
+        "position": { "x": 1150, "y": 400 }
+      },
+      {
+        "id": "side_entrance_west",
+        "position": { "x": 50, "y": 400 }
+      },
+      {
+        "id": "emergency_exit_north",
+        "position": { "x": 600, "y": 50 }
+      },
+      {
+        "id": "reception_area",
+        "position": { "x": 600, "y": 650 }
+      }
+    ],
+    "walls": [
+      {
+        "id": "exterior_wall_north",
+        "center": { "x": 600, "y": 25 },
+        "half_size": { "x": 600, "y": 25 },
+        "rotation": 0
+      },
+      {
+        "id": "exterior_wall_south", 
+        "center": { "x": 600, "y": 775 },
+        "half_size": { "x": 600, "y": 25 },
+        "rotation": 0
+      },
+      {
+        "id": "exterior_wall_west",
+        "center": { "x": 25, "y": 400 },
+        "half_size": { "x": 25, "y": 400 },
+        "rotation": 0
+      },
+      {
+        "id": "exterior_wall_east",
+        "center": { "x": 1175, "y": 400 },
+        "half_size": { "x": 25, "y": 400 },
+        "rotation": 0
+      },
+      {
+        "id": "reception_wall_north",
+        "center": { "x": 600, "y": 550 },
+        "half_size": { "x": 200, "y": 15 },
+        "rotation": 0
+      },
+      {
+        "id": "reception_wall_west",
+        "center": { "x": 385, "y": 600 },
+        "half_size": { "x": 15, "y": 65 },
+        "rotation": 0
+      },
+      {
+        "id": "reception_wall_east",
+        "center": { "x": 815, "y": 600 },
+        "half_size": { "x": 15, "y": 65 },
+        "rotation": 0
+      },
+      {
+        "id": "conference_room_wall_1",
+        "center": { "x": 200, "y": 200 },
+        "half_size": { "x": 120, "y": 15 },
+        "rotation": 0
+      },
+      {
+        "id": "conference_room_wall_2",
+        "center": { "x": 200, "y": 350 },
+        "half_size": { "x": 120, "y": 15 },
+        "rotation": 0
+      },
+      {
+        "id": "conference_room_wall_3",
+        "center": { "x": 95, "y": 275 },
+        "half_size": { "x": 15, "y": 90 },
+        "rotation": 0
+      },
+      {
+        "id": "conference_room_wall_4",
+        "center": { "x": 305, "y": 275 },
+        "half_size": { "x": 15, "y": 90 },
+        "rotation": 0
+      },
+      {
+        "id": "office_partition_1",
+        "center": { "x": 450, "y": 200 },
+        "half_size": { "x": 80, "y": 8 },
+        "rotation": 0
+      },
+      {
+        "id": "office_partition_2",
+        "center": { "x": 750, "y": 200 },
+        "half_size": { "x": 80, "y": 8 },
+        "rotation": 0
+      },
+      {
+        "id": "office_partition_3",
+        "center": { "x": 1050, "y": 200 },
+        "half_size": { "x": 80, "y": 8 },
+        "rotation": 0
+      },
+      {
+        "id": "office_partition_vertical_1",
+        "center": { "x": 600, "y": 300 },
+        "half_size": { "x": 8, "y": 100 },
+        "rotation": 0
+      },
+      {
+        "id": "office_partition_vertical_2",
+        "center": { "x": 900, "y": 300 },
+        "half_size": { "x": 8, "y": 100 },
+        "rotation": 0
+      }
+    ],
+    "objects": [
+      {
+        "id": "reception_desk",
+        "type": "furniture",
+        "center": { "x": 600, "y": 600 },
+        "half_size": { "x": 80, "y": 40 },
+        "rotation": 0
+      },
+      {
+        "id": "conference_table",
+        "type": "furniture",
+        "center": { "x": 200, "y": 275 },
+        "half_size": { "x": 60, "y": 30 },
+        "rotation": 0
+      },
+      {
+        "id": "desk_1",
+        "type": "furniture",
+        "center": { "x": 450, "y": 120 },
+        "half_size": { "x": 50, "y": 25 },
+        "rotation": 0
+      },
+      {
+        "id": "desk_2",
+        "type": "furniture",
+        "center": { "x": 750, "y": 120 },
+        "half_size": { "x": 50, "y": 25 },
+        "rotation": 0
+      },
+      {
+        "id": "desk_3",
+        "type": "furniture",
+        "center": { "x": 1050, "y": 120 },
+        "half_size": { "x": 50, "y": 25 },
+        "rotation": 0
+      },
+      {
+        "id": "desk_4",
+        "type": "furniture",
+        "center": { "x": 450, "y": 350 },
+        "half_size": { "x": 50, "y": 25 },
+        "rotation": 0
+      },
+      {
+        "id": "desk_5",
+        "type": "furniture",
+        "center": { "x": 750, "y": 350 },
+        "half_size": { "x": 50, "y": 25 },
+        "rotation": 0
+      },
+      {
+        "id": "desk_6",
+        "type": "furniture",
+        "center": { "x": 1050, "y": 350 },
+        "half_size": { "x": 50, "y": 25 },
+        "rotation": 0
+      },
+      {
+        "id": "printer_station",
+        "type": "equipment",
+        "center": { "x": 100, "y": 450 },
+        "half_size": { "x": 30, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "water_cooler",
+        "type": "equipment",
+        "center": { "x": 1100, "y": 450 },
+        "half_size": { "x": 15, "y": 15 },
+        "rotation": 0
+      },
+      {
+        "id": "filing_cabinet_1",
+        "type": "storage",
+        "center": { "x": 50, "y": 200 },
+        "half_size": { "x": 20, "y": 30 },
+        "rotation": 0
+      },
+      {
+        "id": "filing_cabinet_2",
+        "type": "storage",
+        "center": { "x": 1150, "y": 200 },
+        "half_size": { "x": 20, "y": 30 },
+        "rotation": 0
+      }
+    ]
+  }
+}

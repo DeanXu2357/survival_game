@@ -1,0 +1,119 @@
+{
+  "map": {
+    "id": "test_complex",
+    "name": "Complex Test Map with Obstacles",
+    "dimensions": {
+      "x": 800,
+      "y": 600
+    },
+    "grid_size": 50,
+    "spawn_points": [
+      {
+        "id": "spawn_top_left",
+        "position": { "x": 100, "y": 100 }
+      },
+      {
+        "id": "spawn_top_right",
+        "position": { "x": 700, "y": 100 }
+      },
+      {
+        "id": "spawn_bottom_left",
+        "position": { "x": 100, "y": 500 }
+      },
+      {
+        "id": "spawn_bottom_right",
+        "position": { "x": 700, "y": 500 }
+      },
+      {
+        "id": "spawn_center",
+        "position": { "x": 400, "y": 300 }
+      }
+    ],
+    "walls": [
+      {
+        "id": "top_wall",
+        "center": { "x": 400, "y": 25 },
+        "half_size": { "x": 400, "y": 25 },
+        "rotation": 0
+      },
+      {
+        "id": "bottom_wall",
+        "center": { "x": 400, "y": 575 },
+        "half_size": { "x": 400, "y": 25 },
+        "rotation": 0
+      },
+      {
+        "id": "left_wall",
+        "center": { "x": 25, "y": 300 },
+        "half_size": { "x": 25, "y": 300 },
+        "rotation": 0
+      },
+      {
+        "id": "right_wall",
+        "center": { "x": 775, "y": 300 },
+        "half_size": { "x": 25, "y": 300 },
+        "rotation": 0
+      },
+      {
+        "id": "center_horizontal_wall",
+        "center": { "x": 400, "y": 300 },
+        "half_size": { "x": 150, "y": 15 },
+        "rotation": 0
+      },
+      {
+        "id": "left_vertical_obstacle",
+        "center": { "x": 200, "y": 200 },
+        "half_size": { "x": 20, "y": 60 },
+        "rotation": 0
+      },
+      {
+        "id": "right_vertical_obstacle",
+        "center": { "x": 600, "y": 400 },
+        "half_size": { "x": 20, "y": 60 },
+        "rotation": 0
+      },
+      {
+        "id": "diagonal_wall_1",
+        "center": { "x": 300, "y": 450 },
+        "half_size": { "x": 80, "y": 15 },
+        "rotation": 0.785398
+      },
+      {
+        "id": "diagonal_wall_2",
+        "center": { "x": 500, "y": 150 },
+        "half_size": { "x": 60, "y": 12 },
+        "rotation": -0.785398
+      }
+    ],
+    "objects": [
+      {
+        "id": "table_1",
+        "type": "furniture",
+        "center": { "x": 150, "y": 350 },
+        "half_size": { "x": 40, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "table_2",
+        "type": "furniture", 
+        "center": { "x": 650, "y": 250 },
+        "half_size": { "x": 35, "y": 25 },
+        "rotation": 1.5708
+      },
+      {
+        "id": "pillar_1",
+        "type": "structure",
+        "center": { "x": 250, "y": 400 },
+        "half_size": { "x": 15, "y": 15 },
+        "rotation": 0
+      },
+      {
+        "id": "pillar_2",
+        "type": "structure",
+        "center": { "x": 550, "y": 200 },
+        "half_size": { "x": 15, "y": 15 },
+        "rotation": 0
+      }
+    ]
+  }
+}

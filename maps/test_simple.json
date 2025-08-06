@@ -1,0 +1,48 @@
+{
+  "map": {
+    "id": "test_simple",
+    "name": "Simple Test Map",
+    "dimensions": {
+      "x": 400,
+      "y": 300
+    },
+    "grid_size": 25,
+    "spawn_points": [
+      {
+        "id": "spawn_1",
+        "position": { "x": 100, "y": 150 }
+      },
+      {
+        "id": "spawn_2", 
+        "position": { "x": 300, "y": 150 }
+      }
+    ],
+    "walls": [
+      {
+        "id": "top_wall",
+        "center": { "x": 200, "y": 12.5 },
+        "half_size": { "x": 200, "y": 12.5 },
+        "rotation": 0
+      },
+      {
+        "id": "bottom_wall",
+        "center": { "x": 200, "y": 287.5 },
+        "half_size": { "x": 200, "y": 12.5 },
+        "rotation": 0
+      },
+      {
+        "id": "left_wall",
+        "center": { "x": 12.5, "y": 150 },
+        "half_size": { "x": 12.5, "y": 150 },
+        "rotation": 0
+      },
+      {
+        "id": "right_wall",
+        "center": { "x": 387.5, "y": 150 },
+        "half_size": { "x": 12.5, "y": 150 },
+        "rotation": 0
+      }
+    ],
+    "objects": []
+  }
+}

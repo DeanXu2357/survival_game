@@ -12,23 +12,24 @@
 ## Phase 1: Connection and Infrastructure (High Priority)
 
 ### 1.1 WebSocket Client Implementation
-- [ ] **ReadPump Implementation** - Handle incoming messages from clients
-- [ ] **WritePump Implementation** - Send messages to clients with proper buffering
-- [ ] **Send Method** - Send specific data to client with context handling
-- [ ] **SetPlayerID Method** - Notify client of assigned Player ID and handle storage
-- [ ] **Close Method** - Clean connection shutdown
+- [X] **ReadPump Implementation** - Handle incoming messages from clients
+- [X] **WritePump Implementation** - Send messages to clients with proper buffering
+- [X] **Send Method** - Send specific data to client with context handling
+- [X] **Close Method** - Clean connection shutdown
 
 ### 1.2 Hub Registration Logic
-- [ ] **RegisterConnection Implementation** - Complete client registration with ID mapping
-- [ ] **UnregisterClient Implementation** - Clean client removal and room cleanup
-- [ ] **Client-Room Assignment** - Map clients to game rooms
-- [ ] **Player ID Management** - Generate/restore Player IDs from Client IDs
+- [X] **RegisterConnection Implementation** - Complete client registration with ID mapping
+- [X] **UnregisterClient Implementation** - Clean client removal and room cleanup
+- [X] **Client-Room Assignment** - Map clients to game rooms
+- [X] **Player ID Management** - Generate/restore Player IDs from Client IDs
 
 ### 1.3 Message Protocol Design
-- [ ] **Client Message Types** - Define input, join, leave message structures
+- [X] **Client Message Types** - Define input, join, leave message structures
 - [ ] **Server Message Types** - Define game state, player updates, notifications
 - [ ] **Message Routing** - Route messages between Hub, Room, and Clients
 - [ ] **Error Handling** - Connection loss, invalid messages, room full scenarios
+- [ ] Client reconnection mechanism is broken: reconnecting clients are treated as new players instead of resuming existing sessions
+- [ ] Hub.handleLeave() only removes clients from default room and lacks room-specific removal capability, requiring additional implementation for multi-room support
 
 ## Phase 2: Combat System (High Priority)
 

@@ -3,8 +3,8 @@ package game
 import "math"
 
 type Vector2D struct {
-	X float64
-	Y float64
+	X float64 `json:"x" validate:"required"`
+	Y float64 `json:"y" validate:"required"`
 }
 
 func (v Vector2D) Add(other Vector2D) Vector2D {

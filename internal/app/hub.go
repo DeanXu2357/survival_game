@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"survival/internal/game"
+	maploader "survival/internal/infrastructure/map"
 	"survival/internal/protocol"
 )
 
@@ -40,9 +41,12 @@ type Hub struct {
 
 func NewHub(ctx context.Context, idGen IDGenerator) *Hub {
 	hubCtx, cancel := context.WithCancel(ctx)
+
+	defaultRoom := createDefaultRoom(hubCtx, DefaultRoomName)
+
 	return &Hub{
 		rooms: map[string]*game.Room{
-			DefaultRoomName: game.NewRoom(hubCtx, DefaultRoomName),
+			DefaultRoomName: defaultRoom,
 		},
 		clients:      NewClientRegistry(),
 		idGen:        idGen,
@@ -52,6 +56,17 @@ func NewHub(ctx context.Context, idGen IDGenerator) *Hub {
 		ctx:          hubCtx,
 		cancel:       cancel,
 	}
+}
+
+func createDefaultRoom(ctx context.Context, roomID string) *game.Room {
+	jsonLoader := maploader.NewJSONMapLoader("./maps")
+	mapConfig, err := jsonLoader.LoadMap("office_floor_01")
+	if err != nil {
+		log.Printf("Failed to load office_floor_01 from JSON: %v, using empty room", err)
+		return game.NewRoom(ctx, roomID)
+	}
+
+	return game.NewRoomWithMap(ctx, roomID, mapConfig)
 }
 
 func (h *Hub) Run() error {

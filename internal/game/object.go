@@ -4,9 +4,9 @@ import "math"
 
 type Wall struct {
 	id       string
-	Center   Vector2D
-	HalfSize Vector2D
-	Rotation float64
+	Center   Vector2D `json:"center"`
+	HalfSize Vector2D `json:"half_size"`
+	Rotation float64  `json:"rotation"`
 }
 
 func (w *Wall) BoundingBox() (Vector2D, Vector2D) {
