@@ -43,6 +43,10 @@ type AddEvent func(client Client, sessionID, gameName string)
 // onNewConnection is called for new connections only.
 // onReconnection is called for successful reconnections only.
 func (cr *ClientRegistry) Add(client Client, providedSessionID, gameName string, onNewConnection AddEvent, onReconnection AddEvent) error {
+	if client.IsClosed() {
+		return fmt.Errorf("cannot add closed client %s", client.ID())
+	}
+
 	queryClient, exist := cr.Get(client.ID())
 	if exist {
 		if queryClient.SessionID() != providedSessionID {

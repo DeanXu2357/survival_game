@@ -27,6 +27,7 @@ type Client interface {
 	Subscribe(handler CommandHandler) (*clientSubscription, error)
 	Errors() <-chan error
 	Close() error
+	IsClosed() bool
 }
 
 type CommandHandler func(cmd protocol.Command)
@@ -76,6 +77,7 @@ type websocketClient struct {
 	cancel    context.CancelFunc
 	clientCTX context.Context
 	errCh     chan error
+	closed    bool
 }
 
 func (c *websocketClient) ID() string {
@@ -118,6 +120,10 @@ func (c *websocketClient) Errors() <-chan error {
 }
 
 func (c *websocketClient) Subscribe(handler CommandHandler) (*clientSubscription, error) {
+	if c.closed {
+		return nil, ErrClientConnectionClosed
+	}
+
 	if handler == nil {
 		return nil, errors.New("handler cannot be nil")
 	}
@@ -145,6 +151,9 @@ func (c *websocketClient) Send(ctx context.Context, envelope protocol.ResponseEn
 			err = fmt.Errorf("%w: %v", ErrSendFailed, r)
 		}
 	}()
+	if c.closed {
+		return fmt.Errorf("%w, client connection is closed", ErrClientConnectionClosed)
+	}
 
 	select {
 	case c.responsePub <- envelope:
@@ -173,9 +182,14 @@ func (c *websocketClient) Close() (closeErr error) {
 		}
 
 		c.subManager.RemoveAll()
+		c.closed = true
 	})
 
 	return
+}
+
+func (c *websocketClient) IsClosed() bool {
+	return c.closed
 }
 
 func (c *websocketClient) readPump() {

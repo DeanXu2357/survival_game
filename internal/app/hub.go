@@ -170,6 +170,16 @@ func (h *Hub) whenClientsDoReconnection(client Client, sessionID, gameName strin
 func (h *Hub) DispatchConnection(ctx context.Context, conn protocol.RawConnection, gameName, clientID, name, sessionID string) error {
 	client := newWebsocketClient(h.ctx, clientID, name, conn, protocol.NewJsonCodec())
 
+	go func() {
+		defer func() {
+			h.handleLeave(client)
+		}()
+		for err := range client.Errors() {
+			log.Printf("Client %s error: %v", client.ID(), err)
+			return
+		}
+	}()
+
 	_, err := client.Subscribe(func(cmd protocol.Command) {
 		h.hubCh <- cmd
 	})
@@ -186,16 +196,6 @@ func (h *Hub) DispatchConnection(ctx context.Context, conn protocol.RawConnectio
 			return fmt.Errorf("failed to add client %s to registry: %w", clientID, errAdd)
 		}
 	}
-
-	go func() {
-		defer func() {
-			h.handleLeave(client)
-		}()
-		for err := range client.Errors() {
-			log.Printf("Client %s error: %v", client.ID(), err)
-			return
-		}
-	}()
 
 	return nil
 }
