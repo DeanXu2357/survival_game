@@ -3,6 +3,7 @@ package websocket
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"github.com/gorilla/websocket"
 
 	"survival/internal/app"
+	"survival/internal/protocol"
 	"survival/internal/utils"
 )
 
@@ -113,9 +115,48 @@ func (s *server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	// Dispatch the connection to the hub
 	if err := s.hub.DispatchConnection(r.Context(), wsConn, connReq.GameName, connReq.ClientID, connReq.Name, connReq.SessionID); err != nil {
 		log.Printf("Failed to dispatch connection: %v", err)
+
+		// Handle specific error types
+		if errors.Is(err, app.ErrClientSessionValidationFailed) {
+			// Send session invalidation message before closing
+			s.sendSessionInvalidMessage(conn, "Session validation failed")
+		}
+
 		conn.Close()
 		return
 	}
+}
+
+// sendSessionInvalidMessage sends an error_invalid_session message to the client
+func (s *server) sendSessionInvalidMessage(conn *websocket.Conn, message string) {
+	errorEnvelope := protocol.ResponseEnvelope{
+		Type: protocol.ErrInvalidSession,
+	}
+
+	// Create the error payload
+	errorPayload := struct {
+		Message string `json:"message"`
+	}{
+		Message: message,
+	}
+
+	payloadBytes, err := json.Marshal(errorPayload)
+	if err != nil {
+		log.Printf("Failed to marshal error payload: %v", err)
+		return
+	}
+
+	errorEnvelope.Payload = payloadBytes
+
+	// Send the error message
+	if err := conn.WriteJSON(errorEnvelope); err != nil {
+		log.Printf("Failed to send session invalid message: %v", err)
+	} else {
+		log.Printf("Sent session invalid message to client: %s", message)
+	}
+
+	// Give the client a moment to process the message before connection closes
+	time.Sleep(100 * time.Millisecond)
 }
 
 func (s *server) handleHealth(w http.ResponseWriter, r *http.Request) {

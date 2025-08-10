@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"sync"
@@ -21,19 +22,10 @@ const (
 	LocalUser       = "localhost"
 )
 
-// clientJoinRequest is a struct to hold a client and the gameName for joining a room.
-type clientJoinRequest struct {
-	client   Client
-	gameName string
-}
-
 type Hub struct {
 	rooms        map[string]*game.Room
 	clients      *ClientRegistry
-	idGen        IDGenerator
 	hubCh        chan protocol.Command
-	clientJoins  chan clientJoinRequest
-	clientLeaves chan Client
 	ctx          context.Context
 	cancel       context.CancelFunc
 	shutdownOnce sync.Once
@@ -48,13 +40,10 @@ func NewHub(ctx context.Context, idGen IDGenerator) *Hub {
 		rooms: map[string]*game.Room{
 			DefaultRoomName: defaultRoom,
 		},
-		clients:      NewClientRegistry(),
-		idGen:        idGen,
-		hubCh:        make(chan protocol.Command, 256),
-		clientJoins:  make(chan clientJoinRequest, 10),
-		clientLeaves: make(chan Client, 10),
-		ctx:          hubCtx,
-		cancel:       cancel,
+		clients: NewClientRegistry(idGen),
+		hubCh:   make(chan protocol.Command, 256),
+		ctx:     hubCtx,
+		cancel:  cancel,
 	}
 }
 
@@ -90,10 +79,6 @@ func (h *Hub) hubLoop() error {
 			} else {
 				log.Printf("Warning: Room not found for command from client %s", cmd.ClientID)
 			}
-		case req := <-h.clientJoins:
-			h.handleJoin(req)
-		case client := <-h.clientLeaves:
-			h.handleLeave(client)
 		case <-h.ctx.Done():
 			log.Println("Hub context is done, shutting down loop.")
 			return h.ctx.Err()
@@ -122,31 +107,14 @@ func (h *Hub) routeOutgoing(room *game.Room) {
 	}
 }
 
-func (h *Hub) handleJoin(req clientJoinRequest) {
-	client := req.client
-	gameName := req.gameName
-
-	log.Printf("Client %s joining hub for game '%s'", client.ID(), gameName)
-	h.clients.Add(client)
-
-	if room, ok := h.rooms[gameName]; ok {
-		if err := room.AddPlayer(client.ID()); err != nil {
-			log.Printf("Failed to add player for client %s to room %s: %v", client.ID(), room.ID, err)
-			client.Close()
-		}
-	} else {
-		log.Printf("Room '%s' not found for joining client %s", gameName, client.ID())
-		client.Close()
-	}
-}
-
 func (h *Hub) handleLeave(client Client) {
 	log.Printf("Client %s leaving hub", client.ID())
 	h.clients.Remove(client.ID())
-	// TODO: This needs to know which room the client was in.
-	if room, ok := h.rooms[DefaultRoomName]; ok {
-		room.RemovePlayer(client.ID())
-	}
+
+	// Note: Don't immediately remove player from room to support reconnection
+	// Players will be removed later by session cleanup or explicit disconnect
+	log.Printf("Client %s disconnected but player remains in room for potential reconnection", client.ID())
+
 	client.Close() // Ensure client resources are cleaned up
 }
 
@@ -178,21 +146,28 @@ func (h *Hub) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (h *Hub) generateSessionID() string {
-	return h.idGen.GenerateID()
+// whenClientsAddNewConnection handles new client connections by adding them to the appropriate room
+func (h *Hub) whenClientsAddNewConnection(client Client, sessionID, gameName string) {
+	if room, ok := h.rooms[gameName]; ok {
+		if err := room.AddPlayer(client.ID()); err != nil {
+			log.Printf("Failed to add player for client %s to room %s: %v", client.ID(), room.ID, err)
+			client.Close() // TODO: or maybe send a notify to client that join failed ?
+			return
+		}
+
+		log.Printf("Client %s joined room %s as new player with session %s", client.ID(), gameName, sessionID)
+	} else {
+		log.Printf("Room '%s' not found for joining client %s", gameName, client.ID())
+		client.Close() // TODO: notify ?
+	}
+}
+
+// whenClientsDoReconnection handles successful client reconnections
+func (h *Hub) whenClientsDoReconnection(client Client, sessionID, gameName string) {
+	log.Printf("Client %s successfully reconnected to game %s with session %s", client.ID(), gameName, sessionID)
 }
 
 func (h *Hub) DispatchConnection(ctx context.Context, conn protocol.RawConnection, gameName, clientID, name, sessionID string) error {
-	if client, ok := h.clients.Get(clientID); ok {
-		if client.SessionID() == sessionID {
-			log.Printf("Client %s reconnected with session %s", clientID, sessionID)
-			// TODO: Handle reconnection logic
-			return nil
-		} else {
-			return fmt.Errorf("client ID %s already exists with a different session", clientID)
-		}
-	}
-
 	client := newWebsocketClient(h.ctx, clientID, name, conn, protocol.NewJsonCodec())
 
 	_, err := client.Subscribe(func(cmd protocol.Command) {
@@ -202,16 +177,19 @@ func (h *Hub) DispatchConnection(ctx context.Context, conn protocol.RawConnectio
 		return fmt.Errorf("failed to subscribe to client %s: %w", clientID, err)
 	}
 
-	newSessionID := h.generateSessionID()
-	if err := client.SetSessionID(newSessionID); err != nil {
-		return fmt.Errorf("failed to set session ID for client %s: %w", clientID, err)
+	if errAdd := h.clients.Add(client, sessionID, gameName, h.whenClientsAddNewConnection, h.whenClientsDoReconnection); errAdd != nil {
+		// For session validation errors, let the server handle the error response
+		// For other errors, wrap with additional context
+		if errors.Is(errAdd, ErrClientSessionValidationFailed) {
+			return errAdd // Return the original error for server to handle
+		} else {
+			return fmt.Errorf("failed to add client %s to registry: %w", clientID, errAdd)
+		}
 	}
-
-	h.clientJoins <- clientJoinRequest{client: client, gameName: gameName}
 
 	go func() {
 		defer func() {
-			h.clientLeaves <- client
+			h.handleLeave(client)
 		}()
 		for err := range client.Errors() {
 			log.Printf("Client %s error: %v", client.ID(), err)

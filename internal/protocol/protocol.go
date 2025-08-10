@@ -10,6 +10,7 @@ const (
 	GameUpdateEnvelope       ResponseEnvelopeType = "game_update"
 	SystemNotifyEnvelop      ResponseEnvelopeType = "system_notify"
 	SystemSetSessionEnvelope ResponseEnvelopeType = "system_set_session"
+	ErrInvalidSession        ResponseEnvelopeType = "error_invalid_session"
 )
 
 type ResponseEnvelopeType string

@@ -50,9 +50,19 @@ func NewGameStateFromMap(mapConfig *MapConfig) *State {
 }
 
 func (s *State) ToClientState() *ClientGameState {
+	wallDTOs := make([]*WallDTO, len(s.Walls))
+	for i, wall := range s.Walls {
+		wallDTOs[i] = &WallDTO{
+			ID:       wall.ID(),
+			Center:   wall.Center,
+			HalfSize: wall.HalfSize,
+			Rotation: wall.Rotation,
+		}
+	}
+
 	return &ClientGameState{
 		Players:     s.Players,
-		Walls:       s.Walls,
+		Walls:       wallDTOs,
 		Projectiles: s.Projectiles,
 		Timestamp:   0, // TODO: Add proper timestamp
 	}
@@ -108,9 +118,17 @@ type GridCoord struct {
 	Y int
 }
 
+// WallDTO is a data transfer object for Wall data sent to the client.
+type WallDTO struct {
+	ID       string   `json:"id"`
+	Center   Vector2D `json:"center"`
+	HalfSize Vector2D `json:"half_size"`
+	Rotation float64  `json:"rotation"`
+}
+
 type ClientGameState struct {
 	Players     map[string]*Player `json:"players"`
-	Walls       []*Wall            `json:"walls"`
+	Walls       []*WallDTO         `json:"walls"`
 	Projectiles []*Projectile      `json:"projectiles"`
 	Timestamp   int64              `json:"timestamp"`
 }
