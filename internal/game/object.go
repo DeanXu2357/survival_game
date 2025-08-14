@@ -9,6 +9,10 @@ type Wall struct {
 	Rotation float64  `json:"rotation"`
 }
 
+func (w *Wall) GetID() string {
+	return w.id
+}
+
 func (w *Wall) BoundingBox() (Vector2D, Vector2D) {
 	halfX := w.HalfSize.X
 	halfY := w.HalfSize.Y

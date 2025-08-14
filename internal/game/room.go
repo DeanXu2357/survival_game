@@ -146,6 +146,26 @@ func (r *Room) AddPlayer(clientID string) error {
 	return nil
 }
 
+// SendStaticData sends static map data (walls, dimensions) to specific clients
+func (r *Room) SendStaticData(clientIDs []string) {
+	staticData := r.state.ToStaticData()
+
+	payloadBytes, err := json.Marshal(staticData)
+	if err != nil {
+		return
+	}
+
+	envelope := protocol.ResponseEnvelope{
+		Type:    protocol.StaticDataEnvelope,
+		Payload: json.RawMessage(payloadBytes),
+	}
+
+	r.outgoing <- OutgoingMessage{
+		TargetClientIDs: clientIDs,
+		Envelope:        envelope,
+	}
+}
+
 // RemovePlayer removes a player from the game state and the registry.
 func (r *Room) RemovePlayer(clientID string) {
 	if playerID, ok := r.players.GetPlayerID(clientID); ok {

@@ -8,6 +8,7 @@ const (
 	PlayerInputEnvelope RequestEnvelopeType = "player_input"
 
 	GameUpdateEnvelope       ResponseEnvelopeType = "game_update"
+	StaticDataEnvelope       ResponseEnvelopeType = "static_data"
 	SystemNotifyEnvelop      ResponseEnvelopeType = "system_notify"
 	SystemSetSessionEnvelope ResponseEnvelopeType = "system_set_session"
 	ErrInvalidSession        ResponseEnvelopeType = "error_invalid_session"

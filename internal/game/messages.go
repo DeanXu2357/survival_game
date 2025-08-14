@@ -29,10 +29,10 @@ type GameUpdate struct {
 
 // StaticGameData contains data sent once on connection (walls, map layout, etc.)
 type StaticGameData struct {
-	Type      string  `json:"type"`
-	Walls     []*Wall `json:"walls"`
-	MapWidth  int     `json:"mapWidth"`
-	MapHeight int     `json:"mapHeight"`
+	Type      string     `json:"type"`
+	Walls     []*WallDTO `json:"walls"`
+	MapWidth  int        `json:"mapWidth"`
+	MapHeight int        `json:"mapHeight"`
 }
 
 // Convert game state to lightweight update message
@@ -66,11 +66,22 @@ func (s *State) ToGameUpdate() *GameUpdate {
 	}
 }
 
-// Convert walls to static data message (sent once on connect)
+// ToStaticData Convert walls to static data message (sent once on connect)
 func (s *State) ToStaticData() *StaticGameData {
+	// Convert walls to DTOs for client transmission
+	wallDTOs := make([]*WallDTO, len(s.Walls))
+	for i, wall := range s.Walls {
+		wallDTOs[i] = &WallDTO{
+			ID:       wall.GetID(),
+			Center:   wall.Center,
+			HalfSize: wall.HalfSize,
+			Rotation: wall.Rotation,
+		}
+	}
+
 	return &StaticGameData{
 		Type:      "staticData",
-		Walls:     s.Walls,
+		Walls:     wallDTOs,
 		MapWidth:  800, // TODO: Make configurable
 		MapHeight: 600, // TODO: Make configurable
 	}

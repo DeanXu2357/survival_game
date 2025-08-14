@@ -155,6 +155,7 @@ func (h *Hub) whenClientsAddNewConnection(client Client, sessionID, gameName str
 			return
 		}
 
+		room.SendStaticData([]string{client.ID()})
 		log.Printf("Client %s joined room %s as new player with session %s", client.ID(), gameName, sessionID)
 	} else {
 		log.Printf("Room '%s' not found for joining client %s", gameName, client.ID())
@@ -164,6 +165,9 @@ func (h *Hub) whenClientsAddNewConnection(client Client, sessionID, gameName str
 
 // whenClientsDoReconnection handles successful client reconnections
 func (h *Hub) whenClientsDoReconnection(client Client, sessionID, gameName string) {
+	if room, ok := h.rooms[gameName]; ok {
+		room.SendStaticData([]string{client.ID()})
+	}
 	log.Printf("Client %s successfully reconnected to game %s with session %s", client.ID(), gameName, sessionID)
 }
 
