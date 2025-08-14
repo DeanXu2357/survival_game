@@ -11,6 +11,7 @@ const (
 	deltaTime      = 1.0 / targetTickRate
 
 	maxResolutionIteration = 5
+	EPSILON                = 1e-9
 )
 
 type Logic struct {
@@ -52,7 +53,7 @@ func (gl *Logic) Update(state *State, playerInputs map[string]protocol.PlayerInp
 			// Narrow Phase
 			for _, obj := range nearObjects {
 				if obj.IsRectangle() {
-					isCollisionOccurred, mtv := detectCircleAABBCollision(obj, desiredPosition, player.Radius)
+					isCollisionOccurred, mtv := detectCircleAABBCollision(obj, desiredPosition, player.Radius, moveVector)
 					if isCollisionOccurred {
 						collisionOccurred = true
 						desiredPosition = desiredPosition.Add(mtv)
@@ -78,7 +79,7 @@ func (gl *Logic) Update(state *State, playerInputs map[string]protocol.PlayerInp
 	}
 }
 
-func detectCircleAABBCollision(obj MapObject, desiredPosition Vector2D, radius float64) (bool, Vector2D) {
+func detectCircleAABBCollision(obj MapObject, desiredPosition Vector2D, radius float64, moveVector Vector2D) (bool, Vector2D) {
 	boundingMin, boundingMax := obj.BoundingBox()
 
 	closestPoint := Vector2D{
@@ -90,8 +91,14 @@ func detectCircleAABBCollision(obj MapObject, desiredPosition Vector2D, radius f
 
 	distanceSquared := vector2Center.X*vector2Center.X + vector2Center.Y*vector2Center.Y
 
-	if distanceSquared == 0 {
-		// TODO: Handle case where the player is exactly at the center of the object
+	if distanceSquared < EPSILON {
+		// this for temporary fix for zero distance
+		// it will return a small movement vector to avoid infinite loop
+		// in fact I should implement a wall-sliding algorithm here, but I still study it.
+		if moveVector.Magnitude() > EPSILON {
+			return true, moveVector.Normalize().Scale(-radius * 0.05)
+		}
+		return true, Vector2D{0, -1}.Scale(radius * 0.1)
 	}
 
 	if distanceSquared < radius*radius { // is colliding

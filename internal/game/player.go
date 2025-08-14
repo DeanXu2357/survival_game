@@ -3,7 +3,7 @@ package game
 import "survival/internal/protocol"
 
 const (
-	playerBaseMovementSpeed float64 = 1.2
+	playerBaseMovementSpeed float64 = 5
 	playerBaseRotationSpeed float64 = 2
 )
 
