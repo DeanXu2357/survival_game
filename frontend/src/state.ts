@@ -1,6 +1,6 @@
 export interface Vector2D {
-  X: number;
-  Y: number;
+  x: number;
+  y: number;
 }
 
 export interface Player {
@@ -15,10 +15,10 @@ export interface Player {
 }
 
 export interface Wall {
-  ID: string;
-  Position: Vector2D;
-  Width: number;
-  Height: number;
+  id: string;
+  center: Vector2D;
+  half_size: Vector2D;
+  rotation: number;
 }
 
 export interface Projectile {
@@ -30,9 +30,14 @@ export interface Projectile {
 
 export interface ClientGameState {
   players: { [key: string]: Player };
-  walls: Wall[];
   projectiles: Projectile[];
   timestamp: number;
+}
+
+export interface StaticGameData {
+  walls: Wall[];
+  mapWidth: number;
+  mapHeight: number;
 }
 
 export interface PlayerInput {
@@ -55,9 +60,14 @@ export interface DebugInfo {
   connectionStatus: boolean;
 }
 
+export type StaticDataCallback = (staticData: StaticGameData) => void;
+
 class GameState {
   private gameState: ClientGameState | null = null;
+  private staticData: StaticGameData | null = null;
   public currentPlayerID: string | null = null;
+  private currentSessionId: string | null = null;
+  private staticDataCallbacks: StaticDataCallback[] = [];
   private debugInfo: DebugInfo = {
     keysPressed: '',
     inputState: null,
@@ -94,6 +104,54 @@ class GameState {
 
   isConnected(): boolean {
     return this.debugInfo.connectionStatus;
+  }
+
+  setSessionId(sessionId: string): void {
+    this.currentSessionId = sessionId;
+  }
+
+  getSessionId(): string | null {
+    return this.currentSessionId;
+  }
+
+  clearSession(): void {
+    this.currentSessionId = null;
+  }
+
+  updateStaticData(staticData: StaticGameData): void {
+    this.staticData = staticData;
+    // Trigger all callbacks when static data is updated
+    this.staticDataCallbacks.forEach(callback => callback(staticData));
+  }
+
+  onStaticDataUpdate(callback: StaticDataCallback): void {
+    this.staticDataCallbacks.push(callback);
+    // If static data already exists, call the callback immediately
+    if (this.staticData) {
+      callback(this.staticData);
+    }
+  }
+
+  removeStaticDataCallback(callback: StaticDataCallback): void {
+    const index = this.staticDataCallbacks.indexOf(callback);
+    if (index > -1) {
+      this.staticDataCallbacks.splice(index, 1);
+    }
+  }
+
+  getStaticData(): StaticGameData | null {
+    return this.staticData;
+  }
+
+  getWalls(): Wall[] {
+    return this.staticData?.walls || [];
+  }
+
+  getMapDimensions(): { width: number; height: number } {
+    return {
+      width: this.staticData?.mapWidth || 800,
+      height: this.staticData?.mapHeight || 600
+    };
   }
 }
 

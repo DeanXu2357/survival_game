@@ -67,7 +67,6 @@ class InputManager {
       inputState: newInput
     });
 
-    // 如果輸入狀態有變化，立即發送
     if (this.hasInputChanged(newInput)) {
       this.currentInput = newInput;
       this.sendInputToServer();
@@ -108,7 +107,6 @@ class InputManager {
 
   private startInputLoop(): void {
     this.inputUpdateInterval = setInterval(() => {
-      // 只在有活躍輸入時才發送
       if (this.hasActiveInput()) {
         this.sendInputToServer();
       }
@@ -120,7 +118,7 @@ class InputManager {
       clearInterval(this.inputUpdateInterval);
       this.inputUpdateInterval = null;
     }
-    
+
     document.removeEventListener('keydown', this.setupEventListeners);
     document.removeEventListener('keyup', this.setupEventListeners);
     window.removeEventListener('focus', this.setupEventListeners);
