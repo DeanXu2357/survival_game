@@ -96,9 +96,9 @@ func (s *State) NewPlayerAtPosition(position Vector2D) (*Player, error) {
 		ID:            playerID,
 		Position:      position,
 		Direction:     0,
-		Radius:        10,
+		Radius:        0.5,
 		RotationSpeed: playerBaseRotationSpeed,
-		MovementSpeed: playerBaseMovementSpeed * 60, // 60 pixels/second
+		MovementSpeed: playerBaseMovementSpeed,
 		Health:        100,
 		IsAlive:       true,
 	}
