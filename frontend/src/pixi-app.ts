@@ -29,22 +29,23 @@ class GameRenderer {
 
   constructor() {
     this.app = new PIXI.Application();
-    
+
     // Create world container that will handle camera transforms
     this.worldContainer = new PIXI.Container();
     this.worldContainer.sortableChildren = true;
-    
+
     this.gameContainer = new PIXI.Container();
     this.gameContainer.sortableChildren = true; // Enable z-index sorting for dynamic objects
     this.staticContainer = new PIXI.Container();
     this.staticContainer.sortableChildren = true; // Enable z-index sorting for static objects
-    
+
     // Add game containers to world container
     this.worldContainer.addChild(this.staticContainer);
     this.worldContainer.addChild(this.gameContainer);
-    
+
     this.backgroundGrid = new PIXI.Graphics();
     this.gridLabels = new PIXI.Container();
+    this.gridLabels.sortableChildren = true;
     this.debugContainer = new PIXI.Container();
     this.debugText = new PIXI.Text();
     this.setupApplication();
@@ -65,12 +66,19 @@ class GameRenderer {
     // Initialize static objects BEFORE adding containers to stage
     this.initializeStaticObjectsIfReady();
 
+    this.app.stage.sortableChildren = true;
+
     // Grid and debug should be in screen space, not world space
+    this.backgroundGrid.zIndex = 1;
+    this.worldContainer.zIndex = 100;
+    this.gridLabels.zIndex = 1000;
+    this.debugContainer.zIndex = 2000;
+
     this.app.stage.addChild(this.backgroundGrid);
     this.app.stage.addChild(this.gridLabels);
     this.app.stage.addChild(this.worldContainer); // Add world container instead of individual containers
     this.app.stage.addChild(this.debugContainer);
-    
+
     // Position world container at screen center for camera system
     this.worldContainer.position.set(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
 
@@ -241,6 +249,7 @@ class GameRenderer {
         });
         label.x = screenPos.x - label.width / 2;
         label.y = 5;
+        label.zIndex = 1000;
         this.gridLabels.addChild(label);
       }
     }
@@ -263,6 +272,7 @@ class GameRenderer {
         });
         label.x = 5;
         label.y = screenPos.y - label.height / 2;
+        label.zIndex = 1000;
         this.gridLabels.addChild(label);
       }
     }
@@ -325,7 +335,7 @@ class GameRenderer {
 
     parent.appendChild(gameObjectsDiv);
     parent.appendChild(listDiv);
-    
+
     // Update both lists periodically (only create one interval)
     setInterval(() => {
       this.updateGameObjectsList();
@@ -348,16 +358,16 @@ class GameRenderer {
     objects.push('📦 STATIC OBJECTS:');
     if (staticData && staticData.walls) {
       staticData.walls.forEach((wall, index) => {
-        const distance = currentPlayerId && state?.players[currentPlayerId] 
+        const distance = currentPlayerId && state?.players[currentPlayerId]
           ? this.calculateDistance(state.players[currentPlayerId].Position, wall.center)
           : 'N/A';
-        
+
         objects.push(`  ${index + 1}. Wall [${wall.id}]`);
         objects.push(`     Pos: (${wall.center.x.toFixed(1)}, ${wall.center.y.toFixed(1)})`);
         objects.push(`     Size: ${(wall.half_size.x * 2).toFixed(1)}x${(wall.half_size.y * 2).toFixed(1)}`);
         objects.push(`     Rot: ${wall.rotation.toFixed(2)} rad`);
         objects.push(`     Distance: ${typeof distance === 'number' ? distance.toFixed(1) : distance} units`);
-        
+
         const sprite = this.wallSprites.get(wall.id);
         objects.push(`     Sprite: ${sprite ? '✓' : '✗'} ${sprite ? `visible:${sprite.visible}` : ''}`);
         objects.push('');
@@ -373,16 +383,16 @@ class GameRenderer {
       const otherPlayers = Object.entries(state.players).filter(([id]) => id !== currentPlayerId);
       if (otherPlayers.length > 0) {
         otherPlayers.forEach(([id, player], index) => {
-          const distance = currentPlayerId && state.players[currentPlayerId] 
+          const distance = currentPlayerId && state.players[currentPlayerId]
             ? this.calculateDistance(state.players[currentPlayerId].Position, player.Position)
             : 'N/A';
-            
+
           objects.push(`  ${index + 1}. Player [${id}]`);
           objects.push(`     Pos: (${player.Position.x.toFixed(1)}, ${player.Position.y.toFixed(1)})`);
           objects.push(`     Dir: ${player.Direction.toFixed(2)} rad`);
           objects.push(`     Radius: ${player.Radius.toFixed(2)}`);
           objects.push(`     Distance: ${typeof distance === 'number' ? distance.toFixed(1) : distance} units`);
-          
+
           const sprite = this.playerSprites.get(id);
           objects.push(`     Sprite: ${sprite ? '✓' : '✗'} ${sprite ? `visible:${sprite.visible}` : ''}`);
           objects.push('');
@@ -397,15 +407,15 @@ class GameRenderer {
     objects.push('💥 PROJECTILES:');
     if (state?.projectiles && state.projectiles.length > 0) {
       state.projectiles.forEach((projectile, index) => {
-        const distance = currentPlayerId && state.players[currentPlayerId] 
+        const distance = currentPlayerId && state.players[currentPlayerId]
           ? this.calculateDistance(state.players[currentPlayerId].Position, projectile.Position)
           : 'N/A';
-          
+
         objects.push(`  ${index + 1}. Projectile [${projectile.ID}]`);
         objects.push(`     Pos: (${projectile.Position.x.toFixed(1)}, ${projectile.Position.y.toFixed(1)})`);
         objects.push(`     Vel: (${projectile.Velocity.x.toFixed(1)}, ${projectile.Velocity.y.toFixed(1)})`);
         objects.push(`     Distance: ${typeof distance === 'number' ? distance.toFixed(1) : distance} units`);
-        
+
         const sprite = this.projectileSprites.get(projectile.ID);
         objects.push(`     Sprite: ${sprite ? '✓' : '✗'} ${sprite ? `visible:${sprite.visible}` : ''}`);
         objects.push('');
@@ -442,10 +452,10 @@ class GameRenderer {
     objects.push(`staticContainer pos: (${this.staticContainer.x}, ${this.staticContainer.y})`);
     objects.push(`gameContainer pos: (${this.gameContainer.x}, ${this.gameContainer.y})`);
     objects.push('');
-    
+
     // Traverse stage children
     this.traverseContainer(this.app.stage, '', objects);
-    
+
     objects.push('');
     objects.push(`=== WALL SPRITES MAP ===`);
     objects.push(`Size: ${this.wallSprites.size}`);
@@ -460,9 +470,9 @@ class GameRenderer {
     const name = (container as any).name || container.constructor.name;
     const visible = container.visible ? '✓' : '✗';
     const childCount = container.children.length;
-    
+
     objects.push(`${indent}${visible} ${name} (${childCount} children) zIndex:${container.zIndex}`);
-    
+
     container.children.forEach(child => {
       if (child instanceof PIXI.Container) {
         this.traverseContainer(child, indent + '  ', objects);

@@ -1,22 +1,26 @@
 package game
 
-import "time"
+import (
+	"time"
+
+	"survival/internal/vector"
+)
 
 // PlayerSnapshot represents essential player data for client updates
 type PlayerSnapshot struct {
-	ID        string   `json:"id"`
-	Position  Vector2D `json:"position"`
-	Direction float64  `json:"direction"`
-	Health    int      `json:"health"`
-	IsAlive   bool     `json:"isAlive"`
+	ID        string          `json:"id"`
+	Position  vector.Vector2D `json:"position"`
+	Direction float64         `json:"direction"`
+	Health    int             `json:"health"`
+	IsAlive   bool            `json:"isAlive"`
 }
 
 // ProjectileSnapshot represents essential projectile data for client updates
 type ProjectileSnapshot struct {
-	ID        string   `json:"id"`
-	Position  Vector2D `json:"position"`
-	Direction Vector2D `json:"direction"`
-	Speed     float64  `json:"speed"`
+	ID        string          `json:"id"`
+	Position  vector.Vector2D `json:"position"`
+	Direction vector.Vector2D `json:"direction"`
+	Speed     float64         `json:"speed"`
 }
 
 // GameUpdate is the lightweight message sent to clients during gameplay

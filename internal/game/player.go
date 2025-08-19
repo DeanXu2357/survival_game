@@ -1,6 +1,10 @@
 package game
 
-import "survival/internal/protocol"
+import (
+	"survival/internal/protocol"
+	"survival/internal/vector"
+	"survival/internal/weapons"
+)
 
 const (
 	playerBaseMovementSpeed float64 = 5
@@ -9,19 +13,19 @@ const (
 
 type Player struct {
 	ID            string
-	Position      Vector2D
+	Position      vector.Vector2D
 	Direction     float64
 	Radius        float64
 	RotationSpeed float64
 	MovementSpeed float64
 	Health        int
 	IsAlive       bool
-	Inventory     *Inventory
-	CurrentWeapon *Weapon
+	Inventory     *weapons.Inventory
+	CurrentWeapon weapons.Weapon
 }
 
-func (p *Player) Move(input *protocol.PlayerInput, dt float64) Vector2D {
-	movementVector := Vector2D{X: 0, Y: 0}
+func (p *Player) Move(input *protocol.PlayerInput, dt float64) vector.Vector2D {
+	movementVector := vector.Vector2D{X: 0, Y: 0}
 
 	if input.MoveUp {
 		movementVector.Y += 1

@@ -1,11 +1,13 @@
 package game
 
+import "survival/internal/vector"
+
 type Grid struct {
 	CellSize float64
 	Cells    map[GridCoord][]MapObject
 }
 
-func (g *Grid) getCoord(worldPos Vector2D) GridCoord {
+func (g *Grid) getCoord(worldPos vector.Vector2D) GridCoord {
 	return GridCoord{
 		X: int(worldPos.X / g.CellSize),
 		Y: int(worldPos.Y / g.CellSize),
@@ -35,7 +37,7 @@ func (g *Grid) RemoveObject(obj MapObject) {
 	}
 }
 
-func (g *Grid) NearbyPositions(worldPos ...Vector2D) []MapObject {
+func (g *Grid) NearbyPositions(worldPos ...vector.Vector2D) []MapObject {
 	nearby := make([]MapObject, 0)
 
 	// FIXME: This function should handle the positions crossing the grid boundaries

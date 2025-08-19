@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"survival/internal/protocol"
+	"survival/internal/vector"
 )
 
 const (
@@ -44,10 +45,10 @@ func (gl *Logic) Update(state *State, playerInputs map[string]protocol.PlayerInp
 
 			// Query the spatial grid using the player's circular bounding box to retrieve potentially intersecting objects
 			nearObjects := state.ObjectGrid.NearbyPositions(
-				Vector2D{max(0, desiredPosition.X-player.Radius), max(0, desiredPosition.Y-player.Radius)},
-				Vector2D{max(0, desiredPosition.X-player.Radius), desiredPosition.Y + player.Radius},
-				Vector2D{desiredPosition.X + player.Radius, max(0, desiredPosition.Y-player.Radius)},
-				Vector2D{desiredPosition.X + player.Radius, desiredPosition.Y + player.Radius},
+				vector.Vector2D{max(0, desiredPosition.X-player.Radius), max(0, desiredPosition.Y-player.Radius)},
+				vector.Vector2D{max(0, desiredPosition.X-player.Radius), desiredPosition.Y + player.Radius},
+				vector.Vector2D{desiredPosition.X + player.Radius, max(0, desiredPosition.Y-player.Radius)},
+				vector.Vector2D{desiredPosition.X + player.Radius, desiredPosition.Y + player.Radius},
 			)
 
 			// Narrow Phase
@@ -79,10 +80,10 @@ func (gl *Logic) Update(state *State, playerInputs map[string]protocol.PlayerInp
 	}
 }
 
-func detectCircleAABBCollision(obj MapObject, desiredPosition Vector2D, radius float64, moveVector Vector2D) (bool, Vector2D) {
+func detectCircleAABBCollision(obj MapObject, desiredPosition vector.Vector2D, radius float64, moveVector vector.Vector2D) (bool, vector.Vector2D) {
 	boundingMin, boundingMax := obj.BoundingBox()
 
-	closestPoint := Vector2D{
+	closestPoint := vector.Vector2D{
 		X: max(boundingMin.X, min(desiredPosition.X, boundingMax.X)),
 		Y: max(boundingMin.Y, min(desiredPosition.Y, boundingMax.Y)),
 	}
@@ -98,12 +99,12 @@ func detectCircleAABBCollision(obj MapObject, desiredPosition Vector2D, radius f
 		if moveVector.Magnitude() > EPSILON {
 			return true, moveVector.Normalize().Scale(-radius * 0.05)
 		}
-		return true, Vector2D{0, -1}.Scale(radius * 0.1)
+		return true, vector.Vector2D{0, -1}.Scale(radius * 0.1)
 	}
 
 	if distanceSquared < radius*radius { // is colliding
 		penetration := radius - desiredPosition.DistanceTo(closestPoint)
 		return true, vector2Center.Normalize().Scale(penetration)
 	}
-	return false, Vector2D{}
+	return false, vector.Vector2D{}
 }

@@ -10,206 +10,536 @@
     "spawn_points": [
       {
         "id": "main_entrance",
-        "position": { "x": 600, "y": 750 }
-      },
-      {
-        "id": "side_entrance_east",
-        "position": { "x": 1150, "y": 400 }
-      },
-      {
-        "id": "side_entrance_west",
-        "position": { "x": 50, "y": 400 }
-      },
-      {
-        "id": "emergency_exit_north",
-        "position": { "x": 600, "y": 50 }
-      },
-      {
-        "id": "reception_area",
-        "position": { "x": 600, "y": 650 }
+        "position": { "x": 565, "y": 600 }
       }
     ],
     "walls": [
       {
-        "id": "exterior_wall_north",
-        "center": { "x": 600, "y": 25 },
-        "half_size": { "x": 600, "y": 25 },
+        "id": "wall_0_0",
+        "center": { "x": 550, "y": 600 },
+        "half_size": { "x": 10, "y": 20 },
         "rotation": 0
       },
       {
-        "id": "exterior_wall_south", 
-        "center": { "x": 600, "y": 775 },
-        "half_size": { "x": 600, "y": 25 },
+        "id": "wall_1_0",
+        "center": { "x": 580, "y": 600 },
+        "half_size": { "x": 10, "y": 20 },
         "rotation": 0
       },
       {
-        "id": "exterior_wall_west",
-        "center": { "x": 25, "y": 400 },
-        "half_size": { "x": 25, "y": 400 },
+        "id": "wall_2_0",
+        "center": { "x": 610, "y": 600 },
+        "half_size": { "x": 10, "y": 20 },
         "rotation": 0
       },
       {
-        "id": "exterior_wall_east",
-        "center": { "x": 1175, "y": 400 },
-        "half_size": { "x": 25, "y": 400 },
+        "id": "wall_3_0",
+        "center": { "x": 640, "y": 600 },
+        "half_size": { "x": 10, "y": 20 },
         "rotation": 0
       },
       {
-        "id": "reception_wall_north",
-        "center": { "x": 600, "y": 550 },
-        "half_size": { "x": 200, "y": 15 },
+        "id": "wall_4_0",
+        "center": { "x": 670, "y": 600 },
+        "half_size": { "x": 10, "y": 20 },
         "rotation": 0
       },
       {
-        "id": "reception_wall_west",
-        "center": { "x": 385, "y": 600 },
-        "half_size": { "x": 15, "y": 65 },
+        "id": "wall_5_0",
+        "center": { "x": 700, "y": 600 },
+        "half_size": { "x": 10, "y": 20 },
         "rotation": 0
       },
       {
-        "id": "reception_wall_east",
-        "center": { "x": 815, "y": 600 },
-        "half_size": { "x": 15, "y": 65 },
+        "id": "wall_6_0",
+        "center": { "x": 730, "y": 600 },
+        "half_size": { "x": 10, "y": 20 },
         "rotation": 0
       },
       {
-        "id": "conference_room_wall_1",
-        "center": { "x": 200, "y": 200 },
-        "half_size": { "x": 120, "y": 15 },
+        "id": "wall_7_0",
+        "center": { "x": 760, "y": 600 },
+        "half_size": { "x": 10, "y": 20 },
         "rotation": 0
       },
       {
-        "id": "conference_room_wall_2",
-        "center": { "x": 200, "y": 350 },
-        "half_size": { "x": 120, "y": 15 },
+        "id": "wall_8_0",
+        "center": { "x": 790, "y": 600 },
+        "half_size": { "x": 10, "y": 20 },
         "rotation": 0
       },
       {
-        "id": "conference_room_wall_3",
-        "center": { "x": 95, "y": 275 },
-        "half_size": { "x": 15, "y": 90 },
+        "id": "wall_9_0",
+        "center": { "x": 820, "y": 600 },
+        "half_size": { "x": 10, "y": 20 },
         "rotation": 0
       },
       {
-        "id": "conference_room_wall_4",
-        "center": { "x": 305, "y": 275 },
-        "half_size": { "x": 15, "y": 90 },
+        "id": "wall_10_0",
+        "center": { "x": 850, "y": 600 },
+        "half_size": { "x": 10, "y": 20 },
         "rotation": 0
       },
       {
-        "id": "office_partition_1",
-        "center": { "x": 450, "y": 200 },
-        "half_size": { "x": 80, "y": 8 },
+        "id": "wall_11_0",
+        "center": { "x": 880, "y": 600 },
+        "half_size": { "x": 10, "y": 20 },
         "rotation": 0
       },
       {
-        "id": "office_partition_2",
-        "center": { "x": 750, "y": 200 },
-        "half_size": { "x": 80, "y": 8 },
+        "id": "wall_12_0",
+        "center": { "x": 910, "y": 600 },
+        "half_size": { "x": 10, "y": 20 },
         "rotation": 0
       },
       {
-        "id": "office_partition_3",
-        "center": { "x": 1050, "y": 200 },
-        "half_size": { "x": 80, "y": 8 },
+        "id": "wall_13_0",
+        "center": { "x": 940, "y": 600 },
+        "half_size": { "x": 10, "y": 20 },
         "rotation": 0
       },
       {
-        "id": "office_partition_vertical_1",
-        "center": { "x": 600, "y": 300 },
-        "half_size": { "x": 8, "y": 100 },
+        "id": "wall_14_0",
+        "center": { "x": 970, "y": 600 },
+        "half_size": { "x": 10, "y": 20 },
         "rotation": 0
       },
       {
-        "id": "office_partition_vertical_2",
-        "center": { "x": 900, "y": 300 },
-        "half_size": { "x": 8, "y": 100 },
-        "rotation": 0
-      }
-    ],
-    "objects": [
-      {
-        "id": "reception_desk",
-        "type": "furniture",
-        "center": { "x": 600, "y": 600 },
-        "half_size": { "x": 80, "y": 40 },
+        "id": "wall_15_0",
+        "center": { "x": 1000, "y": 600 },
+        "half_size": { "x": 10, "y": 20 },
         "rotation": 0
       },
       {
-        "id": "conference_table",
-        "type": "furniture",
-        "center": { "x": 200, "y": 275 },
-        "half_size": { "x": 60, "y": 30 },
+        "id": "wall_16_0",
+        "center": { "x": 1030, "y": 600 },
+        "half_size": { "x": 10, "y": 20 },
         "rotation": 0
       },
       {
-        "id": "desk_1",
-        "type": "furniture",
-        "center": { "x": 450, "y": 120 },
-        "half_size": { "x": 50, "y": 25 },
+        "id": "wall_17_0",
+        "center": { "x": 1060, "y": 600 },
+        "half_size": { "x": 10, "y": 20 },
         "rotation": 0
       },
       {
-        "id": "desk_2",
-        "type": "furniture",
-        "center": { "x": 750, "y": 120 },
-        "half_size": { "x": 50, "y": 25 },
+        "id": "wall_18_0",
+        "center": { "x": 1090, "y": 600 },
+        "half_size": { "x": 10, "y": 20 },
         "rotation": 0
       },
       {
-        "id": "desk_3",
-        "type": "furniture",
-        "center": { "x": 1050, "y": 120 },
-        "half_size": { "x": 50, "y": 25 },
+        "id": "wall_19_0",
+        "center": { "x": 1120, "y": 600 },
+        "half_size": { "x": 10, "y": 20 },
         "rotation": 0
       },
       {
-        "id": "desk_4",
-        "type": "furniture",
-        "center": { "x": 450, "y": 350 },
-        "half_size": { "x": 50, "y": 25 },
+        "id": "wall_20_0",
+        "center": { "x": 1150, "y": 600 },
+        "half_size": { "x": 10, "y": 20 },
         "rotation": 0
       },
       {
-        "id": "desk_5",
-        "type": "furniture",
-        "center": { "x": 750, "y": 350 },
-        "half_size": { "x": 50, "y": 25 },
+        "id": "wall_21_0",
+        "center": { "x": 1180, "y": 600 },
+        "half_size": { "x": 10, "y": 20 },
         "rotation": 0
       },
       {
-        "id": "desk_6",
-        "type": "furniture",
-        "center": { "x": 1050, "y": 350 },
-        "half_size": { "x": 50, "y": 25 },
+        "id": "wall_0_1",
+        "center": { "x": 550, "y": 650 },
+        "half_size": { "x": 10, "y": 20 },
         "rotation": 0
       },
       {
-        "id": "printer_station",
-        "type": "equipment",
-        "center": { "x": 100, "y": 450 },
-        "half_size": { "x": 30, "y": 20 },
+        "id": "wall_1_1",
+        "center": { "x": 580, "y": 650 },
+        "half_size": { "x": 10, "y": 20 },
         "rotation": 0
       },
       {
-        "id": "water_cooler",
-        "type": "equipment",
-        "center": { "x": 1100, "y": 450 },
-        "half_size": { "x": 15, "y": 15 },
+        "id": "wall_2_1",
+        "center": { "x": 610, "y": 650 },
+        "half_size": { "x": 10, "y": 20 },
         "rotation": 0
       },
       {
-        "id": "filing_cabinet_1",
-        "type": "storage",
-        "center": { "x": 50, "y": 200 },
-        "half_size": { "x": 20, "y": 30 },
+        "id": "wall_3_1",
+        "center": { "x": 640, "y": 650 },
+        "half_size": { "x": 10, "y": 20 },
         "rotation": 0
       },
       {
-        "id": "filing_cabinet_2",
-        "type": "storage",
-        "center": { "x": 1150, "y": 200 },
-        "half_size": { "x": 20, "y": 30 },
+        "id": "wall_4_1",
+        "center": { "x": 670, "y": 650 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_5_1",
+        "center": { "x": 700, "y": 650 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_6_1",
+        "center": { "x": 730, "y": 650 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_7_1",
+        "center": { "x": 760, "y": 650 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_8_1",
+        "center": { "x": 790, "y": 650 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_9_1",
+        "center": { "x": 820, "y": 650 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_10_1",
+        "center": { "x": 850, "y": 650 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_11_1",
+        "center": { "x": 880, "y": 650 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_12_1",
+        "center": { "x": 910, "y": 650 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_13_1",
+        "center": { "x": 940, "y": 650 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_14_1",
+        "center": { "x": 970, "y": 650 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_15_1",
+        "center": { "x": 1000, "y": 650 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_16_1",
+        "center": { "x": 1030, "y": 650 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_17_1",
+        "center": { "x": 1060, "y": 650 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_18_1",
+        "center": { "x": 1090, "y": 650 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_19_1",
+        "center": { "x": 1120, "y": 650 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_20_1",
+        "center": { "x": 1150, "y": 650 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_21_1",
+        "center": { "x": 1180, "y": 650 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_0_2",
+        "center": { "x": 550, "y": 700 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_1_2",
+        "center": { "x": 580, "y": 700 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_2_2",
+        "center": { "x": 610, "y": 700 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_3_2",
+        "center": { "x": 640, "y": 700 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_4_2",
+        "center": { "x": 670, "y": 700 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_5_2",
+        "center": { "x": 700, "y": 700 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_6_2",
+        "center": { "x": 730, "y": 700 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_7_2",
+        "center": { "x": 760, "y": 700 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_8_2",
+        "center": { "x": 790, "y": 700 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_9_2",
+        "center": { "x": 820, "y": 700 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_10_2",
+        "center": { "x": 850, "y": 700 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_11_2",
+        "center": { "x": 880, "y": 700 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_12_2",
+        "center": { "x": 910, "y": 700 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_13_2",
+        "center": { "x": 940, "y": 700 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_14_2",
+        "center": { "x": 970, "y": 700 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_15_2",
+        "center": { "x": 1000, "y": 700 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_16_2",
+        "center": { "x": 1030, "y": 700 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_17_2",
+        "center": { "x": 1060, "y": 700 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_18_2",
+        "center": { "x": 1090, "y": 700 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_19_2",
+        "center": { "x": 1120, "y": 700 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_20_2",
+        "center": { "x": 1150, "y": 700 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_21_2",
+        "center": { "x": 1180, "y": 700 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_0_3",
+        "center": { "x": 550, "y": 750 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_1_3",
+        "center": { "x": 580, "y": 750 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_2_3",
+        "center": { "x": 610, "y": 750 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_3_3",
+        "center": { "x": 640, "y": 750 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_4_3",
+        "center": { "x": 670, "y": 750 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_5_3",
+        "center": { "x": 700, "y": 750 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_6_3",
+        "center": { "x": 730, "y": 750 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_7_3",
+        "center": { "x": 760, "y": 750 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_8_3",
+        "center": { "x": 790, "y": 750 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_9_3",
+        "center": { "x": 820, "y": 750 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_10_3",
+        "center": { "x": 850, "y": 750 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_11_3",
+        "center": { "x": 880, "y": 750 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_12_3",
+        "center": { "x": 910, "y": 750 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_13_3",
+        "center": { "x": 940, "y": 750 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_14_3",
+        "center": { "x": 970, "y": 750 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_15_3",
+        "center": { "x": 1000, "y": 750 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_16_3",
+        "center": { "x": 1030, "y": 750 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_17_3",
+        "center": { "x": 1060, "y": 750 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_18_3",
+        "center": { "x": 1090, "y": 750 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_19_3",
+        "center": { "x": 1120, "y": 750 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_20_3",
+        "center": { "x": 1150, "y": 750 },
+        "half_size": { "x": 10, "y": 20 },
+        "rotation": 0
+      },
+      {
+        "id": "wall_21_3",
+        "center": { "x": 1180, "y": 750 },
+        "half_size": { "x": 10, "y": 20 },
         "rotation": 0
       }
     ]

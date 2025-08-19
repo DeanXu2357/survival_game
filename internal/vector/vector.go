@@ -1,4 +1,4 @@
-package game
+package vector
 
 import "math"
 

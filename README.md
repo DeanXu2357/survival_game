@@ -98,37 +98,9 @@ survival/
 - **TypeScript Frontend**: PixiJS rendering and user interface
 - **Native Desktop**: Cross-platform deployment without browser dependencies
 
-## Current Implementation Status
+## Development Status
 
-### ✅ Completed Features
-- Basic project structure with Go backend and TypeScript frontend
-- Game data structures (Vector2D, Player, State, Projectile, Wall)
-- Spatial grid collision detection system
-- Player movement and collision logic
-- Room-based game session management
-- WebSocket server infrastructure
-- Weapon system design (Knife, Pistol with magazine system)
-
-### 🚧 Client Connection Architecture
-**Connection Flow**:
-1. **Client ID Generation**: Client generates unique ID (e.g., MAC address hash) on installation
-2. **WebSocket Connection**: Client connects to server with client ID in request
-3. **Hub Registration**: Server creates Client object with provided ID, Hub assigns Player ID
-4. **Session Management**: Client receives Player ID for reconnection purposes
-5. **Invite System**: Future - invite codes for legitimate client access (development phase bypassed)
-
-**Key Design Decisions**:
-- Client-provided IDs (not server-generated) for better client control
-- Hub manages Client ↔ Player mapping without direct WebSocket dependency
-- SetPlayerID() method handles Player ID assignment and client notification
-- Session persistence through client-side storage of Player ID
-
-### 🚧 Next Development Priorities
-1. **Complete WebSocket Client Implementation**: ReadPump, WritePump, Send, SetPlayerID methods
-2. **Hub Registration Logic**: Client-to-room assignment and Player ID management
-3. **Message Protocol**: Define client-server communication messages
-4. **Frontend Connection**: TypeScript WebSocket client with PixiJS rendering
-5. **Combat System Integration**: Weapon switching, firing, and reloading
+Current development progress and task tracking is maintained in `todo.md`. The project includes a complete WebSocket server infrastructure, game logic foundation, and PixiJS frontend client ready for game state integration.
 
 ## Game Modes
 
