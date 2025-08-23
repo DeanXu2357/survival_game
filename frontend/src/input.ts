@@ -14,7 +14,8 @@ class InputManager {
     SwitchWeapon: false,
     Reload: false,
     FastReload: false,
-    Fire: false
+    Fire: false,
+    Timestamp: 0
   };
 
   private inputUpdateInterval: number | null = null;
@@ -57,7 +58,8 @@ class InputManager {
       SwitchWeapon: false,
       Reload: false,
       FastReload: false,
-      Fire: this.keys.has('space')
+      Fire: this.keys.has('space'),
+      Timestamp: Date.now()
     };
 
 
@@ -99,6 +101,7 @@ class InputManager {
   private sendInputToServer(): void {
     if (!isConnected()) return;
 
+    this.currentInput.Timestamp = Date.now();
     gameState.updateDebugInfo({
       lastInputSent: new Date().toLocaleTimeString()
     });

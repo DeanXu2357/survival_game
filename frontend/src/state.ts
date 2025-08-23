@@ -51,6 +51,7 @@ export interface PlayerInput {
   Reload: boolean;
   FastReload: boolean;
   Fire: boolean;
+  Timestamp: number;
 }
 
 export interface DebugInfo {

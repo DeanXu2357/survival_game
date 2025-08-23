@@ -47,16 +47,17 @@ type Command struct {
 }
 
 type PlayerInput struct {
-	MoveUp       bool
-	MoveDown     bool
-	MoveLeft     bool
-	MoveRight    bool
-	RotateLeft   bool
-	RotateRight  bool
-	SwitchWeapon bool
-	Reload       bool
-	FastReload   bool
-	Fire         bool
+	MoveUp       bool  `json:"MoveUp"`
+	MoveDown     bool  `json:"MoveDown"`
+	MoveLeft     bool  `json:"MoveLeft"`
+	MoveRight    bool  `json:"MoveRight"`
+	RotateLeft   bool  `json:"RotateLeft"`
+	RotateRight  bool  `json:"RotateRight"`
+	SwitchWeapon bool  `json:"SwitchWeapon"`
+	Reload       bool  `json:"Reload"`
+	FastReload   bool  `json:"FastReload"`
+	Fire         bool  `json:"Fire"`
+	Timestamp    int64 `json:"Timestamp"`
 }
 
 type SystemNotify struct {
