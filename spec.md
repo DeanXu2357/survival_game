@@ -200,29 +200,49 @@ func main() {
 
 ### Combat System
 
-#### Initial Weapon Implementation (Development Phase)
-- **Melee Weapon**: Knife with 1.0 meter attack range (player diameter)
-- **Ranged Weapon**: Pistol with projectile physics and advanced magazine system
-- **Damage Model**: One-hit kills initially, expandable to health system
-- **Friendly Fire**: All weapons can damage teammates - no distinction between enemy and ally targeting
+#### Pistol Weapon Specifications
+- **Magazine Capacity**: 9 rounds per magazine
+- **Range**: 70 meters effective distance
+- **Fire Rate**: 0.5 second cooldown between shots
+- **Reload Time**: 3 seconds (normal reload)
+- **Key Bindings**: Spacebar to shoot, R key to reload
 
-#### Pistol-Specific Mechanics
-**Magazine System:**
-- **Magazine Capacity**: 7 rounds per magazine
-- **Magazine as Items**: Magazines are inventory items that can be found and collected
-- **Ammunition Acquisition**: When finding bullets, only collect up to available magazine capacity
-- **Last Magazine Rule**: Cannot reload when only one magazine remains (must preserve final magazine)
+#### Bullet Specifications
+- **Flight Speed**: 50 backend units per second
+- **Visual Appearance**: Yellow 3x6 pixel rectangle
+- **Trail Effect**: Display bullet path for past 1 second (frontend implementation location must be marked)
+- **Direction**: Fired in player's facing direction
 
-**Reload System (Pistol-Only):**
-- **Normal Reload**: 3 seconds duration, preserves the partially-used magazine
-- **Fast Reload**: 1 second duration, but discards the current magazine entirely
-- **Range**: 7.0 meters effective shooting distance
-- **Strategic Decision**: Players must choose between speed and resource conservation
+#### Player Initial Equipment
+- **Starting Loadout**: 1 pistol + 1 magazine (loaded with 9 bullets)
+- **Other Weapons**: Knife and other weapons not implemented in this phase
 
-**Resource Management:**
-- **Mid-Combat Decisions**: Fast reload for immediate advantage vs preserving ammunition
-- **Post-Combat Planning**: Whether to replace partially-used magazines with full ones
-- **Inventory Management**: Balancing magazine quantity against other essential items
+#### User Interface Requirements
+- **Weapon Ammo Display**: Bottom-right corner showing current weapon and remaining ammo count
+- **Crosshair**: Green crosshair UI visible when ready to shoot, hidden during reload or cooldown
+- **Visual Feedback**: Crosshair serves as visual indicator for shooting availability
+
+#### Implementation Requirements
+
+**Backend Implementation:**
+- Modify Player struct to include weapon and magazine systems
+- Implement shooting logic, reload logic, and cooldown mechanics
+- Bullet collision detection not implemented initially - focus on display
+
+**Frontend Implementation:**
+- Key bindings: Spacebar for shooting, R key for reload
+- Bullet rendering and trail effects
+- Weapon UI and crosshair UI
+- **Important**: Mark implementation location for bullet trail effect
+
+**Network Synchronization:**
+- Synchronize shooting and reload events between client and server
+- Real-time bullet state updates
+
+#### Technical Constraints
+- Use existing Go backend + TypeScript PixiJS frontend architecture
+- Follow existing WebSocket communication protocol
+- Reserve space for future fast reload expansion (not implemented yet)
 
 #### Future Weapon Expansion (Post-Launch)
 - **Melee Weapons**: One close-combat weapon (knife, axe, sword, etc.)
