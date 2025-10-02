@@ -62,7 +62,7 @@ func (s *server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	// Add CORS headers
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Connection, Upgrade, Sec-WebSocket-Key, Sec-WebSocket-Version, Sec-WebSocket-Protocol")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-EnvelopeType, Connection, Upgrade, Sec-WebSocket-Key, Sec-WebSocket-Version, Sec-WebSocket-Protocol")
 
 	// Handle preflight OPTIONS request
 	if r.Method == "OPTIONS" {
@@ -130,7 +130,7 @@ func (s *server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 // sendSessionInvalidMessage sends an error_invalid_session message to the client
 func (s *server) sendSessionInvalidMessage(conn *websocket.Conn, message string) {
 	errorEnvelope := protocol.ResponseEnvelope{
-		Type: protocol.ErrInvalidSession,
+		EnvelopeType: protocol.ErrInvalidSession,
 	}
 
 	// Create the error payload

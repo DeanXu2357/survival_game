@@ -7,6 +7,7 @@ import (
 	"log"
 	"sync"
 
+	"survival/internal/infrastructure/pubsub"
 	"survival/internal/protocol"
 	"survival/internal/utils"
 )
@@ -23,14 +24,12 @@ type Client interface {
 	Name() string
 	SessionID() string
 	SetSessionID(sessionID string) error
-	Send(ctx context.Context, envelope protocol.ResponseEnvelope) error
-	Subscribe(handler CommandHandler) (*clientSubscription, error)
+	Send(ctx context.Context, envelopeType protocol.ResponseEnvelopeType, payload any) error
+	Subscribe(handler func(cmd protocol.RequestCommand)) error
 	Errors() <-chan error
 	Close() error
 	IsClosed() bool
 }
-
-type CommandHandler func(cmd protocol.Command)
 
 func newWebsocketClient(ctx context.Context, id, name string, conn protocol.RawConnection, codec protocol.Codec) *websocketClient {
 	subIDGen := utils.NewSequentialIDGenerator(fmt.Sprintf("c%s-sub-", id))
@@ -43,7 +42,7 @@ func newWebsocketClient(ctx context.Context, id, name string, conn protocol.RawC
 		sessionID:   "",
 		conn:        conn,
 		codec:       codec,
-		subManager:  newSubscriptionManager(),
+		subManager:  pubsub.NewManager[protocol.RequestCommand](subIDGen),
 		responsePub: make(chan protocol.ResponseEnvelope, 100), // Buffered channel for responses
 
 		closeOnce: sync.Once{},
@@ -68,7 +67,7 @@ type websocketClient struct {
 	conn        protocol.RawConnection
 	codec       protocol.Codec
 	responsePub chan protocol.ResponseEnvelope
-	subManager  *subscriptionManager // Manages subscriptions for this client
+	subManager  *pubsub.Manager[protocol.RequestCommand]
 
 	closeOnce sync.Once
 
@@ -100,15 +99,7 @@ func (c *websocketClient) SetSessionID(sessionID string) error {
 		SessionID: sessionID,
 	}
 
-	encoded, err := c.codec.Encode(payload)
-	if err != nil {
-		return fmt.Errorf("failed to encode session ID payload: %w", err)
-	}
-
-	if errSend := c.Send(c.clientCTX, protocol.ResponseEnvelope{
-		Type:    protocol.SystemSetSessionEnvelope,
-		Payload: encoded,
-	}); errSend != nil {
+	if errSend := c.Send(c.clientCTX, protocol.SystemSetSessionEnvelope, payload); errSend != nil {
 		return fmt.Errorf("failed to send session ID to client %s: %w", c.id, errSend)
 	}
 
@@ -119,40 +110,37 @@ func (c *websocketClient) Errors() <-chan error {
 	return c.errCh
 }
 
-func (c *websocketClient) Subscribe(handler CommandHandler) (*clientSubscription, error) {
+func (c *websocketClient) Subscribe(handler func(cmd protocol.RequestCommand)) error {
 	if c.closed {
-		return nil, ErrClientConnectionClosed
+		return ErrClientConnectionClosed
 	}
 
 	if handler == nil {
-		return nil, errors.New("handler cannot be nil")
+		return errors.New("handler cannot be nil")
 	}
 
-	subscription := &clientSubscription{
-		id:      c.idGen.GenerateID(),
-		handler: handler,
-		manager: c.subManager,
-		once:    sync.Once{},
+	if _, err := c.subManager.Add(handler); err != nil {
+		return fmt.Errorf("failed to add subscription: %w", err)
 	}
 
-	if err := c.subManager.Add(subscription); err != nil {
-		return nil, fmt.Errorf("failed to add subscription: %w", err)
-	}
-
-	go c.readPump()
-
-	return subscription, nil
+	return nil
 }
 
-func (c *websocketClient) Send(ctx context.Context, envelope protocol.ResponseEnvelope) (err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			// Handle panic gracefully
-			err = fmt.Errorf("%w: %v", ErrSendFailed, r)
-		}
-	}()
+func (c *websocketClient) Send(ctx context.Context, envelopeType protocol.ResponseEnvelopeType, payload any) (err error) {
 	if c.closed {
 		return fmt.Errorf("%w, client connection is closed", ErrClientConnectionClosed)
+	}
+
+	envelope := protocol.ResponseEnvelope{
+		EnvelopeType: envelopeType,
+	}
+
+	if payload != nil {
+		encoded, errEncode := c.codec.Encode(payload)
+		if errEncode != nil {
+			return fmt.Errorf("failed to encode payload for client %s: %w", c.id, errEncode)
+		}
+		envelope.Payload = encoded
 	}
 
 	select {
@@ -181,7 +169,7 @@ func (c *websocketClient) Close() (closeErr error) {
 			}
 		}
 
-		c.subManager.RemoveAll()
+		c.subManager.Clear()
 		c.closed = true
 	})
 
@@ -194,7 +182,8 @@ func (c *websocketClient) IsClosed() bool {
 
 func (c *websocketClient) readPump() {
 	for {
-		var msg protocol.PlayerInput
+		var msg protocol.RequestEnvelope
+
 		data, err := c.conn.ReadMessage()
 		if err != nil {
 			select {
@@ -212,17 +201,34 @@ func (c *websocketClient) readPump() {
 			return
 		}
 
-		command := protocol.Command{
-			ClientID: c.id,
-			Input:    msg,
+		parsed, err := protocol.GetPayloadStruct(msg.Type)
+		if err != nil {
+			log.Printf("Warning: Unknown envelope type %s from client %s", msg.Type, c.id)
+			continue // Skip unknown message types for temporary, I am not sure if this is good idea
 		}
 
-		for _, sub := range c.subManager.AllChannels() {
-			select {
-			case sub <- command: // Send command to the subscription channel
-			default:
-				// If the channel is full, skip sending to avoid blocking
-				log.Printf("Warning: Subscription channel for client %s is full, skipping command delivery", c.id)
+		if parsed != nil {
+			if errParse := c.codec.Decode(msg.Payload, &parsed); errParse != nil {
+				select {
+				case c.errCh <- fmt.Errorf("readPump payload parsing error: %w", errParse):
+				default:
+					log.Printf("Error parsing payload for client %s: %v", c.id, errParse)
+				}
+				continue
+			}
+		}
+
+		command := protocol.RequestCommand{
+			ClientID:      c.id,
+			EnvelopeType:  msg.Type,
+			Payload:       msg.Payload,
+			ParsedPayload: parsed,
+			ReceivedTime:  utils.Now(),
+		}
+
+		for _, sub := range c.subManager.All() {
+			if err := sub.Push(command); err != nil {
+				log.Printf("Failed to push command to subscription %s: %v", sub.ID(), err)
 			}
 		}
 

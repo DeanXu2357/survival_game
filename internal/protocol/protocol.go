@@ -2,16 +2,23 @@ package protocol
 
 import (
 	"encoding/json"
+	"fmt"
+	"time"
 )
 
 const (
 	PlayerInputEnvelope RequestEnvelopeType = "player_input"
+	ListRoomsEnvelope   RequestEnvelopeType = "list_rooms"
+	RequestJoinEnvelope RequestEnvelopeType = "request_join"
 
-	GameUpdateEnvelope       ResponseEnvelopeType = "game_update"
-	StaticDataEnvelope       ResponseEnvelopeType = "static_data"
-	SystemNotifyEnvelop      ResponseEnvelopeType = "system_notify"
-	SystemSetSessionEnvelope ResponseEnvelopeType = "system_set_session"
-	ErrInvalidSession        ResponseEnvelopeType = "error_invalid_session"
+	GameUpdateEnvelope        ResponseEnvelopeType = "game_update"
+	StaticDataEnvelope        ResponseEnvelopeType = "static_data"
+	SystemNotifyEnvelop       ResponseEnvelopeType = "system_notify"
+	SystemSetSessionEnvelope  ResponseEnvelopeType = "system_set_session"
+	ErrInvalidSession         ResponseEnvelopeType = "error_invalid_session"
+	ListRoomsResponseEnvelope ResponseEnvelopeType = "list_rooms_response"
+	ErrorResponseEnvelope     ResponseEnvelopeType = "error"
+	JoinRoomSuccessEnvelope   ResponseEnvelopeType = "join_room_success"
 )
 
 type ResponseEnvelopeType string
@@ -24,8 +31,8 @@ type RequestEnvelope struct {
 }
 
 type ResponseEnvelope struct {
-	Type    ResponseEnvelopeType `json:"type"`
-	Payload json.RawMessage      `json:"payload"`
+	EnvelopeType ResponseEnvelopeType `json:"envelopetype"`
+	Payload      json.RawMessage      `json:"payload"`
 }
 
 // Codec is an interface for encoding and decoding messages.
@@ -46,6 +53,14 @@ type Command struct {
 	Input    PlayerInput
 }
 
+type RequestCommand struct {
+	ClientID      string
+	EnvelopeType  RequestEnvelopeType
+	Payload       json.RawMessage
+	ParsedPayload any
+	ReceivedTime  time.Time
+}
+
 type PlayerInput struct {
 	MoveUp       bool  `json:"MoveUp"`
 	MoveDown     bool  `json:"MoveDown"`
@@ -60,6 +75,25 @@ type PlayerInput struct {
 	Timestamp    int64 `json:"Timestamp"`
 }
 
+type RequestJoinPayload struct {
+	RoomID string `json:"room_id"`
+}
+
+type ListRoomsPayload struct {
+	// No fields needed for listing rooms
+}
+
+type ListRoomsResponse struct {
+	Rooms []RoomInfo `json:"rooms"`
+}
+
+type RoomInfo struct {
+	RoomID      string `json:"room_id"`
+	Name        string `json:"name"`
+	PlayerCount int    `json:"player_count"`
+	MaxPlayers  int    `json:"max_players"`
+}
+
 type SystemNotify struct {
 	Message string `json:"message"`
 }
@@ -67,4 +101,18 @@ type SystemNotify struct {
 type SystemSetSessionPayload struct {
 	ClientID  string `json:"client_id"`
 	SessionID string `json:"session_id"`
+}
+
+func GetPayloadStruct(envelopeType RequestEnvelopeType) (any, error) {
+	switch envelopeType {
+	case PlayerInputEnvelope:
+		return PlayerInput{}, nil
+	default:
+		return nil, fmt.Errorf("unknown envelope type: %s", envelopeType)
+	}
+}
+
+type ErrorPayload struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
 }
