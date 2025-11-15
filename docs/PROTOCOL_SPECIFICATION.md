@@ -625,14 +625,16 @@ const newInput: PlayerInput = {
 
 ---
 
-#### 2. **[HIGH] Projectile Field Name Mismatch**
+#### 2. **[RESOLVED] Projectile Field Name Mismatch**
 
-**Backend** (`internal/game/weapons.go:94-102`):
+**Status**: ✅ Fixed in current commit
+
+**Backend** (`internal/weapons/projectile.go:5-13`):
 ```go
 type Projectile struct {
     ID        string
-    Position  Vector2D
-    Direction Vector2D    // ← Backend uses "Direction"
+    Position  vector.Vector2D
+    Direction vector.Vector2D
     Speed     float64
     Range     float64
     Damage    int
@@ -640,27 +642,22 @@ type Projectile struct {
 }
 ```
 
-**Frontend** (`frontend/src/state.ts:24-29`):
+**Frontend** (`frontend/src/state.ts:24-32`) - **FIXED**:
 ```typescript
 export interface Projectile {
   ID: string;
   Position: Vector2D;
-  Velocity: Vector2D;   // ← Frontend expects "Velocity"
+  Direction: Vector2D;  // ✓ Now matches backend
+  Speed: number;        // ✓ Added
+  Range: number;        // ✓ Added
+  Damage: number;       // ✓ Added
   OwnerID: string;
 }
 ```
 
-**Problem**:
-- Backend sends field named `Direction`
-- Frontend expects field named `Velocity`
-- This causes projectiles to have undefined velocity in frontend!
-
-**Impact**: Projectile rendering will fail or show incorrect movement.
-
-**Resolution Required**:
-- Option A: Rename backend field to `Velocity`
-- Option B: Rename frontend field to `Direction`
-- Recommendation: Use `Velocity` (more semantically correct for physics)
+**Resolution**: Aligned frontend with backend naming
+- Changed `Velocity` → `Direction`
+- Added missing fields: `Speed`, `Range`, `Damage`
 
 ---
 
@@ -717,21 +714,14 @@ export interface Player {
 
 ---
 
-#### 4. **[MEDIUM] Missing Projectile Fields in Frontend**
+#### 4. **[RESOLVED] Missing Projectile Fields in Frontend**
+
+**Status**: ✅ Fixed in current commit
 
 **Backend Projectile**: Has 7 fields (ID, Position, Direction, Speed, Range, Damage, OwnerID)
-**Frontend Projectile**: Has 4 fields (ID, Position, Velocity, OwnerID)
+**Frontend Projectile**: Now has all 7 fields
 
-**Missing Fields**:
-- `Speed` (number)
-- `Range` (number)
-- `Damage` (number)
-
-**Impact**:
-- Cannot display projectile speed/damage in UI
-- Cannot validate projectile behavior client-side
-
-**Resolution Required**: Add missing fields to frontend interface.
+**Resolution**: Added missing fields to frontend TypeScript interface
 
 ---
 
@@ -826,33 +816,33 @@ export interface Player {
 
 ### Projectile
 
-**Backend Definition** (`internal/game/weapons.go:94-102`):
+**Backend Definition** (`internal/weapons/projectile.go:5-13`):
 ```go
 type Projectile struct {
-    ID        string      // Unique projectile identifier
-    Position  Vector2D    // Current position (pixels)
-    Direction Vector2D    // Direction unit vector
-    Speed     float64     // Movement speed (pixels/second)
-    Range     float64     // Maximum travel distance (pixels)
-    Damage    int         // Damage dealt on hit
-    OwnerID   string      // Player who fired this projectile
+    ID        string          // Unique projectile identifier
+    Position  vector.Vector2D // Current position (pixels)
+    Direction vector.Vector2D // Direction unit vector
+    Speed     float64         // Movement speed (pixels/second)
+    Range     float64         // Maximum travel distance (pixels)
+    Damage    int             // Damage dealt on hit
+    OwnerID   string          // Player who fired this projectile
 }
 ```
 
-**Frontend Definition** (`frontend/src/state.ts:24-29`):
+**Frontend Definition** (`frontend/src/state.ts:24-32`) - **ALIGNED**:
 ```typescript
 export interface Projectile {
   ID: string;
   Position: Vector2D;
-  Velocity: Vector2D;   // ⚠️ Backend calls this "Direction"
+  Direction: Vector2D;  // ✓ Matches backend
+  Speed: number;        // ✓ Matches backend
+  Range: number;        // ✓ Matches backend
+  Damage: number;       // ✓ Matches backend (int → number)
   OwnerID: string;
-  // Missing: Speed, Range, Damage
 }
 ```
 
-**Differences**:
-- ⚠️ Field name mismatch: `Direction` vs `Velocity`
-- ⚠️ Frontend missing `Speed`, `Range`, `Damage` fields
+**Status**: ✅ All fields now match between frontend and backend
 
 ---
 
@@ -944,6 +934,7 @@ interface SessionData {
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.2 | 2025-11-15 | Fixed Projectile field mismatch: renamed `Velocity` → `Direction`, added `Speed`/`Range`/`Damage` fields to match backend. Created communication flow verification document. |
 | 1.1 | 2025-11-15 | **Breaking Change**: Client now wraps PlayerInput in RequestEnvelope. Unified envelope usage for both client→server and server→client messages. |
 | 1.0 | 2025-11-15 | Initial protocol specification |
 
