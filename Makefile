@@ -1,7 +1,7 @@
 # Survival Game Makefile
 # Manages backend (Go) and frontend (TypeScript + Vite) development
 
-.PHONY: help install dev dev-bg start stop backend frontend backend-build frontend-build build test clean logs logs-backend logs-frontend status
+.PHONY: help install dev dev-bg start stop backend frontend backend-build frontend-build build test clean logs logs-backend logs-frontend logs-clear status
 
 # Default target
 .DEFAULT_GOAL := help
@@ -94,13 +94,22 @@ stop: ## Stop all background servers
 
 logs: ## Show development logs (tail -f both logs)
 	@echo "$(BLUE)Showing development logs (Ctrl+C to stop)...$(NC)"
-	@tail -f logs/backend.log logs/frontend.log
+	@echo "$(YELLOW)Tip: Use 'make logs-backend' or 'make logs-frontend' to view individual logs$(NC)"
+	@echo ""
+	@tail -f logs/backend.log logs/frontend.log 2>/dev/null || echo "$(RED)No log files found. Start servers with 'make dev-bg' first.$(NC)"
 
-logs-backend: ## Show backend logs
-	@tail -f logs/backend.log
+logs-backend: ## Show backend logs only
+	@echo "$(BLUE)Showing backend logs (Ctrl+C to stop)...$(NC)"
+	@tail -f logs/backend.log 2>/dev/null || echo "$(RED)Backend log not found. Start backend with 'make dev-bg' first.$(NC)"
 
-logs-frontend: ## Show frontend logs
-	@tail -f logs/frontend.log
+logs-frontend: ## Show frontend logs only
+	@echo "$(BLUE)Showing frontend logs (Ctrl+C to stop)...$(NC)"
+	@tail -f logs/frontend.log 2>/dev/null || echo "$(RED)Frontend log not found. Start frontend with 'make dev-bg' first.$(NC)"
+
+logs-clear: ## Clear all log files
+	@echo "$(YELLOW)Clearing log files...$(NC)"
+	@rm -f logs/*.log
+	@echo "$(GREEN)✓ Logs cleared$(NC)"
 
 ##@ Installation
 
