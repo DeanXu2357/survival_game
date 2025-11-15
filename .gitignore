@@ -32,3 +32,8 @@ logs/
 # Temp files
 tmp/
 *.tmp
+
+# Process IDs
+*.pid
+.backend.pid
+.frontend.pid

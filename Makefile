@@ -1,7 +1,7 @@
 # Survival Game Makefile
 # Manages backend (Go) and frontend (TypeScript + Vite) development
 
-.PHONY: help install dev start stop backend frontend backend-build frontend-build build test clean
+.PHONY: help install dev dev-bg start stop backend frontend backend-build frontend-build build test clean logs logs-backend logs-frontend status
 
 # Default target
 .DEFAULT_GOAL := help
@@ -26,24 +26,81 @@ help: ## Display this help message
 
 ##@ Development
 
-dev: ## Start both backend and frontend in parallel (recommended)
-	@echo "$(GREEN)Starting development servers...$(NC)"
-	@echo "$(BLUE)Backend:$(NC)  http://localhost:$(BACKEND_PORT)"
-	@echo "$(BLUE)Frontend:$(NC) http://localhost:$(FRONTEND_PORT)"
-	@$(MAKE) -j2 backend frontend
+dev: ## Start both servers in separate terminals (RECOMMENDED - see below)
+	@echo "$(YELLOW)⚠️  Recommended approach: Use two separate terminals$(NC)"
+	@echo ""
+	@echo "$(BLUE)Terminal 1:$(NC)"
+	@echo "  $$ make backend"
+	@echo ""
+	@echo "$(BLUE)Terminal 2:$(NC)"
+	@echo "  $$ make frontend"
+	@echo ""
+	@echo "$(YELLOW)Or use 'make dev-bg' to run both in background$(NC)"
+
+dev-bg: ## Start both servers in background
+	@echo "$(GREEN)Starting development servers in background...$(NC)"
+	@mkdir -p logs
+	@echo "$(BLUE)Starting backend on port $(BACKEND_PORT)...$(NC)"
+	@nohup go run main.go > logs/backend.log 2>&1 & echo $$! > .backend.pid
+	@sleep 1
+	@echo "$(BLUE)Starting frontend on port $(FRONTEND_PORT)...$(NC)"
+	@(cd frontend && nohup npm run dev > ../logs/frontend.log 2>&1 & echo $$! > ../.frontend.pid)
+	@sleep 2
+	@if [ -f .backend.pid ] && [ -f .frontend.pid ]; then \
+		echo "$(GREEN)✓ Backend started  (PID: $$(cat .backend.pid))  - http://localhost:$(BACKEND_PORT)$(NC)"; \
+		echo "$(GREEN)✓ Frontend started (PID: $$(cat .frontend.pid)) - http://localhost:$(FRONTEND_PORT)$(NC)"; \
+	else \
+		echo "$(RED)✗ Failed to start servers. Check logs for details.$(NC)"; \
+		exit 1; \
+	fi
+	@echo ""
+	@echo "$(YELLOW)View logs:$(NC)"
+	@echo "  Backend:  tail -f logs/backend.log"
+	@echo "  Frontend: tail -f logs/frontend.log"
+	@echo "  Both:     make logs"
+	@echo ""
+	@echo "$(YELLOW)Check status:$(NC)"
+	@echo "  make status"
+	@echo ""
+	@echo "$(YELLOW)Stop servers:$(NC)"
+	@echo "  make stop"
 
 start: dev ## Alias for 'make dev'
 
 backend: ## Start backend Go WebSocket server (port 3033)
 	@echo "$(GREEN)Starting backend server on port $(BACKEND_PORT)...$(NC)"
-	@cd . && go run main.go
+	@go run main.go
 
 frontend: ## Start frontend Vite dev server (port 5173)
 	@echo "$(GREEN)Starting frontend dev server on port $(FRONTEND_PORT)...$(NC)"
 	@cd frontend && npm run dev
 
-stop: ## Stop all running servers (requires manual Ctrl+C)
-	@echo "$(YELLOW)Press Ctrl+C to stop the servers$(NC)"
+stop: ## Stop all background servers
+	@echo "$(YELLOW)Stopping development servers...$(NC)"
+	@if [ -f .backend.pid ]; then \
+		kill $$(cat .backend.pid) 2>/dev/null || true; \
+		rm .backend.pid; \
+		echo "$(GREEN)✓ Backend stopped$(NC)"; \
+	else \
+		echo "$(YELLOW)No backend PID file found$(NC)"; \
+	fi
+	@if [ -f .frontend.pid ]; then \
+		kill $$(cat .frontend.pid) 2>/dev/null || true; \
+		rm .frontend.pid; \
+		echo "$(GREEN)✓ Frontend stopped$(NC)"; \
+	else \
+		echo "$(YELLOW)No frontend PID file found$(NC)"; \
+	fi
+
+logs: ## Show development logs (tail -f both logs)
+	@echo "$(BLUE)Showing development logs (Ctrl+C to stop)...$(NC)"
+	@tail -f logs/backend.log logs/frontend.log
+
+logs-backend: ## Show backend logs
+	@tail -f logs/backend.log
+
+logs-frontend: ## Show frontend logs
+	@tail -f logs/frontend.log
 
 ##@ Installation
 
@@ -123,9 +180,28 @@ deps-update: ## Update all dependencies
 	@cd frontend && npm update
 	@echo "$(GREEN)Dependencies updated$(NC)"
 
-logs-backend: ## Show backend logs (if running in background)
-	@echo "$(BLUE)Backend logs:$(NC)"
-	@tail -f logs/backend.log 2>/dev/null || echo "$(YELLOW)No log file found. Run backend with logging enabled.$(NC)"
+status: ## Show status of background servers
+	@echo "$(BLUE)Development Servers Status:$(NC)"
+	@if [ -f .backend.pid ]; then \
+		if ps -p $$(cat .backend.pid) > /dev/null 2>&1; then \
+			echo "$(GREEN)✓ Backend running$(NC)  (PID: $$(cat .backend.pid))"; \
+		else \
+			echo "$(RED)✗ Backend not running$(NC) (stale PID file)"; \
+			rm .backend.pid; \
+		fi \
+	else \
+		echo "$(YELLOW)○ Backend not started$(NC)"; \
+	fi
+	@if [ -f .frontend.pid ]; then \
+		if ps -p $$(cat .frontend.pid) > /dev/null 2>&1; then \
+			echo "$(GREEN)✓ Frontend running$(NC) (PID: $$(cat .frontend.pid))"; \
+		else \
+			echo "$(RED)✗ Frontend not running$(NC) (stale PID file)"; \
+			rm .frontend.pid; \
+		fi \
+	else \
+		echo "$(YELLOW)○ Frontend not started$(NC)"; \
+	fi
 
 ##@ Docker (Future)
 
