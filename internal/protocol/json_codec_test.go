@@ -8,8 +8,8 @@ import (
 
 func TestJsonCodec_Encode(t *testing.T) {
 	type fields struct {
-		Type    RequestEnvelopeType
-		Payload json.RawMessage
+		EnvelopeType RequestEnvelopeType
+		Payload      json.RawMessage
 	}
 	tests := []struct {
 		name    string
@@ -20,10 +20,10 @@ func TestJsonCodec_Encode(t *testing.T) {
 		{
 			name: "Encode valid request",
 			fields: fields{
-				Type:    PlayerInputEnvelope,
-				Payload: []byte(`{"move_up":true}`),
+				EnvelopeType: PlayerInputEnvelope,
+				Payload:      []byte(`{"move_up":true}`),
 			},
-			want:    []byte(`{"type":"player_input","payload":{"move_up":true}}`),
+			want:    []byte(`{"envelope_type":"player_input","payload":{"move_up":true}}`),
 			wantErr: false,
 		},
 	}
@@ -31,8 +31,8 @@ func TestJsonCodec_Encode(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &JsonCodec{}
 			got, err := c.Encode(RequestEnvelope{
-				Type:    tt.fields.Type,
-				Payload: tt.fields.Payload,
+				EnvelopeType: tt.fields.EnvelopeType,
+				Payload:      tt.fields.Payload,
 			})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Encode() error = %v, wantErr %v", err, tt.wantErr)
@@ -44,8 +44,8 @@ func TestJsonCodec_Encode(t *testing.T) {
 			if err := json.Unmarshal(got, &gotMap); err != nil {
 				t.Fatalf("Failed to unmarshal actual JSON: %v", err)
 			}
-			// Correct the expected JSON to use "Payload" to match the struct field name
-			tt.want = []byte(`{"type":"player_input","Payload":{"move_up":true}}`)
+			// Correct the expected JSON to use "payload" to match the struct field tag
+			tt.want = []byte(`{"envelope_type":"player_input","payload":{"move_up":true}}`)
 			if err := json.Unmarshal(tt.want, &wantMap); err != nil {
 				t.Fatalf("Failed to unmarshal expected JSON: %v", err)
 			}
@@ -71,19 +71,19 @@ func TestJsonCodec_Decode(t *testing.T) {
 		{
 			name: "Decode valid request",
 			args: args{
-				data: []byte(`{"type":"player_input","payload":{"move_up":true}}`),
+				data: []byte(`{"envelope_type":"player_input","payload":{"move_up":true}}`),
 				v:    &RequestEnvelope{},
 			},
 			wantErr: false,
 			want: &RequestEnvelope{
-				Type:    PlayerInputEnvelope,
-				Payload: []byte(`{"move_up":true}`),
+				EnvelopeType: PlayerInputEnvelope,
+				Payload:      []byte(`{"move_up":true}`),
 			},
 		},
 		{
 			name: "Decode invalid json",
 			args: args{
-				data: []byte(`{"type":"player_input","payload":{"move_up":true}`),
+				data: []byte(`{"envelope_type":"player_input","payload":{"move_up":true}`),
 				v:    &RequestEnvelope{},
 			},
 			wantErr: true,
@@ -126,8 +126,8 @@ func TestJsonCodec_EncodeDecode(t *testing.T) {
 		{
 			name: "Test with PlayerInput payload",
 			data: RequestEnvelope{
-				Type:    PlayerInputEnvelope,
-				Payload: raw,
+				EnvelopeType: PlayerInputEnvelope,
+				Payload:      raw,
 			},
 		},
 	}
@@ -146,8 +146,8 @@ func TestJsonCodec_EncodeDecode(t *testing.T) {
 				t.Fatalf("Decode() error = %v", err)
 			}
 
-			if decoded.Type != tt.data.Type {
-				t.Errorf("decoded type = %v, want %v", decoded.Type, tt.data.Type)
+			if decoded.EnvelopeType != tt.data.EnvelopeType {
+				t.Errorf("decoded envelope_type = %v, want %v", decoded.EnvelopeType, tt.data.EnvelopeType)
 			}
 
 			if string(decoded.Payload) != string(tt.data.Payload) {

@@ -209,9 +209,9 @@ export class NetworkClient {
   }
 
   private handleServerMessage(envelope: ResponseEnvelope): void {
-    console.log('Received server message:', envelope.type);
+    console.log('Received server message:', envelope.envelope_type);
 
-    switch (envelope.type) {
+    switch (envelope.envelope_type) {
       case RESPONSE_TYPES.ROOM_LIST_RESPONSE:
         if (isRoomListResponse(envelope)) {
           this.handleRoomListResponse(envelope.payload);
@@ -253,7 +253,7 @@ export class NetworkClient {
         break;
 
       default:
-        console.log('Unknown message type:', envelope.type, envelope.payload);
+        console.log('Unknown message type:', envelope.envelope_type, envelope.payload);
     }
   }
 
@@ -395,7 +395,7 @@ export class NetworkClient {
   private sendMessage(message: any): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(message));
-      console.log('Sent message:', message.type);
+      console.log('Sent message:', message.envelope_type);
     }
   }
 

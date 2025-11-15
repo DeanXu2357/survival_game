@@ -125,14 +125,14 @@ All server messages are wrapped in a **ResponseEnvelope**:
 
 ```typescript
 {
-  "type": string,        // Message type identifier
-  "payload": any         // Message-specific payload
+  "envelope_type": string,  // Message type identifier
+  "payload": any            // Message-specific payload
 }
 ```
 
 #### 1. game_update
 
-**Type**: `"game_update"`
+**EnvelopeType**: `"game_update"`
 **Frequency**: 60 FPS (every 16.67ms)
 **Purpose**: Broadcast current game state to all clients
 
@@ -179,7 +179,7 @@ All server messages are wrapped in a **ResponseEnvelope**:
 **Example**:
 ```json
 {
-  "type": "game_update",
+  "envelope_type": "game_update",
   "payload": {
     "players": {
       "player-1": {
@@ -221,7 +221,7 @@ All server messages are wrapped in a **ResponseEnvelope**:
 
 #### 2. static_data
 
-**Type**: `"static_data"`
+**EnvelopeType**: `"static_data"`
 **Frequency**: Once on connection
 **Purpose**: Send map layout and static objects to new client
 
@@ -245,7 +245,7 @@ All server messages are wrapped in a **ResponseEnvelope**:
 **Example**:
 ```json
 {
-  "type": "static_data",
+  "envelope_type": "static_data",
   "payload": {
     "type": "staticData",
     "walls": [
@@ -274,7 +274,7 @@ All server messages are wrapped in a **ResponseEnvelope**:
 
 #### 3. system_set_session
 
-**Type**: `"system_set_session"`
+**EnvelopeType**: `"system_set_session"`
 **Frequency**: Once on connection/reconnection
 **Purpose**: Inform client of assigned session ID for reconnection support
 
@@ -289,7 +289,7 @@ All server messages are wrapped in a **ResponseEnvelope**:
 **Example**:
 ```json
 {
-  "type": "system_set_session",
+  "envelope_type": "system_set_session",
   "payload": {
     "client_id": "player1",
     "session_id": "sess-abc123"
@@ -309,7 +309,7 @@ All server messages are wrapped in a **ResponseEnvelope**:
 
 #### 4. system_notify
 
-**Type**: `"system_notify"`
+**EnvelopeType**: `"system_notify"`
 **Frequency**: As needed
 **Purpose**: Send system notifications to clients
 
@@ -323,7 +323,7 @@ All server messages are wrapped in a **ResponseEnvelope**:
 **Example**:
 ```json
 {
-  "type": "system_notify",
+  "envelope_type": "system_notify",
   "payload": {
     "message": "Player3 has joined the game"
   }
@@ -340,7 +340,7 @@ All server messages are wrapped in a **ResponseEnvelope**:
 
 #### 5. error_invalid_session
 
-**Type**: `"error_invalid_session"`
+**EnvelopeType**: `"error_invalid_session"`
 **Frequency**: On session validation failure
 **Purpose**: Inform client that session is invalid/expired
 
@@ -354,7 +354,7 @@ All server messages are wrapped in a **ResponseEnvelope**:
 **Example**:
 ```json
 {
-  "type": "error_invalid_session",
+  "envelope_type": "error_invalid_session",
   "payload": {
     "message": "Session validation failed"
   }
