@@ -61,15 +61,17 @@ func (cr *ClientRegistry) Add(client Client, providedSessionID string) error {
 
 	var sessionInfo *SessionInfo
 	if providedSessionID != "" {
+		// Check if the provided session exists and belongs to the same client
 		if info, exists := cr.sessions[providedSessionID]; exists &&
 			info.ClientID == client.ID() {
+			// Reconnection: reuse existing session
 			info.Client.Close() // TODO: handle error
 			info.Client = client
 
 			sessionInfo = info
-		} else {
-			return fmt.Errorf("%w: sessionID=%s, clientID=%s", ErrClientSessionValidationFailed, providedSessionID, client.ID())
 		}
+		// If session doesn't exist or belongs to different client, we'll create a new one
+		// This handles server restarts and expired sessions gracefully
 	}
 
 	if sessionInfo == nil {
