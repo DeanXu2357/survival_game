@@ -160,9 +160,9 @@ func (h *Hub) JoinRoom(clientID, roomID string) error {
 		return fmt.Errorf("room '%s' not found for client %s", roomID, clientID)
 	}
 
-	client, cerr := h.clients.Get(clientID)
-	if !cerr {
-		return fmt.Errorf("client '%s' not found in registry %w", clientID, cerr)
+	client, ok := h.clients.Get(clientID)
+	if !ok {
+		return fmt.Errorf("client '%s' not found in registry", clientID)
 	}
 	if client == nil {
 		return fmt.Errorf("client '%s' is nil in registry", clientID)
@@ -196,7 +196,7 @@ func (h *Hub) JoinRoom(clientID, roomID string) error {
 	}
 
 	if err := client.Subscribe(handler); err != nil {
-		return fmt.Errorf("failed to subscribe client %s to room %s: %w", clientID, roomID)
+		return fmt.Errorf("failed to subscribe client %s to room %s: %w", clientID, roomID, err)
 	}
 
 	return nil

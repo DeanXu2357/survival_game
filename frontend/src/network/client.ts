@@ -7,6 +7,7 @@ import {
   createRoomListRequest,
   createJoinRoomRequest,
   createLeaveRoomRequest,
+  createPlayerInputMessage,
   isRoomListResponse,
   isJoinRoomResponse,
   isLeaveRoomResponse,
@@ -387,9 +388,9 @@ export class NetworkClient {
   sendPlayerInput(input: PlayerInput): void {
     if (!this.isConnected()) return;
 
-    // For backward compatibility, send player input directly (not wrapped in envelope)
-    // This matches the existing backend expectation
-    this.ws!.send(JSON.stringify(input));
+    // Wrap player input in envelope as per protocol specification
+    const message = createPlayerInputMessage(input);
+    this.sendMessage(message);
   }
 
   private sendMessage(message: any): void {

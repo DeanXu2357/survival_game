@@ -30,7 +30,7 @@ This document specifies the WebSocket communication protocol between the Go back
 ### Key Characteristics
 
 - **Server Authoritative**: All game logic runs on server
-- **Asymmetric Envelopes**: Server wraps responses in envelopes, client sends raw input
+- **Envelope-Based Protocol**: Both client and server wrap messages in envelopes for type safety
 - **Real-time Sync**: Game state broadcasted at 60 FPS
 - **Session Persistence**: Support for reconnection via session IDs
 
@@ -71,13 +71,22 @@ ws://localhost:3033/ws?client_id=player1&game_name=lobby&name=Alice&session_id=s
 
 ### Client → Server Messages
 
-#### PlayerInput (Raw JSON)
+All client messages are wrapped in a **RequestEnvelope**:
 
-**Note**: Unlike server messages, client input is sent as **raw JSON without envelope wrapping**.
+```typescript
+{
+  "envelope_type": string,  // Message type identifier
+  "payload": any            // Message-specific payload
+}
+```
 
+#### PlayerInput
+
+**EnvelopeType**: `"player_input"`
 **Frequency**: ~60 FPS when input is active
+**Purpose**: Send player input commands to server
 
-**Structure**:
+**Payload Structure** (`PlayerInput`):
 ```typescript
 {
   "MoveUp": boolean,       // W key
@@ -89,23 +98,28 @@ ws://localhost:3033/ws?client_id=player1&game_name=lobby&name=Alice&session_id=s
   "SwitchWeapon": boolean, // Tab key
   "Reload": boolean,       // R key
   "FastReload": boolean,   // Shift+R
-  "Fire": boolean          // Space bar
+  "Fire": boolean,         // Space bar
+  "Timestamp": number      // Client timestamp
 }
 ```
 
 **Example**:
 ```json
 {
-  "MoveUp": true,
-  "MoveDown": false,
-  "MoveLeft": false,
-  "MoveRight": true,
-  "RotateLeft": false,
-  "RotateRight": false,
-  "SwitchWeapon": false,
-  "Reload": false,
-  "FastReload": false,
-  "Fire": false
+  "envelope_type": "player_input",
+  "payload": {
+    "MoveUp": true,
+    "MoveDown": false,
+    "MoveLeft": false,
+    "MoveRight": true,
+    "RotateLeft": false,
+    "RotateRight": false,
+    "SwitchWeapon": false,
+    "Reload": false,
+    "FastReload": false,
+    "Fire": false,
+    "Timestamp": 1731686400000
+  }
 }
 ```
 
@@ -723,21 +737,7 @@ export interface Player {
 
 ### Design Decisions (Not Issues)
 
-#### 5. **[INFO] Asymmetric Message Envelopes**
-
-**By Design**: This is an intentional optimization.
-
-- **Server → Client**: Wrapped in `ResponseEnvelope` because server sends multiple message types
-- **Client → Server**: Raw `PlayerInput` JSON because client only sends one message type
-
-**Benefits**:
-- Reduces client message size (~50 bytes vs ~70 bytes with envelope)
-- Simplifies client sending logic
-- Server can easily distinguish message types in responses
-
----
-
-#### 6. **[INFO] Duplicate Walls in game_update**
+#### 5. **[INFO] Duplicate Walls in game_update**
 
 **Current**: `game_update` messages include walls array (repeated 60 times per second)
 
@@ -944,6 +944,7 @@ interface SessionData {
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.1 | 2025-11-15 | **Breaking Change**: Client now wraps PlayerInput in RequestEnvelope. Unified envelope usage for both client→server and server→client messages. |
 | 1.0 | 2025-11-15 | Initial protocol specification |
 
 ---
