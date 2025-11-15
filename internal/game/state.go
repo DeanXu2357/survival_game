@@ -3,13 +3,16 @@ package game
 import (
 	"fmt"
 	"sync"
+
+	"survival/internal/vector"
+	"survival/internal/weapons"
 )
 
 type State struct {
 	Players          map[string]*Player
 	playerMu         sync.RWMutex // Mutex to protect access to Players map
 	Walls            []*Wall
-	Projectiles      []*Projectile
+	Projectiles      []*weapons.Projectile
 	ObjectGrid       *Grid `json:"-"` // Exclude from JSON serialization
 	allowToAddPlayer bool
 }
@@ -18,7 +21,7 @@ func NewGameState() *State {
 	return &State{
 		Players:          make(map[string]*Player),
 		Walls:            make([]*Wall, 0),
-		Projectiles:      make([]*Projectile, 0),
+		Projectiles:      make([]*weapons.Projectile, 0),
 		allowToAddPlayer: true,
 		ObjectGrid: &Grid{
 			CellSize: 50.0,
@@ -31,7 +34,7 @@ func NewGameStateFromMap(mapConfig *MapConfig) *State {
 	state := &State{
 		Players:          make(map[string]*Player),
 		Walls:            make([]*Wall, 0),
-		Projectiles:      make([]*Projectile, 0),
+		Projectiles:      make([]*weapons.Projectile, 0),
 		allowToAddPlayer: true,
 		ObjectGrid: &Grid{
 			CellSize: mapConfig.GridSize,
@@ -76,10 +79,10 @@ func (s *State) generatePlayerID() string {
 }
 
 func (s *State) NewPlayer() (*Player, error) {
-	return s.NewPlayerAtPosition(Vector2D{X: 400, Y: 300}) // Default center position
+	return s.NewPlayerAtPosition(vector.Vector2D{X: 400, Y: 300}) // Default center position
 }
 
-func (s *State) NewPlayerAtPosition(position Vector2D) (*Player, error) {
+func (s *State) NewPlayerAtPosition(position vector.Vector2D) (*Player, error) {
 	if !s.allowToAddPlayer {
 		return nil, fmt.Errorf("adding new players is not allowed")
 	}
@@ -108,9 +111,9 @@ func (s *State) NewPlayerAtPosition(position Vector2D) (*Player, error) {
 
 type MapObject interface {
 	ID() string
-	Position() Vector2D
+	Position() vector.Vector2D
 	IsRectangle() bool
-	BoundingBox() (Vector2D, Vector2D)
+	BoundingBox() (vector.Vector2D, vector.Vector2D)
 }
 
 type GridCoord struct {
@@ -120,15 +123,15 @@ type GridCoord struct {
 
 // WallDTO is a data transfer object for Wall data sent to the client.
 type WallDTO struct {
-	ID       string   `json:"id"`
-	Center   Vector2D `json:"center"`
-	HalfSize Vector2D `json:"half_size"`
-	Rotation float64  `json:"rotation"`
+	ID       string          `json:"id"`
+	Center   vector.Vector2D `json:"center"`
+	HalfSize vector.Vector2D `json:"half_size"`
+	Rotation float64         `json:"rotation"`
 }
 
 type ClientGameState struct {
-	Players     map[string]*Player `json:"players"`
-	Walls       []*WallDTO         `json:"walls"`
-	Projectiles []*Projectile      `json:"projectiles"`
-	Timestamp   int64              `json:"timestamp"`
+	Players     map[string]*Player    `json:"players"`
+	Walls       []*WallDTO            `json:"walls"`
+	Projectiles []*weapons.Projectile `json:"projectiles"`
+	Timestamp   int64                 `json:"timestamp"`
 }

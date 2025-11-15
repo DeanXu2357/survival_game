@@ -12,7 +12,6 @@ var ErrClientSessionValidationFailed = fmt.Errorf("client session validation fai
 type SessionInfo struct {
 	SessionID string
 	ClientID  string
-	GameName  string
 	Client    Client
 	LastSeen  time.Time
 }
@@ -40,13 +39,12 @@ func NewClientRegistry(idGen IDGenerator) *ClientRegistry {
 type AddEvent func(client Client, sessionID, gameName string)
 
 // Add adds a client to the registry with full reconnection logic.
-// onNewConnection is called for new connections only.
-// onReconnection is called for successful reconnections only.
-func (cr *ClientRegistry) Add(client Client, providedSessionID, gameName string, onNewConnection AddEvent, onReconnection AddEvent) error {
+func (cr *ClientRegistry) Add(client Client, providedSessionID string) error {
 	if client.IsClosed() {
 		return fmt.Errorf("cannot add closed client %s", client.ID())
 	}
 
+	// Close with existing same id client
 	queryClient, exist := cr.Get(client.ID())
 	if exist {
 		if queryClient.SessionID() != providedSessionID {
@@ -62,25 +60,24 @@ func (cr *ClientRegistry) Add(client Client, providedSessionID, gameName string,
 	defer cr.mu.Unlock()
 
 	var sessionInfo *SessionInfo
-	var isReconnection bool
 	if providedSessionID != "" {
+		// Check if the provided session exists and belongs to the same client
 		if info, exists := cr.sessions[providedSessionID]; exists &&
-			info.ClientID == client.ID() && info.GameName == gameName {
-			info.Client.Close()
+			info.ClientID == client.ID() {
+			// Reconnection: reuse existing session
+			info.Client.Close() // TODO: handle error
 			info.Client = client
 
 			sessionInfo = info
-			isReconnection = true
-		} else {
-			return fmt.Errorf("%w: sessionID=%s, clientID=%s, gameName=%ss", ErrClientSessionValidationFailed, providedSessionID, client.ID(), gameName)
 		}
+		// If session doesn't exist or belongs to different client, we'll create a new one
+		// This handles server restarts and expired sessions gracefully
 	}
 
 	if sessionInfo == nil {
 		sessionInfo = &SessionInfo{
 			SessionID: cr.idGen.GenerateID(),
 			ClientID:  client.ID(),
-			GameName:  gameName,
 			Client:    client,
 			LastSeen:  time.Now(),
 		}
@@ -94,14 +91,6 @@ func (cr *ClientRegistry) Add(client Client, providedSessionID, gameName string,
 	cr.sessions[sessionInfo.SessionID] = sessionInfo
 	cr.clientSessions[client.ID()] = sessionInfo.SessionID
 
-	if !isReconnection && onNewConnection != nil {
-		onNewConnection(client, sessionInfo.SessionID, gameName)
-	}
-
-	if isReconnection && onReconnection != nil {
-		onReconnection(client, sessionInfo.SessionID, gameName)
-	}
-
 	return nil
 }
 
@@ -110,6 +99,7 @@ func (cr *ClientRegistry) Remove(clientID string) {
 	cr.mu.Lock()
 	defer cr.mu.Unlock()
 	delete(cr.clients, clientID)
+	delete(cr.clientSessions, clientID)
 	// Note: We intentionally keep session info for reconnection
 	// Sessions will be cleaned up by CleanupExpiredSessions
 }
@@ -120,6 +110,44 @@ func (cr *ClientRegistry) Get(clientID string) (Client, bool) {
 	defer cr.mu.RUnlock()
 	client, ok := cr.clients[clientID]
 	return client, ok
+}
+
+func (cr *ClientRegistry) GetBySessionID(sessionID string) (Client, bool) {
+	cr.mu.RLock()
+	defer cr.mu.RUnlock()
+
+	info, ok := cr.sessions[sessionID]
+	if !ok {
+		return nil, false
+	}
+
+	return info.Client, true
+}
+
+func (cr *ClientRegistry) SessionInfo(clientID string) (*SessionInfo, bool) {
+	cr.mu.RLock()
+	defer cr.mu.RUnlock()
+
+	sessionID, ok := cr.clientSessions[clientID]
+	if !ok {
+		return nil, false
+	}
+
+	info, exists := cr.sessions[sessionID]
+	return info, exists
+}
+
+// CleanupExpiredSessions removes sessions that have not been active within the given duration.
+func (cr *ClientRegistry) CleanupExpiredSessions(expiration time.Duration) {
+	cr.mu.Lock()
+	defer cr.mu.Unlock()
+	now := time.Now()
+	for sessionID, info := range cr.sessions {
+		if now.Sub(info.LastSeen) > expiration {
+			delete(cr.sessions, sessionID)
+			delete(cr.clientSessions, info.ClientID)
+		}
+	}
 }
 
 // All returns a snapshot of all clients.

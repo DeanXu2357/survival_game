@@ -2,6 +2,8 @@ package game
 
 import (
 	"testing"
+
+	"survival/internal/vector"
 )
 
 // Validation tests moved to individual loader test files
@@ -9,8 +11,8 @@ import (
 func TestMapConfig_GetRandomSpawnPoint(t *testing.T) {
 	config := &MapConfig{
 		SpawnPoints: []SpawnPoint{
-			{ID: "spawn_1", Position: Vector2D{X: 100, Y: 100}},
-			{ID: "spawn_2", Position: Vector2D{X: 200, Y: 200}},
+			{ID: "spawn_1", Position: vector.Vector2D{X: 100, Y: 100}},
+			{ID: "spawn_2", Position: vector.Vector2D{X: 200, Y: 200}},
 		},
 	}
 

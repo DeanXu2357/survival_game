@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"sync"
@@ -25,7 +24,7 @@ const (
 type Hub struct {
 	rooms        map[string]*game.Room
 	clients      *ClientRegistry
-	hubCh        chan protocol.Command
+	hubCommandCh chan protocol.RequestCommand
 	ctx          context.Context
 	cancel       context.CancelFunc
 	shutdownOnce sync.Once
@@ -34,36 +33,18 @@ type Hub struct {
 func NewHub(ctx context.Context, idGen IDGenerator) *Hub {
 	hubCtx, cancel := context.WithCancel(ctx)
 
-	defaultRoom := createDefaultRoom(hubCtx, DefaultRoomName)
-
 	return &Hub{
-		rooms: map[string]*game.Room{
-			DefaultRoomName: defaultRoom,
-		},
-		clients: NewClientRegistry(idGen),
-		hubCh:   make(chan protocol.Command, 256),
-		ctx:     hubCtx,
-		cancel:  cancel,
+		rooms:        make(map[string]*game.Room),
+		clients:      NewClientRegistry(idGen),
+		hubCommandCh: make(chan protocol.RequestCommand, 256),
+		ctx:          hubCtx,
+		cancel:       cancel,
 	}
-}
-
-func createDefaultRoom(ctx context.Context, roomID string) *game.Room {
-	jsonLoader := maploader.NewJSONMapLoader("./maps")
-	mapConfig, err := jsonLoader.LoadMap("office_floor_01")
-	if err != nil {
-		log.Printf("Failed to load office_floor_01 from JSON: %v, using empty room", err)
-		return game.NewRoom(ctx, roomID)
-	}
-
-	return game.NewRoomWithMap(ctx, roomID, mapConfig)
 }
 
 func (h *Hub) Run() error {
 	log.Println("Hub is running...")
-	for _, room := range h.rooms {
-		go room.Run()
-		go h.routeOutgoing(room)
-	}
+	h.initializeDefaultGame()
 
 	return h.hubLoop()
 }
@@ -71,38 +52,65 @@ func (h *Hub) Run() error {
 func (h *Hub) hubLoop() error {
 	for {
 		select {
-		case cmd := <-h.hubCh:
-			// For now, we assume all commands go to the default room.
-			// This could be expanded to route to different rooms based on client state.
-			if room, ok := h.rooms[DefaultRoomName]; ok {
-				room.CommandsChannel() <- cmd
-			} else {
-				log.Printf("Warning: Room not found for command from client %s", cmd.ClientID)
+		case cmd := <-h.hubCommandCh:
+			switch cmd.EnvelopeType {
+			case protocol.ListRoomsEnvelope:
+				clientID := cmd.ClientID
+
+				rooms := make([]protocol.RoomInfo, 0, len(h.rooms))
+				for roomID, room := range h.rooms {
+					rooms = append(rooms, protocol.RoomInfo{
+						RoomID:      roomID,
+						PlayerCount: room.PlayerCount(),
+					})
+				}
+
+				if client, ok := h.clients.Get(clientID); ok {
+					ctx, cancel := context.WithTimeout(h.ctx, 2*time.Second)
+					if err := client.Send(ctx, protocol.ListRoomsResponseEnvelope, protocol.ListRoomsResponse{Rooms: rooms}); err != nil {
+						log.Printf("Failed to send ListRooms response to client %s: %v", clientID, err)
+					}
+					cancel()
+				} else {
+					log.Printf("Client %s not found for ListRooms response", clientID)
+				}
+
+			case protocol.RequestJoinEnvelope:
+				clientID := cmd.ClientID
+
+				_, valid := cmd.ParsedPayload.(protocol.RequestJoinPayload)
+				if !valid {
+					log.Printf("Invalid join payload from client %s", clientID)
+					continue
+				}
+
+				// Join Room
+				// for testing, only support joining the default room
+				responseType := protocol.JoinRoomSuccessEnvelope
+				var responsePayload protocol.ErrorPayload
+				if err := h.JoinRoom(clientID, DefaultRoomName); err != nil {
+					responseType = protocol.ErrorResponseEnvelope
+					responsePayload = protocol.ErrorPayload{
+						Code:    500,
+						Message: fmt.Sprintf("Failed to join room: %v", err),
+					}
+				}
+
+				// Notify client of join result
+				if client, ok := h.clients.Get(clientID); ok {
+					ctx, cancel := context.WithTimeout(h.ctx, 2*time.Second)
+					if errSend := client.Send(ctx, responseType, responsePayload); errSend != nil {
+						log.Printf("Failed to send error message to client %s: %v", clientID, errSend)
+					}
+					cancel()
+				}
+			default:
+				log.Printf("Unhandled command type: %s from client %s", cmd.EnvelopeType, cmd.ClientID)
+
 			}
 		case <-h.ctx.Done():
 			log.Println("Hub context is done, shutting down loop.")
 			return h.ctx.Err()
-		}
-	}
-}
-
-func (h *Hub) routeOutgoing(room *game.Room) {
-	outgoingCh := room.OutgoingChannel()
-	for {
-		select {
-		case msg := <-outgoingCh:
-			for _, clientID := range msg.TargetClientIDs {
-				if client, ok := h.clients.Get(clientID); ok {
-					ctx, cancel := context.WithTimeout(h.ctx, 2*time.Second)
-					if err := client.Send(ctx, msg.Envelope); err != nil {
-						log.Printf("Failed to send message to client %s: %v", clientID, err)
-					}
-					cancel()
-				}
-			}
-		case <-h.ctx.Done():
-			log.Printf("Stopping outgoing router for room %s", room.ID)
-			return
 		}
 	}
 }
@@ -146,29 +154,52 @@ func (h *Hub) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-// whenClientsAddNewConnection handles new client connections by adding them to the appropriate room
-func (h *Hub) whenClientsAddNewConnection(client Client, sessionID, gameName string) {
-	if room, ok := h.rooms[gameName]; ok {
-		if err := room.AddPlayer(client.ID()); err != nil {
-			log.Printf("Failed to add player for client %s to room %s: %v", client.ID(), room.ID, err)
-			client.Close() // TODO: or maybe send a notify to client that join failed ?
+func (h *Hub) JoinRoom(clientID, roomID string) error {
+	room, ok := h.rooms[roomID]
+	if !ok {
+		return fmt.Errorf("room '%s' not found for client %s", roomID, clientID)
+	}
+
+	client, ok := h.clients.Get(clientID)
+	if !ok {
+		return fmt.Errorf("client '%s' not found in registry", clientID)
+	}
+	if client == nil {
+		return fmt.Errorf("client '%s' is nil in registry", clientID)
+	}
+
+	if err := room.AddPlayer(client); err != nil {
+		room.SendStaticData([]string{clientID})
+		log.Printf("Client %s joined room %s", clientID, roomID)
+		return nil
+	}
+
+	handler := func(cmd protocol.RequestCommand) {
+		if cmd.EnvelopeType != protocol.PlayerInputEnvelope {
+			log.Printf("Ignoring non-input command from client %s", client.ID())
 			return
 		}
 
-		room.SendStaticData([]string{client.ID()})
-		log.Printf("Client %s joined room %s as new player with session %s", client.ID(), gameName, sessionID)
-	} else {
-		log.Printf("Room '%s' not found for joining client %s", gameName, client.ID())
-		client.Close() // TODO: notify ?
-	}
-}
+		// TODO: Add handling logic for other EnvelopeTypes in future
+		input, valid := cmd.ParsedPayload.(protocol.PlayerInput)
+		if !valid {
+			log.Printf("Invalid input payload from client %s", client.ID())
+			return
+		}
 
-// whenClientsDoReconnection handles successful client reconnections
-func (h *Hub) whenClientsDoReconnection(client Client, sessionID, gameName string) {
-	if room, ok := h.rooms[gameName]; ok {
-		room.SendStaticData([]string{client.ID()})
+		inputCmd := protocol.Command{
+			ClientID: client.ID(),
+			Input:    input,
+		}
+
+		room.SendCommand(inputCmd)
 	}
-	log.Printf("Client %s successfully reconnected to game %s with session %s", client.ID(), gameName, sessionID)
+
+	if err := client.Subscribe(handler); err != nil {
+		return fmt.Errorf("failed to subscribe client %s to room %s: %w", clientID, roomID, err)
+	}
+
+	return nil
 }
 
 func (h *Hub) DispatchConnection(ctx context.Context, conn protocol.RawConnection, gameName, clientID, name, sessionID string) error {
@@ -184,22 +215,59 @@ func (h *Hub) DispatchConnection(ctx context.Context, conn protocol.RawConnectio
 		}
 	}()
 
-	_, err := client.Subscribe(func(cmd protocol.Command) {
-		h.hubCh <- cmd
-	})
-	if err != nil {
+	if errAdd := h.clients.Add(client, sessionID); errAdd != nil {
+		return fmt.Errorf("failed to add client %s to registry: %w", clientID, errAdd)
+	}
+
+	if err := client.Subscribe(func(cmd protocol.RequestCommand) {
+		h.hubCommandCh <- cmd
+	}); err != nil {
 		return fmt.Errorf("failed to subscribe to client %s: %w", clientID, err)
 	}
 
-	if errAdd := h.clients.Add(client, sessionID, gameName, h.whenClientsAddNewConnection, h.whenClientsDoReconnection); errAdd != nil {
-		// For session validation errors, let the server handle the error response
-		// For other errors, wrap with additional context
-		if errors.Is(errAdd, ErrClientSessionValidationFailed) {
-			return errAdd // Return the original error for server to handle
-		} else {
-			return fmt.Errorf("failed to add client %s to registry: %w", clientID, errAdd)
+	return nil
+}
+
+func (h *Hub) initializeDefaultGame() {
+	roomID := DefaultRoomName
+
+	room := createDefaultRoom(h.ctx, roomID)
+
+	h.rooms[roomID] = room
+
+	go room.Run()
+
+	handler := func(msg game.UpdateMessage) {
+		sessionIDs := msg.ToSessions
+		if len(sessionIDs) == 0 {
+			return
+		}
+
+		for _, sessionID := range sessionIDs {
+			client, ok := h.clients.GetBySessionID(sessionID)
+			if !ok {
+				log.Printf("No client found for session ID %s", sessionID)
+				continue
+			}
+
+			if err := client.Send(context.Background(), protocol.GameUpdateEnvelope, msg.Envelope); err != nil {
+				log.Printf("Failed to send message to client %s: %v", client.ID(), err)
+			}
 		}
 	}
 
-	return nil
+	if err := room.SubscribeResponse(handler); err != nil {
+		panic(err)
+	}
+}
+
+func createDefaultRoom(ctx context.Context, roomID string) *game.Room {
+	jsonLoader := maploader.NewJSONMapLoader("./maps")
+	mapConfig, err := jsonLoader.LoadMap("office_floor_01")
+	if err != nil {
+		log.Printf("Failed to load office_floor_01 from JSON: %v, using empty room", err)
+		return game.NewRoom(ctx, roomID)
+	}
+
+	return game.NewRoomWithMap(ctx, roomID, mapConfig)
 }

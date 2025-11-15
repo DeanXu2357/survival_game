@@ -1,109 +1,120 @@
 # Survival Game Implementation Todo List
 
-## Completed Features ✅
-- [x] Project structure setup (Go backend, client frontend)
-- [x] Basic Player and State structures
-- [x] Weapon system design (Knife, Pistol with magazine system)
-- [x] PlayerInput structure definition
-- [x] Game logic foundation (60 FPS game loop)
-- [x] Room-based session management
-- [x] WebSocket communication foundation
+## Current Architecture Status
 
-## Phase 1: Connection and Infrastructure (High Priority)
+### ✅ Fully Implemented Features
+- **Project Infrastructure**: Complete Go backend + TypeScript frontend setup
+- **WebSocket Server**: Full server implementation with graceful shutdown (main.go:17, websocket/server.go)
+- **Network Hub System**: Complete hub with client registry and room management (app/hub.go)
+- **WebSocket Client Connections**: Full connection lifecycle with ReadPump/WritePump (websocket/connection.go)
+- **Protocol System**: JSON codec with protocol.Command interface (protocol/json_codec.go)
+- **Game Data Structures**: Vector2D, Player, State, Projectile, Wall structs (game/state.go)
+- **Spatial Grid System**: Grid-based collision detection optimization (game/grid.go)
+- **Map System**: JSON map loader with collision walls (infrastructure/map/json_loader.go)
+- **Frontend Client**: PixiJS app with network connection and input handling (frontend/src/)
+- **Client Registry**: Robust client management with ID generation (app/client_registry.go)
+- **Player Registry**: Player lifecycle management (game/player_registry.go)
 
-### 1.1 WebSocket Client Implementation
-- [X] **ReadPump Implementation** - Handle incoming messages from clients
-- [X] **WritePump Implementation** - Send messages to clients with proper buffering
-- [X] **Send Method** - Send specific data to client with context handling
-- [X] **Close Method** - Clean connection shutdown
+### ⚠️ Partially Implemented
+- **Game Logic**: Basic player movement, needs combat integration (game/logic.go)
+- **Room System**: Room structure exists, needs game loop integration (game/room.go)
+- **Weapon System**: Interfaces defined, implementation missing (game/weapons.go)
+- **Message Routing**: Protocol exists, needs game state broadcasting
+- **Frontend Rendering**: PixiJS setup complete, needs game state visualization
 
-### 1.2 Hub Registration Logic
-- [X] **RegisterConnection Implementation** - Complete client registration with ID mapping
-- [X] **UnregisterClient Implementation** - Clean client removal and room cleanup
-- [X] **Client-Room Assignment** - Map clients to game rooms
-- [X] **Player ID Management** - Generate/restore Player IDs from Client IDs
+## Phase 1: Core Game Functionality (High Priority)
 
-### 1.3 Message Protocol Design
-- [X] **Client Message Types** - Define input, join, leave message structures
-- [ ] **Server Message Types** - Define game state, player updates, notifications
-- [ ] **Message Routing** - Route messages between Hub, Room, and Clients
-- [ ] **Error Handling** - Connection loss, invalid messages, room full scenarios
-- [ ] Client reconnection mechanism is broken: reconnecting clients are treated as new players instead of resuming existing sessions
-- [ ] Hub.handleLeave() only removes clients from default room and lacks room-specific removal capability, requiring additional implementation for multi-room support
+### 1.1 Combat System Integration
+- [ ] **Weapon Implementation** - Implement Knife and Pistol weapon logic
+- [ ] **Shooting Mechanics** - Fire projectiles with proper range and collision
+- [ ] **Reload System** - Normal (3s) and fast (1s) reload with magazine management
+- [ ] **Ammo Management** - Magazine consumption and reload validation
 
-## Phase 2: Combat System (High Priority)
+### 1.2 Game State Broadcasting
+- [ ] **Server Message Types** - Define GameState, PlayerUpdate, ProjectileUpdate messages
+- [ ] **State Serialization** - Broadcast complete game state to all clients
+- [ ] **Delta Updates** - Optimize network traffic with incremental updates
+- [ ] **Client State Sync** - Frontend receives and applies server state updates
 
-### 2.1 Shooting Mechanics
-- [ ] **Pistol Shooting Logic** - Fire projectiles with 7-unit range
-- [ ] **Knife Attack Logic** - Melee attack with 1-unit range
-- [ ] **Ammo Consumption** - Decrease magazine ammo on pistol fire
-- [ ] **Weapon Cooldowns** - Prevent spam firing
+### 1.3 Game Loop Integration
+- [ ] **Room Game Loop** - Integrate 60 FPS game logic with networking
+- [ ] **Input Processing** - Process client input in game loop
+- [ ] **Collision Detection** - Player-wall, projectile-wall, projectile-player collisions
+- [ ] **Physics Updates** - Movement, projectile trajectories, and cleanup
 
-### 2.2 Reload System
-- [ ] **Normal Reload** - 3-second duration, preserve magazine
-- [ ] **Fast Reload** - 1-second duration, discard magazine
-- [ ] **Reload Validation** - Check available magazines and weapon type
-- [ ] **Reload Timing** - Async reload with proper state management
+## Phase 2: Advanced Features (Medium Priority)
 
-## Phase 3: Collision & Physics (Medium Priority)
-
-### 3.1 Projectile System
-- [ ] **Projectile Physics** - Movement, trajectory, and lifetime
-- [ ] **Projectile-Wall Collision** - Bullets stop on wall impact
-- [ ] **Projectile-Player Collision** - Damage calculation and hit detection
-- [ ] **Projectile Cleanup** - Remove expired or collided projectiles
-
-### 3.2 Collision Detection Optimization
-- [ ] **Spatial Partitioning** - Use existing Grid system for collision optimization
-- [ ] **AABB Collision** - Basic rectangular collision detection
-- [ ] **Circle-Rectangle Collision** - Player (circle) vs Wall (rectangle)
-
-## Phase 4: Game State Management (Medium Priority)
-
-### 4.1 Game Loop Integration
-- [ ] **Input Processing** - Process PlayerInput in game logic
-- [ ] **State Updates** - Update all game objects per tick
-- [ ] **Network Synchronization** - Broadcast state changes to clients
-- [ ] **Delta Time Handling** - Smooth movement with variable frame rates
-
-### 4.2 Game Rules
-- [ ] **Health System** - One-hit kill implementation
-- [ ] **Player Death** - Handle player elimination
+### 2.1 Game Rules & Player Lifecycle
+- [ ] **Health System** - One-hit kill damage system
+- [ ] **Player Death** - Handle player elimination and respawn
 - [ ] **Win Conditions** - Last player standing logic
-- [ ] **Respawn System** - Player revival mechanics
+- [ ] **Game Session Management** - Start, pause, reset game states
 
-## Phase 5: Testing & Validation (Low Priority)
+### 2.2 Vision & Rendering
+- [ ] **Fog of War** - PixiJS shader-based fog rendering
+- [ ] **Vision System** - Close vision (20px) + cone vision (200px, 45°)
+- [ ] **Player Visibility** - Hide players outside vision range
+- [ ] **Sound Visualization** - Three-layer visual sound rings
 
-### 5.1 Unit Testing
-- [ ] **Movement Tests** - Validate player movement and rotation
-- [ ] **Collision Tests** - Test all collision detection scenarios
-- [ ] **Weapon Tests** - Verify shooting, reloading, and switching
-- [ ] **Game State Tests** - Ensure proper state management
+### 2.3 Frontend Game Visualization
+- [ ] **Player Rendering** - Triangle sprites with rotation
+- [ ] **Map Rendering** - Wall visualization from loaded map data
+- [ ] **Projectile Visualization** - Bullet trails and impacts
+- [ ] **UI System** - Health, ammo, and game status display
 
-### 5.2 Integration Testing
-- [ ] **Multiplayer Testing** - Multi-player game scenarios
-- [ ] **Network Testing** - Client-server communication validation
-- [ ] **Performance Testing** - 60 FPS performance validation
+## Phase 3: Polish & Optimization (Low Priority)
+
+### 3.1 Performance Optimization
+- [ ] **Delta Updates** - Optimize network traffic with incremental state updates
+- [ ] **Spatial Optimization** - Leverage existing Grid system for collision queries
+- [ ] **Rendering Optimization** - PixiJS sprite batching and culling
+- [ ] **Memory Management** - Projectile cleanup and object pooling
+
+### 3.2 Error Handling & Robustness
+- [ ] **Connection Recovery** - Handle client disconnection and reconnection
+- [ ] **Invalid Input Handling** - Validate and sanitize client input
+- [ ] **Room Cleanup** - Remove empty rooms and clean up resources
+- [ ] **Multi-room Support** - Support multiple concurrent game sessions
+
+### 3.3 Testing & Validation
+- [ ] **Unit Tests** - Movement, collision, weapon systems
+- [ ] **Integration Tests** - Full client-server game scenarios
+- [ ] **Performance Tests** - 60 FPS validation with multiple clients
+- [ ] **Network Tests** - Latency and packet loss handling
 
 ## Implementation Notes
 
-### Collision System Implementation Order:
-1. **Wall-Player Movement Collision** (Phase 1) - Prevent walking through walls
-2. **Projectile-Wall Collision** (Phase 3) - Bullets stop on walls
-3. **Projectile-Player Collision** (Phase 3) - Damage detection
-4. **Spatial Optimization** (Phase 3) - Use Grid system for performance
+### Current Architecture Summary
+The project has evolved significantly from initial design. Key architectural components:
 
-### Key Design Decisions:
-- Server-authoritative architecture (all logic on backend)
-- 60 FPS game loop with delta time support
-- Magazine-based ammunition system for pistol
-- One-hit kill damage model initially
-- Grid-based spatial partitioning for collision optimization
+```
+internal/
+├── app/                     # Application layer
+│   ├── hub.go              # Central message hub with room management
+│   ├── client_registry.go  # Client connection management
+│   └── client.go           # Individual client handling
+├── game/                    # Game logic layer
+│   ├── state.go            # Core game data structures
+│   ├── logic.go            # Game mechanics and physics
+│   ├── player_registry.go  # Player lifecycle management
+│   ├── room.go             # Game session management
+│   └── weapons.go          # Weapon system interfaces
+├── infrastructure/         # Infrastructure layer
+│   ├── network/websocket/  # WebSocket server implementation
+│   └── map/               # Map loading and management
+└── protocol/              # Communication protocol
+    ├── protocol.go        # Message interfaces
+    └── json_codec.go      # JSON serialization
+```
 
-### Current Architecture:
-```
-internal/game/
-├── state.go    - Game objects and state management
-├── logic.go    - Core game logic and input processing
-└── room.go     - Session and network management
-```
+### Next Implementation Steps
+1. **Weapon Logic Implementation**: Complete the weapon interfaces in weapons.go
+2. **Game State Broadcasting**: Implement server→client state updates
+3. **Game Loop Integration**: Connect room game logic with network hub
+4. **Frontend State Rendering**: Visualize server state in PixiJS client
+
+### Technical Priorities
+- **Server-Authoritative**: All game logic runs on Go backend
+- **Real-time Network**: 60 FPS game loop with WebSocket synchronization  
+- **Robust Architecture**: Separation of concerns between app, game, and infrastructure layers
+- **JSON Protocol**: Human-readable development protocol (Protobuf for production later)

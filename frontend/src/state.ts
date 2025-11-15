@@ -24,7 +24,10 @@ export interface Wall {
 export interface Projectile {
   ID: string;
   Position: Vector2D;
-  Velocity: Vector2D;
+  Direction: Vector2D;  // Direction unit vector (matches backend)
+  Speed: number;        // Pixels per second
+  Range: number;        // Maximum travel distance
+  Damage: number;       // Damage on hit
   OwnerID: string;
 }
 
@@ -51,6 +54,7 @@ export interface PlayerInput {
   Reload: boolean;
   FastReload: boolean;
   Fire: boolean;
+  Timestamp: number;
 }
 
 export interface DebugInfo {
