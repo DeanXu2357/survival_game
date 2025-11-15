@@ -201,9 +201,9 @@ func (c *websocketClient) readPump() {
 			return
 		}
 
-		parsed, err := protocol.GetPayloadStruct(msg.Type)
+		parsed, err := protocol.GetPayloadStruct(msg.EnvelopeType)
 		if err != nil {
-			log.Printf("Warning: Unknown envelope type %s from client %s", msg.Type, c.id)
+			log.Printf("Warning: Unknown envelope type %s from client %s", msg.EnvelopeType, c.id)
 			continue // Skip unknown message types for temporary, I am not sure if this is good idea
 		}
 
@@ -220,7 +220,7 @@ func (c *websocketClient) readPump() {
 
 		command := protocol.RequestCommand{
 			ClientID:      c.id,
-			EnvelopeType:  msg.Type,
+			EnvelopeType:  msg.EnvelopeType,
 			Payload:       msg.Payload,
 			ParsedPayload: parsed,
 			ReceivedTime:  utils.Now(),

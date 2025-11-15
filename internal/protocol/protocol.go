@@ -26,12 +26,12 @@ type ResponseEnvelopeType string
 type RequestEnvelopeType string
 
 type RequestEnvelope struct {
-	Type    RequestEnvelopeType `json:"type"`
-	Payload json.RawMessage
+	EnvelopeType RequestEnvelopeType `json:"envelope_type"`
+	Payload      json.RawMessage     `json:"payload"`
 }
 
 type ResponseEnvelope struct {
-	EnvelopeType ResponseEnvelopeType `json:"envelopetype"`
+	EnvelopeType ResponseEnvelopeType `json:"envelope_type"`
 	Payload      json.RawMessage      `json:"payload"`
 }
 

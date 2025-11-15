@@ -42,38 +42,60 @@ survival/
 
 ### Prerequisites
 - Go 1.19+ installed
-- Node.js 16+ and npm/yarn
-- Wails v2 installed: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
+- Node.js 16+ and npm installed
+- Make (usually pre-installed on Linux/macOS, for Windows use WSL or install via Chocolatey)
 
 ### Development Setup
 
-1. **Install Dependencies**
+1. **Check Environment**
    ```bash
-   # Install Go dependencies
-   go mod tidy
-   
-   # Install frontend dependencies
-   cd frontend
-   npm install
-   cd ..
+   make check
    ```
 
-2. **Development Mode**
+2. **Install Dependencies**
    ```bash
-   # Start development server with hot reload
-   wails dev
+   # Install both backend and frontend dependencies
+   make install
+
+   # Or install separately
+   make install-backend
+   make install-frontend
    ```
 
-3. **Build Desktop Application**
+3. **Development Mode**
    ```bash
-   # Build for current platform
-   wails build
-   
-   # Build for specific platforms
-   wails build -platform windows/amd64
-   wails build -platform darwin/amd64
-   wails build -platform linux/amd64
+   # Start both backend and frontend servers (recommended)
+   make dev
+   # Backend:  http://localhost:3033 (WebSocket)
+   # Frontend: http://localhost:5173 (Vite dev server)
+
+   # Or start separately
+   make backend    # Start Go WebSocket server
+   make frontend   # Start Vite dev server
    ```
+
+4. **Build for Production**
+   ```bash
+   # Build both backend and frontend
+   make build
+
+   # Or build separately
+   make backend-build   # Creates bin/survival
+   make frontend-build  # Creates frontend/dist/
+   ```
+
+5. **Run Tests**
+   ```bash
+   make test
+   ```
+
+### Useful Commands
+
+```bash
+make help           # Show all available commands
+make clean          # Clean build artifacts
+make deps-update    # Update dependencies
+```
 
 ### Game Controls
 - **Movement**: WASD keys (120 pixels/second)
