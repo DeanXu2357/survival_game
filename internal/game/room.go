@@ -62,13 +62,15 @@ func NewRoomWithMap(ctx context.Context, id string, mapConfig *MapConfig) *Room 
 	roomCTX, cancel := context.WithCancel(ctx)
 
 	return &Room{
-		ID:        id,
-		mapConfig: mapConfig,
-		state:     NewGameStateFromMap(mapConfig),
-		logic:     NewGameLogic(),
-		players:   NewPlayerRegistry(),
-		commands:  make(chan protocol.Command, 200),
-		outgoing:  make(chan UpdateMessage, 400),
+		ID:         id,
+		mapConfig:  mapConfig,
+		state:      NewGameStateFromMap(mapConfig),
+		logic:      NewGameLogic(),
+		players:    NewPlayerRegistry(),
+		subManager: pubsub.NewManager[UpdateMessage](utils.NewSequentialIDGenerator(fmt.Sprintf("room%s-sub-", id))),
+
+		commands: make(chan protocol.Command, 200),
+		outgoing: make(chan UpdateMessage, 400),
 
 		ctx:    roomCTX,
 		cancel: cancel,
