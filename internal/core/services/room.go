@@ -249,3 +249,14 @@ func (r *Room) broadcastGameUpdate() {
 func (r *Room) PlayerCount() int {
 	return len(r.state.Players)
 }
+
+func (r *Room) Name() string {
+	if r.mapConfig != nil {
+		return r.mapConfig.Name
+	}
+	return r.ID
+}
+
+func (r *Room) MaxPlayers() int {
+	return 0
+}

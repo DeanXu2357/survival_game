@@ -2,7 +2,6 @@ package ports
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
 )
 
@@ -101,15 +100,6 @@ type SystemNotify struct {
 type SystemSetSessionPayload struct {
 	ClientID  string `json:"client_id"`
 	SessionID string `json:"session_id"`
-}
-
-func GetPayloadStruct(envelopeType RequestEnvelopeType) (any, error) {
-	switch envelopeType {
-	case PlayerInputEnvelope:
-		return PlayerInput{}, nil
-	default:
-		return nil, fmt.Errorf("unknown envelope type: %s", envelopeType)
-	}
 }
 
 type ErrorPayload struct {

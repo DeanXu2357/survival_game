@@ -9,7 +9,8 @@ import {
   createLeaveRoomRequest,
   createPlayerInputMessage,
   isRoomListResponse,
-  isJoinRoomResponse,
+  isJoinRoomSuccess,
+  isErrorResponse,
   isLeaveRoomResponse,
   isSystemSetSession,
   RESPONSE_TYPES,
@@ -31,6 +32,7 @@ export class NetworkClient {
   private serverUrl: string = 'ws://localhost:3033/ws';
   private clientId: string = '';
   private playerName: string = '';
+  private pendingJoinRoomId: string | null = null;
 
   constructor(appState: AppStateManager) {
     this.appState = appState;
@@ -80,7 +82,7 @@ export class NetworkClient {
         break;
       case 'join_room':
         if (request.payload) {
-          this.joinRoom(request.payload.room_id, request.payload.client_id, request.payload.name);
+          this.joinRoom(request.payload.room_id);
         }
         break;
       case 'leave_room':
@@ -122,9 +124,8 @@ export class NetworkClient {
       }
 
       this.ws = new WebSocket(wsUrl);
-      this.setupWebSocketHandlers();
 
-      // Wait for connection to be established
+      // Wait for connection to be established first
       await new Promise<void>((resolve, reject) => {
         const timeout = setTimeout(() => {
           reject(new Error('Connection timeout'));
@@ -132,6 +133,7 @@ export class NetworkClient {
 
         this.ws!.onopen = () => {
           clearTimeout(timeout);
+          console.log('[NetworkClient] WebSocket connection opened (Promise resolved)');
           resolve();
         };
 
@@ -140,6 +142,19 @@ export class NetworkClient {
           reject(error);
         };
       });
+
+      // Now setup permanent handlers (connection is already open)
+      this.setupWebSocketHandlers();
+
+      // Manually trigger the onopen logic since connection is already established
+      console.log('WebSocket connected successfully');
+      this.reconnectAttempts = 0;
+      this.isReconnecting = false;
+
+      gameState.setCurrentPlayerID(this.clientId);
+      gameState.updateDebugInfo({ connectionStatus: true });
+
+      this.appState.handleConnectionSuccess();
 
     } catch (error) {
       console.error('Failed to connect to server:', error);
@@ -219,9 +234,15 @@ export class NetworkClient {
         }
         break;
 
-      case RESPONSE_TYPES.JOIN_ROOM_RESPONSE:
-        if (isJoinRoomResponse(envelope)) {
-          this.handleJoinRoomResponse(envelope.payload);
+      case RESPONSE_TYPES.JOIN_ROOM_SUCCESS:
+        if (isJoinRoomSuccess(envelope)) {
+          this.handleJoinRoomSuccess();
+        }
+        break;
+
+      case RESPONSE_TYPES.ERROR:
+        if (isErrorResponse(envelope)) {
+          this.handleErrorResponse(envelope.payload);
         }
         break;
 
@@ -259,36 +280,37 @@ export class NetworkClient {
   }
 
   private handleRoomListResponse(payload: RoomListResponsePayload): void {
-    console.log('Received room list:', payload.rooms);
-    
-    const rooms: RoomInfo[] = payload.rooms.map(room => ({
-      id: room.id,
-      name: room.name,
-      playerCount: room.player_count,
-      maxPlayers: room.max_players,
-      status: room.status,
-      gameMode: room.game_mode
-    }));
+    console.log('[NetworkClient] handleRoomListResponse called');
+    console.log('[NetworkClient] Payload:', payload);
+    console.log('[NetworkClient] Received room list with', payload.rooms ? payload.rooms.length : 0, 'rooms:', payload.rooms);
 
-    this.appState.updateRoomList(rooms);
+    this.appState.updateRoomList(payload.rooms);
+    console.log('[NetworkClient] Room list passed to AppState');
   }
 
-  private handleJoinRoomResponse(payload: JoinRoomResponsePayload): void {
-    console.log('Received join room response:', payload);
+  private handleJoinRoomSuccess(): void {
+    console.log('Successfully joined room');
 
-    if (payload.success && payload.room_info) {
-      const roomInfo: RoomInfo = {
-        id: payload.room_info.id,
-        name: payload.room_info.name,
-        playerCount: payload.room_info.player_count,
-        maxPlayers: payload.room_info.max_players,
-        status: payload.room_info.status,
-        gameMode: payload.room_info.game_mode
-      };
-      
-      this.appState.handleJoinRoomSuccess(roomInfo);
+    if (!this.pendingJoinRoomId) {
+      console.error('No pending room join found');
+      this.appState.handleJoinRoomFailure('No pending room join');
+      return;
+    }
+
+    this.appState.handleJoinRoomSuccessByRoomId(this.pendingJoinRoomId);
+    this.pendingJoinRoomId = null;
+  }
+
+  private handleErrorResponse(payload: JoinRoomResponsePayload): void {
+    console.log('Received error response:', payload);
+
+    const errorMessage = payload.message || 'An error occurred';
+
+    if (this.pendingJoinRoomId) {
+      this.appState.handleJoinRoomFailure(errorMessage);
+      this.pendingJoinRoomId = null;
     } else {
-      this.appState.handleJoinRoomFailure(payload.message || 'Failed to join room');
+      console.warn('Error response received but no pending operation:', errorMessage);
     }
   }
 
@@ -355,24 +377,35 @@ export class NetworkClient {
 
   // Public methods for sending messages
   requestRoomList(): void {
+    console.log('[NetworkClient] requestRoomList called');
+    console.log('[NetworkClient] Connection status:', this.isConnected());
+    console.log('[NetworkClient] WebSocket state:', this.ws ? this.ws.readyState : 'null');
+
     if (!this.isConnected()) {
-      console.warn('Cannot request room list: not connected');
+      console.warn('[NetworkClient] Cannot request room list: not connected');
       return;
     }
 
     const message = createRoomListRequest();
+    console.log('[NetworkClient] Created room list request message:', message);
     this.sendMessage(message);
+    console.log('[NetworkClient] Room list request sent');
   }
 
-  joinRoom(roomId: string, clientId: string, name: string): void {
+  joinRoom(roomId: string): void {
+    console.log('[NetworkClient] joinRoom called with roomId:', roomId);
+
     if (!this.isConnected()) {
       console.warn('Cannot join room: not connected');
       this.appState.handleJoinRoomFailure('Not connected to server');
       return;
     }
 
-    const message = createJoinRoomRequest(roomId, clientId, name);
+    this.pendingJoinRoomId = roomId;
+    const message = createJoinRoomRequest(roomId);
+    console.log('[NetworkClient] Created join room request:', JSON.stringify(message, null, 2));
     this.sendMessage(message);
+    console.log('[NetworkClient] Join room request sent');
   }
 
   leaveRoom(): void {

@@ -5,7 +5,7 @@ export class LobbyScreen implements UIScreen {
   private config: LobbyScreenConfig;
   private container: HTMLElement;
   private visible: boolean = false;
-  
+
   // UI elements
   private titleElement: HTMLElement | null = null;
   private roomListContainer: HTMLElement | null = null;
@@ -13,14 +13,14 @@ export class LobbyScreen implements UIScreen {
   private createRoomButton: HTMLButtonElement | null = null;
   private errorContainer: HTMLElement | null = null;
   private loadingIndicator: HTMLElement | null = null;
-  
+
   // Room management
   private roomListItems: Map<string, RoomListItem> = new Map();
 
   constructor(config: LobbyScreenConfig) {
     this.config = config;
     this.container = config.container;
-    
+
     this.createUI();
     this.setupEventListeners();
   }
@@ -148,14 +148,14 @@ export class LobbyScreen implements UIScreen {
     // Create room items
     rooms.forEach(room => {
       const roomItem = this.createRoomListItem(room);
-      this.roomListItems.set(room.id, roomItem);
+      this.roomListItems.set(room.room_id, roomItem);
       this.roomListContainer!.appendChild(roomItem.element);
     });
   }
 
   private createRoomListItem(room: RoomInfo): RoomListItem {
     const element = document.createElement('div');
-    element.className = `room-item room-${room.status}`;
+    element.className = 'room-item';
 
     // Room info section
     const infoSection = document.createElement('div');
@@ -163,21 +163,18 @@ export class LobbyScreen implements UIScreen {
 
     const nameElement = document.createElement('div');
     nameElement.className = 'room-name';
-    nameElement.textContent = room.name;
+    nameElement.textContent = room.name || room.room_id;
 
     const detailsElement = document.createElement('div');
     detailsElement.className = 'room-details';
-    detailsElement.innerHTML = `
-      <span class="player-count">${room.playerCount}/${room.maxPlayers} players</span>
-      <span class="room-status status-${room.status}">${room.status}</span>
-    `;
 
-    if (room.gameMode) {
-      const gameModeElement = document.createElement('span');
-      gameModeElement.className = 'game-mode';
-      gameModeElement.textContent = room.gameMode;
-      detailsElement.appendChild(gameModeElement);
-    }
+    const playerCountText = room.max_players > 0
+      ? `${room.player_count}/${room.max_players} players`
+      : `${room.player_count} players`;
+
+    detailsElement.innerHTML = `
+      <span class="player-count">${playerCountText}</span>
+    `;
 
     infoSection.appendChild(nameElement);
     infoSection.appendChild(detailsElement);
@@ -189,17 +186,9 @@ export class LobbyScreen implements UIScreen {
     const joinButton = document.createElement('button');
     joinButton.className = 'btn btn-join';
     joinButton.textContent = 'Join';
-    joinButton.disabled = room.status === 'full';
-
-    if (room.status === 'full') {
-      joinButton.textContent = 'Full';
-      joinButton.className += ' btn-disabled';
-    }
 
     joinButton.addEventListener('click', () => {
-      if (room.status !== 'full') {
-        this.config.onJoinRoom(room.id);
-      }
+        this.config.onJoinRoom(room.room_id);
     });
 
     actionsSection.appendChild(joinButton);
@@ -220,7 +209,7 @@ export class LobbyScreen implements UIScreen {
       this.errorContainer.textContent = message;
       this.errorContainer.classList.remove('hidden');
       console.log('Lobby error shown:', message);
-      
+
       // Auto-hide error after 5 seconds
       setTimeout(() => {
         this.clearError();
@@ -248,14 +237,14 @@ export class LobbyScreen implements UIScreen {
     if (this.refreshButton) {
       this.refreshButton.disabled = isLoading;
     }
-    
+
     if (this.createRoomButton) {
       this.createRoomButton.disabled = isLoading;
     }
 
     // Disable all join buttons while loading
     this.roomListItems.forEach(item => {
-      item.joinButton.disabled = isLoading || item.room.status === 'full';
+      // item.joinButton.disabled = isLoading || item.room.status === 'full';
     });
   }
 
@@ -264,7 +253,7 @@ export class LobbyScreen implements UIScreen {
     if (this.refreshButton) {
       this.refreshButton.removeEventListener('click', () => {});
     }
-    
+
     if (this.createRoomButton) {
       this.createRoomButton.removeEventListener('click', () => {});
     }
@@ -277,7 +266,7 @@ export class LobbyScreen implements UIScreen {
 
     // Clear container
     this.container.innerHTML = '';
-    
+
     console.log('Lobby screen destroyed');
   }
 }

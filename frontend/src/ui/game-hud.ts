@@ -156,19 +156,12 @@ export class GameHUD implements UIScreen {
     this.roomInfoPanel.innerHTML = `
       <div class="room-info-header">
         <h3 class="room-name">${roomInfo.name}</h3>
-        <span class="room-status status-${roomInfo.status}">${roomInfo.status}</span>
       </div>
       <div class="room-details">
         <div class="detail-item">
           <span class="label">Players:</span>
-          <span class="value">${roomInfo.playerCount}/${roomInfo.maxPlayers}</span>
+          <span class="value">${roomInfo.player_count}${roomInfo.max_players > 0 ? `/${roomInfo.max_players}` : ''}</span>
         </div>
-        ${roomInfo.gameMode ? `
-          <div class="detail-item">
-            <span class="label">Mode:</span>
-            <span class="value">${roomInfo.gameMode}</span>
-          </div>
-        ` : ''}
       </div>
     `;
   }

@@ -61,7 +61,9 @@ func (h *Hub) hubLoop() error {
 				for roomID, room := range h.rooms {
 					rooms = append(rooms, ports.RoomInfo{
 						RoomID:      roomID,
+						Name:        room.Name(),
 						PlayerCount: room.PlayerCount(),
+						MaxPlayers:  room.MaxPlayers(),
 					})
 				}
 
@@ -78,7 +80,7 @@ func (h *Hub) hubLoop() error {
 			case ports.RequestJoinEnvelope:
 				clientID := cmd.ClientID
 
-				_, valid := cmd.ParsedPayload.(ports.RequestJoinPayload)
+				_, valid := cmd.ParsedPayload.(*ports.RequestJoinPayload)
 				if !valid {
 					log.Printf("Invalid join payload from client %s", clientID)
 					continue

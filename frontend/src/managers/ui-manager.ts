@@ -154,12 +154,8 @@ export class UIManager {
   // Event handlers
   private handleJoinRoom(roomId: string): void {
     console.log(`UI: Join room requested: ${roomId}`);
-    
-    // Get client info (these would normally come from user settings/session)
-    const clientId = this.generateClientId();
-    const playerName = this.getPlayerName();
-    
-    this.appState.requestJoinRoom(roomId, clientId, playerName);
+
+    this.appState.requestJoinRoom(roomId);
   }
 
   private handleRefreshRooms(): void {

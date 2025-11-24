@@ -179,6 +179,19 @@ func (c *websocketClient) IsClosed() bool {
 	return c.closed
 }
 
+func (c *websocketClient) getPayloadStruct(envelopeType ports.RequestEnvelopeType) (any, error) {
+	switch envelopeType {
+	case ports.PlayerInputEnvelope:
+		return &ports.PlayerInput{}, nil
+	case ports.ListRoomsEnvelope:
+		return &ports.ListRoomsPayload{}, nil
+	case ports.RequestJoinEnvelope:
+		return &ports.RequestJoinPayload{}, nil
+	default:
+		return nil, fmt.Errorf("unknown envelope type: %s", envelopeType)
+	}
+}
+
 func (c *websocketClient) readPump() {
 	for {
 		var msg ports.RequestEnvelope
@@ -200,14 +213,14 @@ func (c *websocketClient) readPump() {
 			return
 		}
 
-		parsed, err := ports.GetPayloadStruct(msg.EnvelopeType)
+		parsed, err := c.getPayloadStruct(msg.EnvelopeType)
 		if err != nil {
 			log.Printf("Warning: Unknown envelope type %s from client %s", msg.EnvelopeType, c.id)
 			continue // Skip unknown message types for temporary, I am not sure if this is good idea
 		}
 
 		if parsed != nil {
-			if errParse := c.codec.Decode(msg.Payload, &parsed); errParse != nil {
+			if errParse := c.codec.Decode(msg.Payload, parsed); errParse != nil {
 				select {
 				case c.errCh <- fmt.Errorf("readPump payload parsing error: %w", errParse):
 				default:

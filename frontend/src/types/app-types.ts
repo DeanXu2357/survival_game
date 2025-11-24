@@ -7,12 +7,10 @@ export enum AppState {
 }
 
 export interface RoomInfo {
-  id: string;
+  room_id: string;
   name: string;
-  playerCount: number;
-  maxPlayers: number;
-  status: 'waiting' | 'playing' | 'full';
-  gameMode?: string;
+  player_count: number;
+  max_players: number;
 }
 
 export interface RoomListResponse {
@@ -21,8 +19,6 @@ export interface RoomListResponse {
 
 export interface JoinRoomRequest {
   room_id: string;
-  client_id: string;
-  name: string;
 }
 
 export interface JoinRoomResponse {

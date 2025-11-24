@@ -1,3 +1,7 @@
+console.log('====================================');
+console.log('main.ts is loading...');
+console.log('====================================');
+
 import './style.css';
 import { AppStateManager } from './managers/app-state';
 import { UIManager } from './managers/ui-manager';
@@ -6,6 +10,10 @@ import { NetworkClient } from './network/client';
 import { InputManager } from './input-manager';
 import { RendererType } from './types/renderer-types';
 import { AppState } from './types/app-types';
+
+console.log('====================================');
+console.log('All imports loaded successfully');
+console.log('====================================');
 
 class Application {
   private appState: AppStateManager;

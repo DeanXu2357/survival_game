@@ -102,66 +102,86 @@ export class AppStateManager {
   }
 
   requestRoomList(): void {
+    console.log('[AppState] requestRoomList called, currentState:', this.currentState);
+    console.log('[AppState] Number of network callbacks:', this.networkRequestCallbacks.length);
+
     if (this.currentState === AppState.LOBBY) {
       this.setState(this.currentState, { isLoading: true });
     }
-    
-    this.networkRequestCallbacks.forEach(callback => {
+
+    this.networkRequestCallbacks.forEach((callback, index) => {
+      console.log(`[AppState] Calling network callback ${index} with room_list request`);
       callback({ type: 'room_list' });
     });
+
+    console.log('[AppState] requestRoomList completed');
   }
 
   updateRoomList(rooms: RoomInfo[]): void {
-    this.setState(this.currentState, { 
-      rooms: rooms, 
-      isLoading: false, 
-      errorMessage: null 
+    console.log('[AppState] updateRoomList called with', rooms.length, 'rooms:', rooms);
+
+    this.setState(this.currentState, {
+      rooms: rooms,
+      isLoading: false,
+      errorMessage: null
     });
+
+    console.log('[AppState] Room list updated in state');
   }
 
-  requestJoinRoom(roomId: string, clientId: string, playerName: string): void {
-    const room = this.data.rooms.find(r => r.id === roomId);
+  requestJoinRoom(roomId: string): void {
+    const room = this.data.rooms.find(r => r.room_id === roomId);
     if (!room) {
       this.handleError('Room not found');
       return;
     }
 
-    if (room.status === 'full') {
+    const isFull = room.max_players > 0 && room.player_count >= room.max_players;
+    if (isFull) {
       this.handleError('Room is full');
       return;
     }
 
-    this.setState(AppState.JOINING, { 
-      isLoading: true, 
-      errorMessage: null 
+    this.setState(AppState.JOINING, {
+      isLoading: true,
+      errorMessage: null
     });
 
     const joinRequest: JoinRoomRequest = {
-      room_id: roomId,
-      client_id: clientId,
-      name: playerName
+      room_id: roomId
     };
 
     this.networkRequestCallbacks.forEach(callback => {
-      callback({ 
-        type: 'join_room', 
-        payload: joinRequest 
+      callback({
+        type: 'join_room',
+        payload: joinRequest
       });
     });
   }
 
+  handleJoinRoomSuccessByRoomId(roomId: string): void {
+    const room = this.data.rooms.find(r => r.room_id === roomId);
+
+    if (!room) {
+      this.handleJoinRoomFailure(`Room ${roomId} not found in local cache`);
+      return;
+    }
+
+    this.handleJoinRoomSuccess(room);
+  }
+
   handleJoinRoomSuccess(roomInfo: RoomInfo): void {
-    this.setState(AppState.IN_GAME, { 
-      currentRoom: roomInfo, 
-      isLoading: false, 
-      errorMessage: null 
+    this.setState(AppState.IN_GAME, {
+      currentRoom: roomInfo,
+      isLoading: false,
+      errorMessage: null
     });
   }
 
   handleJoinRoomFailure(error: string): void {
-    this.setState(AppState.LOBBY, { 
-      isLoading: false, 
-      errorMessage: error 
+    this.setState(AppState.LOBBY, {
+      isLoading: false,
+      errorMessage: error
     });
   }
 
