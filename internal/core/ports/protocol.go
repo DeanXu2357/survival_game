@@ -48,8 +48,8 @@ type RawConnection interface {
 }
 
 type Command struct {
-	ClientID string
-	Input    PlayerInput
+	SessionID string
+	Input     PlayerInput
 }
 
 type RequestCommand struct {

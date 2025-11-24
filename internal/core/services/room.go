@@ -74,7 +74,7 @@ func (r *Room) SendCommand(cmd ports.Command) {
 	select {
 	case r.commands <- cmd:
 	default:
-		log.Printf("Room %s command channel full, dropping command from client %s", r.ID, cmd.ClientID)
+		log.Printf("Room %s command channel full, dropping command from client %s", r.ID, cmd.SessionID)
 	}
 }
 
@@ -135,9 +135,9 @@ func (r *Room) Run() {
 	for {
 		select {
 		case cmd := <-r.commands:
-			playerID, ok := r.players.PlayerID(cmd.ClientID)
+			playerID, ok := r.players.PlayerID(cmd.SessionID)
 			if !ok {
-				log.Printf("Warning: No player ID found for client %s", cmd.ClientID)
+				log.Printf("Warning: No player ID found for client %s", cmd.SessionID)
 				continue
 			}
 			currentInputs[playerID] = cmd.Input
@@ -198,7 +198,7 @@ func (r *Room) AddPlayer(client Client) error {
 }
 
 // SendStaticData sends static map data (walls, dimensions) to specific clients
-func (r *Room) SendStaticData(clientIDs []string) {
+func (r *Room) SendStaticData(sessionIDs []string) {
 	staticData := r.state.ToStaticData()
 
 	payloadBytes, err := json.Marshal(staticData)
@@ -212,7 +212,7 @@ func (r *Room) SendStaticData(clientIDs []string) {
 	}
 
 	r.outgoing <- UpdateMessage{
-		ToSessions: clientIDs,
+		ToSessions: sessionIDs,
 		Envelope:   envelope,
 	}
 }

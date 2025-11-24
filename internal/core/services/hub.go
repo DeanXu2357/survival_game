@@ -171,10 +171,12 @@ func (h *Hub) JoinRoom(clientID, roomID string) error {
 	}
 
 	if err := room.AddPlayer(client); err != nil {
-		room.SendStaticData([]string{clientID})
-		log.Printf("Client %s joined room %s", clientID, roomID)
-		return nil
+		return fmt.Errorf("failed to add player to room %s: %w", roomID, err)
 	}
+
+	// Send static data (map, walls, etc.) to the newly joined client
+	room.SendStaticData([]string{client.SessionID()})
+	log.Printf("Client %s (session: %s) joined room %s", clientID, client.SessionID(), roomID)
 
 	handler := func(cmd ports.RequestCommand) {
 		if cmd.EnvelopeType != ports.PlayerInputEnvelope {
@@ -183,15 +185,15 @@ func (h *Hub) JoinRoom(clientID, roomID string) error {
 		}
 
 		// TODO: Add handling logic for other EnvelopeTypes in future
-		input, valid := cmd.ParsedPayload.(ports.PlayerInput)
+		input, valid := cmd.ParsedPayload.(*ports.PlayerInput)
 		if !valid {
 			log.Printf("Invalid input payload from client %s", client.ID())
 			return
 		}
 
 		inputCmd := ports.Command{
-			ClientID: client.ID(),
-			Input:    input,
+			SessionID: client.SessionID(), // Use session ID to match PlayerRegistry
+			Input:     *input,
 		}
 
 		room.SendCommand(inputCmd)
@@ -222,7 +224,10 @@ func (h *Hub) DispatchConnection(ctx context.Context, conn ports.RawConnection, 
 	}
 
 	if err := client.Subscribe(func(cmd ports.RequestCommand) {
-		h.hubCommandCh <- cmd
+		// Only forward hub-level commands (not player_input, which is handled by room)
+		if cmd.EnvelopeType != ports.PlayerInputEnvelope {
+			h.hubCommandCh <- cmd
+		}
 	}); err != nil {
 		return fmt.Errorf("failed to subscribe to client %s: %w", clientID, err)
 	}
