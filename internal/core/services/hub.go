@@ -257,7 +257,7 @@ func (h *Hub) initializeDefaultGame() {
 				continue
 			}
 
-			if err := client.Send(context.Background(), ports.GameUpdateEnvelope, msg.Envelope); err != nil {
+			if err := client.Send(context.Background(), msg.Envelope.EnvelopeType, msg.Envelope.Payload); err != nil {
 				log.Printf("Failed to send message to client %s: %v", client.ID(), err)
 			}
 		}
