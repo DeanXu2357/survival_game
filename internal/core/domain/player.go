@@ -28,10 +28,10 @@ func (p *Player) Move(input *ports.PlayerInput, dt float64) vector.Vector2D {
 	movementVector := vector.Vector2D{X: 0, Y: 0}
 
 	if input.MoveUp {
-		movementVector.Y += 1
+		movementVector.Y -= 1
 	}
 	if input.MoveDown {
-		movementVector.Y -= 1
+		movementVector.Y += 1
 	}
 	if input.MoveLeft {
 		movementVector.X -= 1
