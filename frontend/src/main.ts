@@ -42,13 +42,13 @@ class Application {
     // Initialize render manager
     const gameScreen = document.getElementById('game-screen')!;
     const canvasContainer = gameScreen.querySelector('#game-canvas-container') as HTMLElement;
-    
+
     this.renderManager = new RenderManager({
       defaultRenderer: RendererType.PIXI_2D,
       fallbackRenderer: RendererType.PIXI_2D,
       container: canvasContainer,
-      width: 800,
-      height: 600
+      width: window.innerWidth,
+      height: window.innerHeight
     });
 
     this.setupApplicationFlow();
