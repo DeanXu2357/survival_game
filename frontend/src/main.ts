@@ -1,3 +1,7 @@
+console.log('====================================');
+console.log('main.ts is loading...');
+console.log('====================================');
+
 import './style.css';
 import { AppStateManager } from './managers/app-state';
 import { UIManager } from './managers/ui-manager';
@@ -6,6 +10,10 @@ import { NetworkClient } from './network/client';
 import { InputManager } from './input-manager';
 import { RendererType } from './types/renderer-types';
 import { AppState } from './types/app-types';
+
+console.log('====================================');
+console.log('All imports loaded successfully');
+console.log('====================================');
 
 class Application {
   private appState: AppStateManager;
@@ -34,13 +42,13 @@ class Application {
     // Initialize render manager
     const gameScreen = document.getElementById('game-screen')!;
     const canvasContainer = gameScreen.querySelector('#game-canvas-container') as HTMLElement;
-    
+
     this.renderManager = new RenderManager({
       defaultRenderer: RendererType.PIXI_2D,
       fallbackRenderer: RendererType.PIXI_2D,
       container: canvasContainer,
-      width: 800,
-      height: 600
+      width: window.innerWidth,
+      height: window.innerHeight
     });
 
     this.setupApplicationFlow();

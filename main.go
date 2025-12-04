@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"survival/internal/infrastructure/network/websocket"
+	"survival/internal/adapters/handler/websocket"
 )
 
 func main() {

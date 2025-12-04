@@ -24,32 +24,20 @@ export interface RoomListRequestPayload {
 
 export interface RoomListResponsePayload {
   rooms: Array<{
-    id: string;
+    room_id: string;
     name: string;
     player_count: number;
     max_players: number;
-    status: 'waiting' | 'playing' | 'full';
-    game_mode?: string;
   }>;
 }
 
 export interface JoinRoomRequestPayload {
   room_id: string;
-  client_id: string;
-  name: string;
 }
 
 export interface JoinRoomResponsePayload {
-  success: boolean;
-  message?: string;
-  room_info?: {
-    id: string;
-    name: string;
-    player_count: number;
-    max_players: number;
-    status: 'waiting' | 'playing' | 'full';
-    game_mode?: string;
-  };
+  code: number;
+  message: string;
 }
 
 export interface LeaveRoomRequestPayload {
@@ -64,8 +52,8 @@ export interface LeaveRoomResponsePayload {
 // Envelope type constants
 export const REQUEST_TYPES = {
   PLAYER_INPUT: 'player_input',
-  ROOM_LIST: 'room_list',
-  JOIN_ROOM: 'join_room',
+  ROOM_LIST: 'list_rooms',
+  JOIN_ROOM: 'request_join',
   LEAVE_ROOM: 'leave_room'
 } as const;
 
@@ -75,8 +63,9 @@ export const RESPONSE_TYPES = {
   SYSTEM_NOTIFY: 'system_notify',
   SYSTEM_SET_SESSION: 'system_set_session',
   ERROR_INVALID_SESSION: 'error_invalid_session',
-  ROOM_LIST_RESPONSE: 'room_list_response',
-  JOIN_ROOM_RESPONSE: 'join_room_response',
+  ERROR: 'error',
+  ROOM_LIST_RESPONSE: 'list_rooms_response',
+  JOIN_ROOM_SUCCESS: 'join_room_success',
   LEAVE_ROOM_RESPONSE: 'leave_room_response'
 } as const;
 
@@ -88,13 +77,11 @@ export function createRoomListRequest(): RequestEnvelope {
   };
 }
 
-export function createJoinRoomRequest(roomId: string, clientId: string, name: string): RequestEnvelope {
+export function createJoinRoomRequest(roomId: string): RequestEnvelope {
   return {
     envelope_type: REQUEST_TYPES.JOIN_ROOM,
     payload: {
-      room_id: roomId,
-      client_id: clientId,
-      name: name
+      room_id: roomId
     } as JoinRoomRequestPayload
   };
 }
@@ -120,8 +107,12 @@ export function isRoomListResponse(envelope: ResponseEnvelope): envelope is Resp
   return envelope.envelope_type === RESPONSE_TYPES.ROOM_LIST_RESPONSE;
 }
 
-export function isJoinRoomResponse(envelope: ResponseEnvelope): envelope is ResponseEnvelope & { payload: JoinRoomResponsePayload } {
-  return envelope.envelope_type === RESPONSE_TYPES.JOIN_ROOM_RESPONSE;
+export function isJoinRoomSuccess(envelope: ResponseEnvelope): envelope is ResponseEnvelope & { payload: JoinRoomResponsePayload } {
+  return envelope.envelope_type === RESPONSE_TYPES.JOIN_ROOM_SUCCESS;
+}
+
+export function isErrorResponse(envelope: ResponseEnvelope): envelope is ResponseEnvelope & { payload: JoinRoomResponsePayload } {
+  return envelope.envelope_type === RESPONSE_TYPES.ERROR;
 }
 
 export function isLeaveRoomResponse(envelope: ResponseEnvelope): envelope is ResponseEnvelope & { payload: LeaveRoomResponsePayload } {
