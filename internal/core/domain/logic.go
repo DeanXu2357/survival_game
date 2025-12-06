@@ -27,57 +27,69 @@ func (gl *Logic) Update(state *State, playerInputs map[string]ports.PlayerInput,
 		// OPTIMIZE: If user react moving sticky we can use Wall Sliding to make it more smooth
 		player := state.Players[playerID]
 
-		// Store old values for comparison
-		oldDirection := player.Direction
-		oldPosition := player.Position
+		handleMovement(state, player, input, dt)
 
-		// Handle rotation
-		player.UpdateRotation(&input, dt)
+		// TODO: handle interact with objects
+	}
 
-		// Handle movement
-		moveVector := player.Move(&input, dt)
-		desiredPosition := player.Position.Add(moveVector)
+	// TODO: handle shooting
 
-		// Movement processing (debug logs removed)
+	// TODO: handle vision
 
-		for i := 0; i < maxResolutionIteration; i++ {
-			collisionOccurred := false
+	// TODO: inform player about state changes
+}
 
-			// Query the spatial grid using the player's circular bounding box to retrieve potentially intersecting objects
-			nearObjects := state.ObjectGrid.NearbyPositions(
-				vector.Vector2D{max(0, desiredPosition.X-player.Radius), max(0, desiredPosition.Y-player.Radius)},
-				vector.Vector2D{max(0, desiredPosition.X-player.Radius), desiredPosition.Y + player.Radius},
-				vector.Vector2D{desiredPosition.X + player.Radius, max(0, desiredPosition.Y-player.Radius)},
-				vector.Vector2D{desiredPosition.X + player.Radius, desiredPosition.Y + player.Radius},
-			)
+func handleMovement(state *State, player *Player, input ports.PlayerInput, dt float64) {
+	// Store old values for comparison
+	oldDirection := player.Direction
+	oldPosition := player.Position
 
-			// Narrow Phase
-			for _, obj := range nearObjects {
-				if obj.IsRectangle() {
-					isCollisionOccurred, mtv := detectCircleAABBCollision(obj, desiredPosition, player.Radius, moveVector)
-					if isCollisionOccurred {
-						collisionOccurred = true
-						desiredPosition = desiredPosition.Add(mtv)
-					}
+	// Handle rotation
+	player.UpdateRotation(&input, dt)
+
+	// Handle movement
+	moveVector := player.Move(&input, dt)
+	desiredPosition := player.Position.Add(moveVector)
+
+	// Movement processing (debug logs removed)
+
+	for i := 0; i < maxResolutionIteration; i++ {
+		collisionOccurred := false
+
+		// Query the spatial grid using the player's circular bounding box to retrieve potentially intersecting objects
+		nearObjects := state.ObjectGrid.NearbyPositions(
+			vector.Vector2D{max(0, desiredPosition.X-player.Radius), max(0, desiredPosition.Y-player.Radius)},
+			vector.Vector2D{max(0, desiredPosition.X-player.Radius), desiredPosition.Y + player.Radius},
+			vector.Vector2D{desiredPosition.X + player.Radius, max(0, desiredPosition.Y-player.Radius)},
+			vector.Vector2D{desiredPosition.X + player.Radius, desiredPosition.Y + player.Radius},
+		)
+
+		// Narrow Phase
+		for _, obj := range nearObjects {
+			if obj.IsRectangle() {
+				isCollisionOccurred, mtv := detectCircleAABBCollision(obj, desiredPosition, player.Radius, moveVector)
+				if isCollisionOccurred {
+					collisionOccurred = true
+					desiredPosition = desiredPosition.Add(mtv)
 				}
 			}
-
-			if !collisionOccurred {
-				break
-			}
 		}
 
-		// DEBUG: Log the final desired position after collision resolution
-		// Position updated
-		if oldDirection != player.Direction {
-			log.Printf("Player %s rotated from %.2f to %.2f", player.ID, oldDirection, player.Direction)
+		if !collisionOccurred {
+			break
 		}
-		if oldPosition != desiredPosition {
-			log.Printf("Player %s moved from (%.2f, %.2f) to (%.2f, %.2f)", player.ID, oldPosition.X, oldPosition.Y, desiredPosition.X, desiredPosition.Y)
-		}
-
-		player.Position = desiredPosition
 	}
+
+	// DEBUG: Log the final desired position after collision resolution
+	// Position updated
+	if oldDirection != player.Direction {
+		log.Printf("Player %s rotated from %.2f to %.2f", player.ID, oldDirection, player.Direction)
+	}
+	if oldPosition != desiredPosition {
+		log.Printf("Player %s moved from (%.2f, %.2f) to (%.2f, %.2f)", player.ID, oldPosition.X, oldPosition.Y, desiredPosition.X, desiredPosition.Y)
+	}
+
+	player.Position = desiredPosition
 }
 
 func detectCircleAABBCollision(obj MapObject, desiredPosition vector.Vector2D, radius float64, moveVector vector.Vector2D) (bool, vector.Vector2D) {
