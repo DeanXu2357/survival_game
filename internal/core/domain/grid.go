@@ -4,9 +4,21 @@ import (
 	"survival/internal/core/domain/vector"
 )
 
+type Positionable interface {
+	Position() vector.Vector2D
+	ID() string
+}
+
+func NewGrid(cellSize float64) *Grid {
+	return &Grid{
+		CellSize: cellSize,
+		Cells:    make(map[GridCoord][]Positionable),
+	}
+}
+
 type Grid struct {
 	CellSize float64
-	Cells    map[GridCoord][]MapObject
+	Cells    map[GridCoord][]Positionable
 }
 
 func (g *Grid) getCoord(worldPos vector.Vector2D) GridCoord {
@@ -16,15 +28,15 @@ func (g *Grid) getCoord(worldPos vector.Vector2D) GridCoord {
 	}
 }
 
-func (g *Grid) AddObject(obj MapObject) {
+func (g *Grid) AddObject(obj Positionable) {
 	coord := g.getCoord(obj.Position())
 	if _, exists := g.Cells[coord]; !exists {
-		g.Cells[coord] = make([]MapObject, 0)
+		g.Cells[coord] = make([]Positionable, 0)
 	}
 	g.Cells[coord] = append(g.Cells[coord], obj)
 }
 
-func (g *Grid) RemoveObject(obj MapObject) {
+func (g *Grid) RemoveObject(obj Positionable) {
 	coord := g.getCoord(obj.Position())
 	if objects, exists := g.Cells[coord]; exists {
 		for i, o := range objects {
@@ -39,8 +51,8 @@ func (g *Grid) RemoveObject(obj MapObject) {
 	}
 }
 
-func (g *Grid) NearbyPositions(worldPos ...vector.Vector2D) []MapObject {
-	nearby := make([]MapObject, 0)
+func (g *Grid) NearbyPositions(worldPos ...vector.Vector2D) []Positionable {
+	nearby := make([]Positionable, 0)
 
 	// FIXME: This function should handle the positions crossing the grid boundaries
 	for _, pos := range worldPos {

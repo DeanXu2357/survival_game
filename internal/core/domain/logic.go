@@ -66,11 +66,13 @@ func handleMovement(state *State, player *Player, input ports.PlayerInput, dt fl
 
 		// Narrow Phase
 		for _, obj := range nearObjects {
-			if obj.IsRectangle() {
-				isCollisionOccurred, mtv := detectCircleAABBCollision(obj, desiredPosition, player.Radius, moveVector)
-				if isCollisionOccurred {
-					collisionOccurred = true
-					desiredPosition = desiredPosition.Add(mtv)
+			if mapObj, ok := obj.(MapObject); ok {
+				if mapObj.IsRectangle() {
+					isCollisionOccurred, mtv := detectCircleAABBCollision(mapObj, desiredPosition, player.Radius, moveVector)
+					if isCollisionOccurred {
+						collisionOccurred = true
+						desiredPosition = desiredPosition.Add(mtv)
+					}
 				}
 			}
 		}

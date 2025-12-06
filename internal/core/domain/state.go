@@ -23,10 +23,7 @@ func NewGameState() *State {
 		Walls:            make([]*Wall, 0),
 		Projectiles:      make([]*weapons.Projectile, 0),
 		allowToAddPlayer: true,
-		ObjectGrid: &Grid{
-			CellSize: 50.0,
-			Cells:    make(map[GridCoord][]MapObject),
-		},
+		ObjectGrid:       NewGrid(50.0),
 	}
 }
 
@@ -36,10 +33,7 @@ func NewGameStateFromMap(mapConfig *MapConfig) *State {
 		Walls:            make([]*Wall, 0),
 		Projectiles:      make([]*weapons.Projectile, 0),
 		allowToAddPlayer: true,
-		ObjectGrid: &Grid{
-			CellSize: mapConfig.GridSize,
-			Cells:    make(map[GridCoord][]MapObject),
-		},
+		ObjectGrid:       NewGrid(mapConfig.GridSize),
 	}
 
 	// Create walls from map configuration
