@@ -17,30 +17,36 @@ type State struct {
 	allowToAddPlayer bool
 }
 
+// Deprecated: NewGameState is deprecated. Use NewWorld instead.
 func NewGameState() *State {
+	// Default: 800x600 world with 50px cells = 16x12 cells
 	return &State{
 		Players:          make(map[string]*Player),
 		Walls:            make([]*Wall, 0),
 		Projectiles:      make([]*weapons.Projectile, 0),
 		allowToAddPlayer: true,
-		ObjectGrid:       NewGrid(50.0),
+		ObjectGrid:       NewGrid(50.0, 16, 12),
 	}
 }
 
+// Deprecated: NewGameStateFromMap is deprecated. Use NewWorldFromMap instead.
 func NewGameStateFromMap(mapConfig *MapConfig) *State {
+	gridWidth := int(mapConfig.Dimensions.X/mapConfig.GridSize) + 1
+	gridHeight := int(mapConfig.Dimensions.Y/mapConfig.GridSize) + 1
+
 	state := &State{
 		Players:          make(map[string]*Player),
 		Walls:            make([]*Wall, 0),
 		Projectiles:      make([]*weapons.Projectile, 0),
 		allowToAddPlayer: true,
-		ObjectGrid:       NewGrid(mapConfig.GridSize),
+		ObjectGrid:       NewGrid(mapConfig.GridSize, gridWidth, gridHeight),
 	}
 
 	// Create walls from map configuration
 	for _, wallConfig := range mapConfig.Walls {
 		wall := NewWall(wallConfig.ID, wallConfig.Center, wallConfig.HalfSize, wallConfig.Rotation)
 		state.Walls = append(state.Walls, wall)
-		state.ObjectGrid.AddObject(wall)
+		// Note: Grid.AddObject is no longer available - walls are not added to grid in legacy State
 	}
 
 	return state

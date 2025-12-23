@@ -2,6 +2,7 @@ package domain
 
 import (
 	"log"
+	"math"
 
 	"survival/internal/core/domain/vector"
 	"survival/internal/core/ports"
@@ -22,12 +23,15 @@ func NewGameLogic() *Logic {
 	return &Logic{}
 }
 
-func (gl *Logic) Update(state *State, playerInputs map[string]ports.PlayerInput, dt float64) {
+// Update processes all player inputs and updates the world state.
+func (gl *Logic) Update(world *World, playerInputs map[string]ports.PlayerInput, dt float64) {
 	for playerID, input := range playerInputs {
-		// OPTIMIZE: If user react moving sticky we can use Wall Sliding to make it more smooth
-		player := state.Players[playerID]
+		entityID, ok := world.GetEntityByPlayerID(playerID)
+		if !ok {
+			continue
+		}
 
-		handleMovement(state, player, input, dt)
+		gl.handlePlayerMovement(world, entityID, input, dt)
 
 		// TODO: handle interact with objects
 	}
@@ -39,40 +43,72 @@ func (gl *Logic) Update(state *State, playerInputs map[string]ports.PlayerInput,
 	// TODO: inform player about state changes
 }
 
-func handleMovement(state *State, player *Player, input ports.PlayerInput, dt float64) {
+func (gl *Logic) handlePlayerMovement(world *World, entityID EntityID, input ports.PlayerInput, dt float64) {
+	// Get required components
+	pos := world.Positions().Get(entityID)
+	dir := world.Directions().Get(entityID)
+	stats := world.PlayerStatsManager().Get(entityID)
+	collider := world.CircleColliders().Get(entityID)
+
+	if pos == nil || dir == nil || stats == nil || collider == nil {
+		return
+	}
+
 	// Store old values for comparison
-	oldDirection := player.Direction
-	oldPosition := player.Position
+	oldDirection := dir.Angle
+	oldPosition := Position{X: pos.X, Y: pos.Y}
 
 	// Handle rotation
-	player.UpdateRotation(&input, dt)
+	if input.RotateLeft {
+		dir.Angle -= stats.RotationSpeed * dt
+	}
+	if input.RotateRight {
+		dir.Angle += stats.RotationSpeed * dt
+	}
 
-	// Handle movement
-	moveVector := player.Move(&input, dt)
-	desiredPosition := player.Position.Add(moveVector)
+	// Calculate movement vector
+	moveVector := calculateMoveVector(input, stats.MovementSpeed, dt)
+	desiredX := pos.X + moveVector.X
+	desiredY := pos.Y + moveVector.Y
 
-	// Movement processing (debug logs removed)
-
+	// Collision resolution loop
 	for i := 0; i < maxResolutionIteration; i++ {
 		collisionOccurred := false
 
-		// Query the spatial grid using the player's circular bounding box to retrieve potentially intersecting objects
-		nearObjects := state.ObjectGrid.NearbyPositions(
-			vector.Vector2D{max(0, desiredPosition.X-player.Radius), max(0, desiredPosition.Y-player.Radius)},
-			vector.Vector2D{max(0, desiredPosition.X-player.Radius), desiredPosition.Y + player.Radius},
-			vector.Vector2D{desiredPosition.X + player.Radius, max(0, desiredPosition.Y-player.Radius)},
-			vector.Vector2D{desiredPosition.X + player.Radius, desiredPosition.Y + player.Radius},
-		)
+		// Query nearby static entities using spatial grid
+		searchBounds := Bounds{
+			MinX: desiredX - collider.Radius,
+			MinY: desiredY - collider.Radius,
+			MaxX: desiredX + collider.Radius,
+			MaxY: desiredY + collider.Radius,
+		}
 
-		// Narrow Phase
-		for _, obj := range nearObjects {
-			if mapObj, ok := obj.(MapObject); ok {
-				if mapObj.IsRectangle() {
-					isCollisionOccurred, mtv := detectCircleAABBCollision(mapObj, desiredPosition, player.Radius, moveVector)
-					if isCollisionOccurred {
-						collisionOccurred = true
-						desiredPosition = desiredPosition.Add(mtv)
-					}
+		for _, cell := range world.Grid().CellsInBounds(searchBounds) {
+			for _, entry := range cell.entries {
+				if !entry.Layer.Has(LayerStatic) {
+					continue
+				}
+
+				// Get box collider for static entity
+				box := world.BoxColliders().Get(entry.EntityID)
+				staticPos := world.Positions().Get(entry.EntityID)
+				if box == nil || staticPos == nil {
+					continue
+				}
+
+				// Check circle-AABB collision
+				isCollision, mtv := detectCircleBoxCollision(
+					Position{X: desiredX, Y: desiredY},
+					collider.Radius,
+					*staticPos,
+					*box,
+					moveVector,
+				)
+
+				if isCollision {
+					collisionOccurred = true
+					desiredX += mtv.X
+					desiredY += mtv.Y
 				}
 			}
 		}
@@ -82,43 +118,81 @@ func handleMovement(state *State, player *Player, input ports.PlayerInput, dt fl
 		}
 	}
 
-	// DEBUG: Log the final desired position after collision resolution
-	// Position updated
-	if oldDirection != player.Direction {
-		log.Printf("Player %s rotated from %.2f to %.2f", player.ID, oldDirection, player.Direction)
-	}
-	if oldPosition != desiredPosition {
-		log.Printf("Player %s moved from (%.2f, %.2f) to (%.2f, %.2f)", player.ID, oldPosition.X, oldPosition.Y, desiredPosition.X, desiredPosition.Y)
+	// Update position if changed
+	if oldPosition.X != desiredX || oldPosition.Y != desiredY {
+		log.Printf("Entity %d moved from (%.2f, %.2f) to (%.2f, %.2f)",
+			entityID, oldPosition.X, oldPosition.Y, desiredX, desiredY)
+
+		// Update grid position
+		world.UpdateEntityGridPosition(entityID, Position{X: desiredX, Y: desiredY}, collider.Radius, LayerPlayer)
+
+		pos.X = desiredX
+		pos.Y = desiredY
 	}
 
-	player.Position = desiredPosition
+	if oldDirection != dir.Angle {
+		log.Printf("Entity %d rotated from %.2f to %.2f", entityID, oldDirection, dir.Angle)
+	}
 }
 
-func detectCircleAABBCollision(obj MapObject, desiredPosition vector.Vector2D, radius float64, moveVector vector.Vector2D) (bool, vector.Vector2D) {
-	boundingMin, boundingMax := obj.BoundingBox()
+func calculateMoveVector(input ports.PlayerInput, speed, dt float64) vector.Vector2D {
+	var moveX, moveY float64
 
-	closestPoint := vector.Vector2D{
-		X: max(boundingMin.X, min(desiredPosition.X, boundingMax.X)),
-		Y: max(boundingMin.Y, min(desiredPosition.Y, boundingMax.Y)),
+	if input.MoveUp {
+		moveY -= 1
+	}
+	if input.MoveDown {
+		moveY += 1
+	}
+	if input.MoveLeft {
+		moveX -= 1
+	}
+	if input.MoveRight {
+		moveX += 1
 	}
 
-	vector2Center := desiredPosition.Sub(closestPoint)
+	v := vector.Vector2D{X: moveX, Y: moveY}
+	return v.Normalize().Scale(speed * dt)
+}
 
-	distanceSquared := vector2Center.X*vector2Center.X + vector2Center.Y*vector2Center.Y
+func detectCircleBoxCollision(circlePos Position, radius float64, boxPos Position, box BoxCollider, moveVector vector.Vector2D) (bool, vector.Vector2D) {
+	// Calculate AABB bounds for potentially rotated box
+	cos := math.Cos(box.Rotation)
+	sin := math.Sin(box.Rotation)
 
-	if distanceSquared < EPSILON {
-		// this for temporary fix for zero distance
-		// it will return a small movement vector to avoid infinite loop
-		// in fact I should implement a wall-sliding algorithm here, but I still study it.
+	extentX := math.Abs(box.HalfWidth*cos) + math.Abs(box.HalfHeight*sin)
+	extentY := math.Abs(box.HalfWidth*sin) + math.Abs(box.HalfHeight*cos)
+
+	boundingMin := vector.Vector2D{X: boxPos.X - extentX, Y: boxPos.Y - extentY}
+	boundingMax := vector.Vector2D{X: boxPos.X + extentX, Y: boxPos.Y + extentY}
+
+	// Find closest point on AABB to circle center
+	closestX := math.Max(boundingMin.X, math.Min(circlePos.X, boundingMax.X))
+	closestY := math.Max(boundingMin.Y, math.Min(circlePos.Y, boundingMax.Y))
+
+	// Vector from closest point to circle center
+	vecX := circlePos.X - closestX
+	vecY := circlePos.Y - closestY
+
+	distSquared := vecX*vecX + vecY*vecY
+
+	if distSquared < EPSILON {
+		// Circle center is inside or very close to AABB
 		if moveVector.Magnitude() > EPSILON {
-			return true, moveVector.Normalize().Scale(-radius * 0.05)
+			mv := moveVector.Normalize().Scale(-radius * 0.05)
+			return true, mv
 		}
-		return true, vector.Vector2D{0, -1}.Scale(radius * 0.1)
+		return true, vector.Vector2D{X: 0, Y: -1}.Scale(radius * 0.1)
 	}
 
-	if distanceSquared < radius*radius { // is colliding
-		penetration := radius - desiredPosition.DistanceTo(closestPoint)
-		return true, vector2Center.Normalize().Scale(penetration)
+	if distSquared < radius*radius {
+		// Collision detected
+		dist := math.Sqrt(distSquared)
+		penetration := radius - dist
+		normX := vecX / dist
+		normY := vecY / dist
+		return true, vector.Vector2D{X: normX * penetration, Y: normY * penetration}
 	}
+
 	return false, vector.Vector2D{}
 }

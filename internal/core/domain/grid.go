@@ -11,8 +11,6 @@ type Grid struct {
 	cellSlice     []GridCell
 }
 
-type EntityID uint64
-
 type GridCell struct {
 	entries []GridEntry
 }
@@ -148,5 +146,20 @@ func FilterByLayer(cells iter.Seq[GridEntry], layer LayerMask) iter.Seq[GridEntr
 				}
 			}
 		}
+	}
+}
+
+// NewGrid creates a new spatial grid with the given cell size and dimensions.
+func NewGrid(cellSize float64, width, height int) *Grid {
+	totalCells := width * height
+	cellSlice := make([]GridCell, totalCells)
+	for i := range cellSlice {
+		cellSlice[i] = GridCell{entries: make([]GridEntry, 0, 4)}
+	}
+	return &Grid{
+		cellSize:  cellSize,
+		width:     width,
+		height:    height,
+		cellSlice: cellSlice,
 	}
 }

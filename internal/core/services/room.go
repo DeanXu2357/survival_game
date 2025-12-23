@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"survival/internal/core/domain"
+	"survival/internal/core/domain/vector"
 	"survival/internal/core/ports"
 	"survival/internal/utils"
 )
@@ -20,7 +21,7 @@ type UpdateMessage struct {
 type Room struct {
 	ID         string
 	mapConfig  *domain.MapConfig
-	state      *domain.State
+	world      *domain.World
 	logic      *domain.Logic
 	players    *domain.PlayerRegistry
 	subManager *Manager[UpdateMessage]
@@ -35,10 +36,11 @@ type Room struct {
 func NewRoom(ctx context.Context, id string) *Room {
 	roomCTX, cancel := context.WithCancel(ctx)
 
+	// Default grid: 800x600 world with 50px cells = 16x12 cells
 	return &Room{
 		ID:         id,
 		mapConfig:  nil, // No map configuration
-		state:      domain.NewGameState(),
+		world:      domain.NewWorld(50.0, 16, 12),
 		logic:      domain.NewGameLogic(),
 		players:    domain.NewPlayerRegistry(),
 		subManager: NewManager[UpdateMessage](utils.NewSequentialIDGenerator(fmt.Sprintf("room%s-sub-", id))),
@@ -57,7 +59,7 @@ func NewRoomWithMap(ctx context.Context, id string, mapConfig *domain.MapConfig)
 	return &Room{
 		ID:         id,
 		mapConfig:  mapConfig,
-		state:      domain.NewGameStateFromMap(mapConfig),
+		world:      domain.NewWorldFromMap(mapConfig),
 		logic:      domain.NewGameLogic(),
 		players:    domain.NewPlayerRegistry(),
 		subManager: NewManager[UpdateMessage](utils.NewSequentialIDGenerator(fmt.Sprintf("room%s-sub-", id))),
@@ -142,7 +144,7 @@ func (r *Room) Run() {
 			}
 			currentInputs[playerID] = cmd.Input
 		case <-ticker.C:
-			r.logic.Update(r.state, currentInputs, ports.DeltaTime)
+			r.logic.Update(r.world, currentInputs, ports.DeltaTime)
 			currentInputs = make(map[string]ports.PlayerInput) // Reset inputs after processing
 			r.broadcastGameUpdate()
 		case <-r.ctx.Done():
@@ -165,41 +167,42 @@ func (r *Room) Shutdown(ctx context.Context) error {
 
 // AddPlayer creates a new player or reconnects existing players and registers them to the room.
 func (r *Room) AddPlayer(client Client) error {
-	var player *domain.Player
-	var err error
-
 	sessionID := client.SessionID()
 	_, exist := r.players.PlayerID(sessionID)
 	if exist {
 		return nil
 	}
 
-	// Use spawn point if map is configured
+	// Determine spawn position
+	var position vector.Vector2D
 	if r.mapConfig != nil {
 		spawnPoint := r.mapConfig.GetRandomSpawnPoint()
 		if spawnPoint != nil {
-			player, err = r.state.NewPlayerAtPosition(spawnPoint.Position)
+			position = spawnPoint.Position
 		} else {
-			player, err = r.state.NewPlayer() // fallback to default position
+			position = vector.Vector2D{X: 400, Y: 300} // fallback to default position
 		}
 	} else {
-		player, err = r.state.NewPlayer()
+		position = vector.Vector2D{X: 400, Y: 300}
 	}
+
+	// Create player entity in ECS world
+	entityID, playerID, err := r.world.CreatePlayer(sessionID, position)
 	if err != nil {
 		return fmt.Errorf("failed to create new player: %w", err)
 	}
 
-	r.players.Register(client.SessionID(), player.ID)
+	r.players.Register(sessionID, playerID)
 
-	log.Printf("Player created and registered successfully - Client: %s, Player: %s, Position: %+v", client, player.ID, player.Position)
-	log.Printf("Total players in room: %d", len(r.state.Players))
+	log.Printf("Player created and registered successfully - Client: %s, Player: %s, Entity: %d, Position: %+v", client, playerID, entityID, position)
+	log.Printf("Total players in room: %d", r.world.PlayerCount())
 
 	return nil
 }
 
 // SendStaticData sends static map data (walls, dimensions) to specific clients
 func (r *Room) SendStaticData(sessionIDs []string) {
-	staticData := r.state.ToStaticData()
+	staticData := r.world.ToStaticData()
 
 	payloadBytes, err := json.Marshal(staticData)
 	if err != nil {
@@ -226,7 +229,7 @@ func (r *Room) RemovePlayer(clientID string) {
 }
 
 func (r *Room) broadcastGameUpdate() {
-	gameUpdate := r.state.ToClientState()
+	gameUpdate := r.world.ToClientState()
 
 	payloadBytes, err := json.Marshal(gameUpdate)
 	if err != nil {
@@ -247,7 +250,7 @@ func (r *Room) broadcastGameUpdate() {
 }
 
 func (r *Room) PlayerCount() int {
-	return len(r.state.Players)
+	return r.world.PlayerCount()
 }
 
 func (r *Room) Name() string {

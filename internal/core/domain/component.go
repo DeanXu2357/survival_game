@@ -20,10 +20,11 @@ func NewComponentManager[T any]() *ComponentManger[T] {
 }
 
 func (cm *ComponentManger[T]) Add(entityID EntityID, component T) bool {
-	if int(entityID) >= len(cm.EntityToIndex) {
-		newCap := int(entityID) * 2
-		if newCap < int(entityID)+1 {
-			newCap = int(entityID) + 1
+	idx := entityID.Index()
+	if idx >= len(cm.EntityToIndex) {
+		newCap := idx * 2
+		if newCap < idx+1 {
+			newCap = idx + 1
 		}
 		newSparse := make([]int, newCap)
 		copy(newSparse, cm.EntityToIndex)
@@ -33,42 +34,58 @@ func (cm *ComponentManger[T]) Add(entityID EntityID, component T) bool {
 		cm.EntityToIndex = newSparse
 	}
 
-	if cm.EntityToIndex[entityID] != -1 { // already has component
+	if cm.EntityToIndex[idx] != -1 { // already has component
 		return false
 	}
 
 	cm.data = append(cm.data, component)
 	cm.IndexToEntityID = append(cm.IndexToEntityID, entityID)
 
-	index := len(cm.data) - 1
-	cm.EntityToIndex[entityID] = index
+	dataIdx := len(cm.data) - 1
+	cm.EntityToIndex[idx] = dataIdx
 	return true
 }
 
 func (cm *ComponentManger[T]) Get(entityID EntityID) *T {
-	idx := cm.EntityToIndex[entityID]
-	if idx == -1 {
+	entityIdx := entityID.Index()
+	if entityIdx >= len(cm.EntityToIndex) {
 		return nil
 	}
-	return &cm.data[idx]
+	dataIdx := cm.EntityToIndex[entityIdx]
+	if dataIdx == -1 {
+		return nil
+	}
+	// Verify version matches to prevent accessing stale data
+	if cm.IndexToEntityID[dataIdx] != entityID {
+		return nil
+	}
+	return &cm.data[dataIdx]
 }
 
 func (cm *ComponentManger[T]) Remove(entityID EntityID) bool {
-	idx := cm.EntityToIndex[entityID]
-	if idx == -1 {
+	entityIdx := entityID.Index()
+	if entityIdx >= len(cm.EntityToIndex) {
+		return false
+	}
+	dataIdx := cm.EntityToIndex[entityIdx]
+	if dataIdx == -1 {
+		return false
+	}
+	// Verify version matches to prevent removing wrong entity's component
+	if cm.IndexToEntityID[dataIdx] != entityID {
 		return false
 	}
 
 	lastIndex := len(cm.data) - 1
-	if idx != lastIndex {
+	if dataIdx != lastIndex {
 		lastEntityID := cm.IndexToEntityID[lastIndex]
 
-		cm.data[idx] = cm.data[lastIndex]
-		cm.IndexToEntityID[idx] = lastEntityID
-		cm.EntityToIndex[lastEntityID] = idx
+		cm.data[dataIdx] = cm.data[lastIndex]
+		cm.IndexToEntityID[dataIdx] = lastEntityID
+		cm.EntityToIndex[lastEntityID.Index()] = dataIdx
 	}
 
-	cm.EntityToIndex[entityID] = -1
+	cm.EntityToIndex[entityIdx] = -1
 	cm.data = cm.data[:lastIndex]
 	cm.IndexToEntityID = cm.IndexToEntityID[:lastIndex]
 	return true
