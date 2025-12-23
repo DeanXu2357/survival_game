@@ -132,20 +132,20 @@ func (r *Room) Run() {
 	ticker := time.NewTicker(time.Second / ports.TargetTickRate)
 	defer ticker.Stop()
 
-	currentInputs := make(map[string]ports.PlayerInput)
+	currentInputs := make(map[domain.EntityID]ports.PlayerInput)
 
 	for {
 		select {
 		case cmd := <-r.commands:
-			playerID, ok := r.players.PlayerID(cmd.SessionID)
+			entityID, ok := r.players.EntityID(cmd.SessionID)
 			if !ok {
-				log.Printf("Warning: No player ID found for client %s", cmd.SessionID)
+				log.Printf("Warning: No entity ID found for client %s", cmd.SessionID)
 				continue
 			}
-			currentInputs[playerID] = cmd.Input
+			currentInputs[entityID] = cmd.Input
 		case <-ticker.C:
 			r.logic.Update(r.world, currentInputs, ports.DeltaTime)
-			currentInputs = make(map[string]ports.PlayerInput) // Reset inputs after processing
+			currentInputs = make(map[domain.EntityID]ports.PlayerInput) // Reset inputs after processing
 			r.broadcastGameUpdate()
 		case <-r.ctx.Done():
 			return
@@ -168,7 +168,7 @@ func (r *Room) Shutdown(ctx context.Context) error {
 // AddPlayer creates a new player or reconnects existing players and registers them to the room.
 func (r *Room) AddPlayer(client Client) error {
 	sessionID := client.SessionID()
-	_, exist := r.players.PlayerID(sessionID)
+	_, exist := r.players.EntityID(sessionID)
 	if exist {
 		return nil
 	}
@@ -187,14 +187,14 @@ func (r *Room) AddPlayer(client Client) error {
 	}
 
 	// Create player entity in ECS world
-	entityID, playerID, err := r.world.CreatePlayer(sessionID, position)
+	entityID, err := r.world.CreatePlayer(sessionID, position)
 	if err != nil {
 		return fmt.Errorf("failed to create new player: %w", err)
 	}
 
-	r.players.Register(sessionID, playerID)
+	r.players.Register(sessionID, entityID)
 
-	log.Printf("Player created and registered successfully - Client: %s, Player: %s, Entity: %d, Position: %+v", client, playerID, entityID, position)
+	log.Printf("Player created and registered - Session: %s, EntityID: %d, Position: %+v", sessionID, entityID, position)
 	log.Printf("Total players in room: %d", r.world.PlayerCount())
 
 	return nil
@@ -221,10 +221,11 @@ func (r *Room) SendStaticData(sessionIDs []string) {
 }
 
 // RemovePlayer removes a player from the game state and the registry.
-func (r *Room) RemovePlayer(clientID string) {
-	if playerID, ok := r.players.PlayerID(clientID); ok {
-		r.players.Unregister(clientID)
-		log.Printf("Player %s (Client %s) removed from room %s", playerID, clientID, r.ID)
+func (r *Room) RemovePlayer(sessionID string) {
+	if entityID, ok := r.players.EntityID(sessionID); ok {
+		r.world.RemovePlayer(entityID)
+		r.players.Unregister(sessionID)
+		log.Printf("Player EntityID %d (Session %s) removed from room %s", entityID, sessionID, r.ID)
 	}
 }
 

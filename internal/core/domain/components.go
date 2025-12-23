@@ -60,7 +60,6 @@ type PlayerStats struct {
 
 // PlayerIdentity links an entity to network session.
 type PlayerIdentity struct {
-	PlayerID  string // Legacy string ID for network protocol compatibility
 	SessionID string // WebSocket session ID
 }
 

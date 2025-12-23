@@ -24,13 +24,8 @@ func NewGameLogic() *Logic {
 }
 
 // Update processes all player inputs and updates the world state.
-func (gl *Logic) Update(world *World, playerInputs map[string]ports.PlayerInput, dt float64) {
-	for playerID, input := range playerInputs {
-		entityID, ok := world.GetEntityByPlayerID(playerID)
-		if !ok {
-			continue
-		}
-
+func (gl *Logic) Update(world *World, playerInputs map[EntityID]ports.PlayerInput, dt float64) {
+	for entityID, input := range playerInputs {
 		gl.handlePlayerMovement(world, entityID, input, dt)
 
 		// TODO: handle interact with objects

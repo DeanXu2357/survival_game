@@ -36,11 +36,6 @@ type World struct {
 
 	// Configuration
 	allowNewPlayers bool
-	playerCounter   int
-
-	// Index mappings for network protocol compatibility
-	playerIDToEntity map[string]EntityID
-	entityToPlayerID map[EntityID]string
 
 	// Map dimensions (for boundary checks)
 	mapWidth  float64
@@ -50,25 +45,22 @@ type World struct {
 // NewWorld creates a new ECS world with the given grid parameters.
 func NewWorld(gridCellSize float64, gridWidth, gridHeight int) *World {
 	return &World{
-		entities:         NewEntityManager(),
-		positions:        NewComponentManager[Position](),
-		velocities:       NewComponentManager[Velocity](),
-		directions:       NewComponentManager[Direction](),
-		circleColliders:  NewComponentManager[CircleCollider](),
-		boxColliders:     NewComponentManager[BoxCollider](),
-		playerStats:      NewComponentManager[PlayerStats](),
-		playerIdentity:   NewComponentManager[PlayerIdentity](),
-		gridCells:        NewComponentManager[GridCells](),
-		playerTags:       NewComponentManager[PlayerTag](),
-		staticTags:       NewComponentManager[StaticTag](),
-		projectileTags:   NewComponentManager[ProjectileTag](),
-		grid:             NewGrid(gridCellSize, gridWidth, gridHeight),
-		allowNewPlayers:  true,
-		playerCounter:    0,
-		playerIDToEntity: make(map[string]EntityID),
-		entityToPlayerID: make(map[EntityID]string),
-		mapWidth:         float64(gridWidth) * gridCellSize,
-		mapHeight:        float64(gridHeight) * gridCellSize,
+		entities:        NewEntityManager(),
+		positions:       NewComponentManager[Position](),
+		velocities:      NewComponentManager[Velocity](),
+		directions:      NewComponentManager[Direction](),
+		circleColliders: NewComponentManager[CircleCollider](),
+		boxColliders:    NewComponentManager[BoxCollider](),
+		playerStats:     NewComponentManager[PlayerStats](),
+		playerIdentity:  NewComponentManager[PlayerIdentity](),
+		gridCells:       NewComponentManager[GridCells](),
+		playerTags:      NewComponentManager[PlayerTag](),
+		staticTags:      NewComponentManager[StaticTag](),
+		projectileTags:  NewComponentManager[ProjectileTag](),
+		grid:            NewGrid(gridCellSize, gridWidth, gridHeight),
+		allowNewPlayers: true,
+		mapWidth:        float64(gridWidth) * gridCellSize,
+		mapHeight:       float64(gridHeight) * gridCellSize,
 	}
 }
 
@@ -78,25 +70,22 @@ func NewWorldFromMap(mapConfig *MapConfig) *World {
 	gridHeight := int(mapConfig.Dimensions.Y/mapConfig.GridSize) + 1
 
 	world := &World{
-		entities:         NewEntityManager(),
-		positions:        NewComponentManager[Position](),
-		velocities:       NewComponentManager[Velocity](),
-		directions:       NewComponentManager[Direction](),
-		circleColliders:  NewComponentManager[CircleCollider](),
-		boxColliders:     NewComponentManager[BoxCollider](),
-		playerStats:      NewComponentManager[PlayerStats](),
-		playerIdentity:   NewComponentManager[PlayerIdentity](),
-		gridCells:        NewComponentManager[GridCells](),
-		playerTags:       NewComponentManager[PlayerTag](),
-		staticTags:       NewComponentManager[StaticTag](),
-		projectileTags:   NewComponentManager[ProjectileTag](),
-		grid:             NewGrid(mapConfig.GridSize, gridWidth, gridHeight),
-		allowNewPlayers:  true,
-		playerCounter:    0,
-		playerIDToEntity: make(map[string]EntityID),
-		entityToPlayerID: make(map[EntityID]string),
-		mapWidth:         mapConfig.Dimensions.X,
-		mapHeight:        mapConfig.Dimensions.Y,
+		entities:        NewEntityManager(),
+		positions:       NewComponentManager[Position](),
+		velocities:      NewComponentManager[Velocity](),
+		directions:      NewComponentManager[Direction](),
+		circleColliders: NewComponentManager[CircleCollider](),
+		boxColliders:    NewComponentManager[BoxCollider](),
+		playerStats:     NewComponentManager[PlayerStats](),
+		playerIdentity:  NewComponentManager[PlayerIdentity](),
+		gridCells:       NewComponentManager[GridCells](),
+		playerTags:      NewComponentManager[PlayerTag](),
+		staticTags:      NewComponentManager[StaticTag](),
+		projectileTags:  NewComponentManager[ProjectileTag](),
+		grid:            NewGrid(mapConfig.GridSize, gridWidth, gridHeight),
+		allowNewPlayers: true,
+		mapWidth:        mapConfig.Dimensions.X,
+		mapHeight:       mapConfig.Dimensions.Y,
 	}
 
 	// Create wall entities from map configuration
@@ -107,28 +96,20 @@ func NewWorldFromMap(mapConfig *MapConfig) *World {
 	return world
 }
 
-// generatePlayerID generates a unique legacy player ID for network protocol.
-func (w *World) generatePlayerID() string {
-	w.playerCounter++
-	return fmt.Sprintf("player-%d", w.playerCounter)
-}
-
-// CreatePlayer creates a new player entity and returns the EntityID and legacy playerID.
-func (w *World) CreatePlayer(sessionID string, position vector.Vector2D) (EntityID, string, error) {
+// CreatePlayer creates a new player entity and returns the EntityID.
+func (w *World) CreatePlayer(sessionID string, position vector.Vector2D) (EntityID, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
 	if !w.allowNewPlayers {
-		return 0, "", fmt.Errorf("adding new players is not allowed")
+		return 0, fmt.Errorf("adding new players is not allowed")
 	}
 
 	// Allocate entity
 	entityID, ok := w.entities.Alloc()
 	if !ok {
-		return 0, "", fmt.Errorf("failed to allocate entity: max entities reached")
+		return 0, fmt.Errorf("failed to allocate entity: max entities reached")
 	}
-
-	playerID := w.generatePlayerID()
 
 	// Add components
 	w.positions.Add(entityID, Position{X: position.X, Y: position.Y})
@@ -142,7 +123,6 @@ func (w *World) CreatePlayer(sessionID string, position vector.Vector2D) (Entity
 		RotationSpeed: playerBaseRotationSpeed,
 	})
 	w.playerIdentity.Add(entityID, PlayerIdentity{
-		PlayerID:  playerID,
 		SessionID: sessionID,
 	})
 	w.playerTags.Add(entityID, PlayerTag{})
@@ -158,23 +138,13 @@ func (w *World) CreatePlayer(sessionID string, position vector.Vector2D) (Entity
 	indexes := w.grid.Add(entityID, bounds, LayerPlayer)
 	w.gridCells.Add(entityID, GridCells{Indexes: indexes})
 
-	// Update mappings for network protocol compatibility
-	w.playerIDToEntity[playerID] = entityID
-	w.entityToPlayerID[entityID] = playerID
-
-	return entityID, playerID, nil
+	return entityID, nil
 }
 
 // RemovePlayer removes a player entity and all its components.
 func (w *World) RemovePlayer(entityID EntityID) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-
-	// Get player ID for cleanup
-	if playerID, ok := w.entityToPlayerID[entityID]; ok {
-		delete(w.playerIDToEntity, playerID)
-		delete(w.entityToPlayerID, entityID)
-	}
 
 	// Remove from grid
 	if gc := w.gridCells.Get(entityID); gc != nil {
@@ -237,24 +207,6 @@ func calculateAABB(center, halfSize vector.Vector2D, rotation float64) Bounds {
 		MaxX: center.X + extentX,
 		MaxY: center.Y + extentY,
 	}
-}
-
-// GetEntityByPlayerID looks up an entity by legacy player ID.
-func (w *World) GetEntityByPlayerID(playerID string) (EntityID, bool) {
-	w.mu.RLock()
-	defer w.mu.RUnlock()
-
-	entityID, ok := w.playerIDToEntity[playerID]
-	return entityID, ok
-}
-
-// GetPlayerID gets the legacy player ID for an entity.
-func (w *World) GetPlayerID(entityID EntityID) (string, bool) {
-	w.mu.RLock()
-	defer w.mu.RUnlock()
-
-	playerID, ok := w.entityToPlayerID[entityID]
-	return playerID, ok
 }
 
 // ForEachPlayer iterates over all player entities and calls the provided function.
@@ -361,13 +313,12 @@ func (w *World) UpdateEntityGridPosition(entityID EntityID, newPos Position, rad
 	}
 }
 
-// ToClientState converts ECS world state to the legacy ClientGameState format.
-// This maintains backward compatibility with the existing WebSocket protocol.
+// ToClientState converts ECS world state to the ClientGameState format for network transmission.
 func (w *World) ToClientState() *ClientGameState {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 
-	// Build players map using legacy Player struct format
+	// Build players map using EntityID as string key
 	players := make(map[string]*Player)
 
 	for _, entityID := range w.playerTags.IndexToEntityID {
@@ -378,15 +329,17 @@ func (w *World) ToClientState() *ClientGameState {
 		pos := w.positions.Get(entityID)
 		dir := w.directions.Get(entityID)
 		stats := w.playerStats.Get(entityID)
-		identity := w.playerIdentity.Get(entityID)
 		collider := w.circleColliders.Get(entityID)
 
-		if pos == nil || identity == nil {
+		if pos == nil {
 			continue
 		}
 
+		// Use EntityID as the player identifier
+		playerKey := fmt.Sprintf("%d", entityID)
+
 		player := &Player{
-			ID:       identity.PlayerID,
+			ID:       playerKey,
 			Position: pos.ToVector2D(),
 		}
 
@@ -403,7 +356,7 @@ func (w *World) ToClientState() *ClientGameState {
 			player.Radius = collider.Radius
 		}
 
-		players[identity.PlayerID] = player
+		players[playerKey] = player
 	}
 
 	// Build walls DTOs
