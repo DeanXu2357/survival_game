@@ -13,13 +13,13 @@ export abstract class AbstractRenderer implements BaseRenderer {
   protected isDestroyed: boolean = false;
 
   // Event callbacks
-  public onPlayerClick?: (playerId: string) => void;
+  public onPlayerClick?: (playerId: number) => void;
   public onWallClick?: (wallId: string) => void;
 
   // Abstract methods that must be implemented by concrete renderers
   abstract init(container: HTMLElement, config: RendererConfig): Promise<void>;
   abstract render(gameState: ClientGameState, staticData: StaticGameData): void;
-  abstract renderPlayers(players: { [key: string]: Player }): void;
+  abstract renderPlayers(players: { [key: number]: Player }): void;
   abstract renderWalls(walls: Wall[]): void;
   abstract renderProjectiles(projectiles: Projectile[]): void;
   abstract updateCamera(targetPlayer: Player): void;

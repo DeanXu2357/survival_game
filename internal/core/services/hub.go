@@ -88,6 +88,8 @@ func (h *Hub) hubLoop() error {
 
 				// Join Room
 				// for testing, only support joining the default room
+				// TODO: JoinRoomSuccess should include player's EntityID in payload.
+				// Requires: room.AddPlayer() and hub.JoinRoom() to return EntityID.
 				responseType := ports.JoinRoomSuccessEnvelope
 				var responsePayload ports.ErrorPayload
 				if err := h.JoinRoom(clientID, DefaultRoomName); err != nil {
@@ -192,7 +194,7 @@ func (h *Hub) JoinRoom(clientID, roomID string) error {
 		}
 
 		inputCmd := ports.Command{
-			SessionID: client.SessionID(), // Use session ID to match PlayerRegistry
+			SessionID: client.SessionID(),
 			Input:     *input,
 		}
 

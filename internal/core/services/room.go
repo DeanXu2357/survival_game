@@ -21,13 +21,8 @@ type Room struct {
 	ID         string
 	mapConfig  *domain.MapConfig
 	game       *domain.Game
-	players    *domain.PlayerRegistry
+	sessions   *SessionRegistry
 	subManager *Manager[UpdateMessage]
-
-	// playerToEntity maps player ID (string) to EntityID.
-	// Populated when players join via Game.JoinPlayer().
-	// TODO: populate this mapping when Game.JoinPlayer is implemented
-	playerToEntity map[string]domain.EntityID
 
 	commands chan ports.Command
 	outgoing chan UpdateMessage
@@ -40,12 +35,11 @@ func NewRoom(ctx context.Context, id string) *Room {
 	roomCTX, cancel := context.WithCancel(ctx)
 
 	return &Room{
-		ID:             id,
-		mapConfig:      nil, // No map configuration
-		game:           domain.NewGame(),
-		players:        domain.NewPlayerRegistry(),
-		subManager:     NewManager[UpdateMessage](utils.NewSequentialIDGenerator(fmt.Sprintf("room%s-sub-", id))),
-		playerToEntity: make(map[string]domain.EntityID),
+		ID:         id,
+		mapConfig:  nil,
+		game:       domain.NewGame(),
+		sessions:   NewSessionRegistry(),
+		subManager: NewManager[UpdateMessage](utils.NewSequentialIDGenerator(fmt.Sprintf("room%s-sub-", id))),
 
 		commands: make(chan ports.Command, 200),
 		outgoing: make(chan UpdateMessage, 400),
@@ -59,12 +53,11 @@ func NewRoomWithMap(ctx context.Context, id string, mapConfig *domain.MapConfig)
 	roomCTX, cancel := context.WithCancel(ctx)
 
 	return &Room{
-		ID:             id,
-		mapConfig:      mapConfig,
-		game:           domain.NewGame(), // TODO: initialize game with mapConfig
-		players:        domain.NewPlayerRegistry(),
-		subManager:     NewManager[UpdateMessage](utils.NewSequentialIDGenerator(fmt.Sprintf("room%s-sub-", id))),
-		playerToEntity: make(map[string]domain.EntityID),
+		ID:         id,
+		mapConfig:  mapConfig,
+		game:       domain.NewGame(), // TODO: initialize game with mapConfig
+		sessions:   NewSessionRegistry(),
+		subManager: NewManager[UpdateMessage](utils.NewSequentialIDGenerator(fmt.Sprintf("room%s-sub-", id))),
 
 		commands: make(chan ports.Command, 200),
 		outgoing: make(chan UpdateMessage, 400),
@@ -139,14 +132,9 @@ func (r *Room) Run() {
 	for {
 		select {
 		case cmd := <-r.commands:
-			playerID, ok := r.players.PlayerID(cmd.SessionID)
+			entityID, ok := r.sessions.EntityID(cmd.SessionID)
 			if !ok {
-				log.Printf("Warning: No player ID found for client %s", cmd.SessionID)
-				continue
-			}
-			entityID, ok := r.playerToEntity[playerID]
-			if !ok {
-				log.Printf("Warning: No entity ID found for player %s", playerID)
+				log.Printf("Warning: No entity ID found for session %s", cmd.SessionID)
 				continue
 			}
 			currentInputs[entityID] = cmd.Input
@@ -165,7 +153,7 @@ func (r *Room) Shutdown(ctx context.Context) error {
 
 	log.Printf("Room %s shutdown initiated", r.ID)
 
-	r.players.Clear()
+	r.sessions.Clear()
 	r.subManager.Clear()
 
 	log.Printf("Room %s shutdown completed", r.ID)
@@ -174,21 +162,19 @@ func (r *Room) Shutdown(ctx context.Context) error {
 
 // AddPlayer creates a new player or reconnects existing players and registers them to the room.
 func (r *Room) AddPlayer(client Client) error {
-	var player *domain.Player
-
 	sessionID := client.SessionID()
-	_, exist := r.players.PlayerID(sessionID)
-	if exist {
+	if _, exist := r.sessions.EntityID(sessionID); exist {
 		return nil
 	}
 
-	if err := r.game.JoinPlayer(); err != nil {
+	entityID, err := r.game.JoinPlayer()
+	if err != nil {
 		return fmt.Errorf("failed to create new player: %w", err)
 	}
 
-	r.players.Register(client.SessionID(), player.ID)
+	r.sessions.Register(sessionID, entityID)
 
-	log.Printf("Player created and registered successfully - Client: %s, Player: %s, Position: %+v", client, player.ID, player.Position)
+	log.Printf("Player created and registered - Session: %s, EntityID: %d", sessionID, entityID)
 	log.Printf("Total players in room: %d", r.PlayerCount())
 
 	return nil
@@ -215,10 +201,10 @@ func (r *Room) SendStaticData(sessionIDs []string) {
 }
 
 // RemovePlayer removes a player from the game state and the registry.
-func (r *Room) RemovePlayer(clientID string) {
-	if playerID, ok := r.players.PlayerID(clientID); ok {
-		r.players.Unregister(clientID)
-		log.Printf("Player %s (Client %s) removed from room %s", playerID, clientID, r.ID)
+func (r *Room) RemovePlayer(sessionID string) {
+	if entityID, ok := r.sessions.EntityID(sessionID); ok {
+		r.sessions.Unregister(sessionID)
+		log.Printf("Player EntityID %d (Session %s) removed from room %s", entityID, sessionID, r.ID)
 	}
 }
 
@@ -236,16 +222,14 @@ func (r *Room) broadcastGameUpdate() {
 		Payload:      json.RawMessage(payloadBytes),
 	}
 
-	// Push to all clients in the room temporarily
 	r.outgoing <- UpdateMessage{
-		ToSessions: r.players.AllSessionIDs(),
+		ToSessions: r.sessions.AllSessionIDs(),
 		Envelope:   envelope,
 	}
 }
 
 func (r *Room) PlayerCount() int {
-	// TODO: implement player count retrieval
-	panic("not implemented")
+	return r.sessions.Count()
 }
 
 func (r *Room) Name() string {

@@ -172,7 +172,7 @@ export class RenderManager {
   }
 
   // Event handlers for renderer callbacks
-  setPlayerClickHandler(handler: (playerId: string) => void): void {
+  setPlayerClickHandler(handler: (playerId: number) => void): void {
     if (this.currentRenderer) {
       this.currentRenderer.onPlayerClick = handler;
     }

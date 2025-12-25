@@ -4,13 +4,9 @@ import (
 	"survival/internal/core/domain/vector"
 )
 
-/*
- * No sure still needed after refactor, but keeping for now
- */
-
 // PlayerSnapshot represents essential player data for client updates
 type PlayerSnapshot struct {
-	ID        string          `json:"id"`
+	ID        EntityID        `json:"id"`
 	Position  vector.Vector2D `json:"position"`
 	Direction float64         `json:"direction"`
 	Health    int             `json:"health"`

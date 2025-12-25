@@ -51,7 +51,7 @@ export class NetworkClient {
     // Generate or retrieve client ID
     this.clientId = this.generateClientId();
     this.playerName = this.getPlayerName();
-    
+
     console.log('NetworkClient initialized:', { clientId: this.clientId, playerName: this.playerName });
   }
 
@@ -151,7 +151,7 @@ export class NetworkClient {
       this.reconnectAttempts = 0;
       this.isReconnecting = false;
 
-      gameState.setCurrentPlayerID(this.clientId);
+      // gameState.setCurrentPlayerID(this.clientId);
       gameState.updateDebugInfo({ connectionStatus: true });
 
       this.appState.handleConnectionSuccess();
@@ -169,10 +169,10 @@ export class NetworkClient {
       console.log('WebSocket connected successfully');
       this.reconnectAttempts = 0;
       this.isReconnecting = false;
-      
-      gameState.setCurrentPlayerID(this.clientId);
+
+      // gameState.setCurrentPlayerID(this.clientId);
       gameState.updateDebugInfo({ connectionStatus: true });
-      
+
       this.appState.handleConnectionSuccess();
     };
 
@@ -297,6 +297,9 @@ export class NetworkClient {
       return;
     }
 
+    // TODO: Server should send player's EntityID in JoinRoomSuccess response.
+    // Once implemented, set it here: gameState.setCurrentPlayerID(payload.entityId);
+
     this.appState.handleJoinRoomSuccessByRoomId(this.pendingJoinRoomId);
     this.pendingJoinRoomId = null;
   }
@@ -359,12 +362,12 @@ export class NetworkClient {
 
   private handleInvalidSession(payload: any): void {
     console.log('Session invalid, clearing local session:', payload.message);
-    
+
     SessionManager.clearSession(this.clientId);
     gameState.clearSession();
-    
+
     console.warn('Your session has expired. Reconnecting...');
-    
+
     // Close current connection and trigger reconnection
     if (this.ws) {
       this.ws.close();
@@ -452,10 +455,10 @@ export class NetworkClient {
       this.ws.close();
       this.ws = null;
     }
-    
+
     this.isReconnecting = false;
     this.reconnectAttempts = 0;
-    
+
     console.log('NetworkClient destroyed');
   }
 }

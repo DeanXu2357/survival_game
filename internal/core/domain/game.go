@@ -16,8 +16,8 @@ func NewGame() *Game {
 	return &Game{}
 }
 
-func (g *Game) JoinPlayer() error {
-	// todo: to be implemented
+func (g *Game) JoinPlayer() (EntityID, error) {
+	// TODO: to be implemented - allocate player entity and return its ID
 	panic("not implemented")
 }
 
