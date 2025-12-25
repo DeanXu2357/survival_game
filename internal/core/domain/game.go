@@ -1,6 +1,8 @@
 package domain
 
-import "survival/internal/core/ports"
+import (
+	"survival/internal/core/ports"
+)
 
 type Game struct {
 	world *World
@@ -19,8 +21,7 @@ func (g *Game) JoinPlayer() error {
 	panic("not implemented")
 }
 
-func (g *Game) UpdateInLoop(dt float64, playerInputs map[string]ports.PlayerInput) {
-	//positionDelta
+func (g *Game) UpdateInLoop(dt float64, playerInputs map[EntityID]ports.PlayerInput) {
 	_ = g.movementSys.Update(dt, g.world, g.buf, playerInputs)
 
 	// visionDelta := g.visionSys.Update(dt, g.world, g.buf, positionDelta)

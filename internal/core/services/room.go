@@ -24,6 +24,11 @@ type Room struct {
 	players    *domain.PlayerRegistry
 	subManager *Manager[UpdateMessage]
 
+	// playerToEntity maps player ID (string) to EntityID.
+	// Populated when players join via Game.JoinPlayer().
+	// TODO: populate this mapping when Game.JoinPlayer is implemented
+	playerToEntity map[string]domain.EntityID
+
 	commands chan ports.Command
 	outgoing chan UpdateMessage
 
@@ -35,11 +40,12 @@ func NewRoom(ctx context.Context, id string) *Room {
 	roomCTX, cancel := context.WithCancel(ctx)
 
 	return &Room{
-		ID:         id,
-		mapConfig:  nil, // No map configuration
-		game:       domain.NewGame(),
-		players:    domain.NewPlayerRegistry(),
-		subManager: NewManager[UpdateMessage](utils.NewSequentialIDGenerator(fmt.Sprintf("room%s-sub-", id))),
+		ID:             id,
+		mapConfig:      nil, // No map configuration
+		game:           domain.NewGame(),
+		players:        domain.NewPlayerRegistry(),
+		subManager:     NewManager[UpdateMessage](utils.NewSequentialIDGenerator(fmt.Sprintf("room%s-sub-", id))),
+		playerToEntity: make(map[string]domain.EntityID),
 
 		commands: make(chan ports.Command, 200),
 		outgoing: make(chan UpdateMessage, 400),
@@ -53,11 +59,12 @@ func NewRoomWithMap(ctx context.Context, id string, mapConfig *domain.MapConfig)
 	roomCTX, cancel := context.WithCancel(ctx)
 
 	return &Room{
-		ID:         id,
-		mapConfig:  mapConfig,
-		game:       domain.NewGame(), // TODO: initialize game with mapConfig
-		players:    domain.NewPlayerRegistry(),
-		subManager: NewManager[UpdateMessage](utils.NewSequentialIDGenerator(fmt.Sprintf("room%s-sub-", id))),
+		ID:             id,
+		mapConfig:      mapConfig,
+		game:           domain.NewGame(), // TODO: initialize game with mapConfig
+		players:        domain.NewPlayerRegistry(),
+		subManager:     NewManager[UpdateMessage](utils.NewSequentialIDGenerator(fmt.Sprintf("room%s-sub-", id))),
+		playerToEntity: make(map[string]domain.EntityID),
 
 		commands: make(chan ports.Command, 200),
 		outgoing: make(chan UpdateMessage, 400),
@@ -127,7 +134,7 @@ func (r *Room) Run() {
 	ticker := time.NewTicker(time.Second / ports.TargetTickRate)
 	defer ticker.Stop()
 
-	currentInputs := make(map[string]ports.PlayerInput)
+	currentInputs := make(map[domain.EntityID]ports.PlayerInput)
 
 	for {
 		select {
@@ -137,10 +144,15 @@ func (r *Room) Run() {
 				log.Printf("Warning: No player ID found for client %s", cmd.SessionID)
 				continue
 			}
-			currentInputs[playerID] = cmd.Input
+			entityID, ok := r.playerToEntity[playerID]
+			if !ok {
+				log.Printf("Warning: No entity ID found for player %s", playerID)
+				continue
+			}
+			currentInputs[entityID] = cmd.Input
 		case <-ticker.C:
 			r.game.UpdateInLoop(ports.DeltaTime, currentInputs)
-			currentInputs = make(map[string]ports.PlayerInput) // Reset inputs after processing
+			currentInputs = make(map[domain.EntityID]ports.PlayerInput) // Reset inputs after processing
 			r.broadcastGameUpdate()
 		case <-r.ctx.Done():
 			return

@@ -22,6 +22,16 @@ type RotationSpeed float64
 type Health int
 
 type WallShape struct {
-	Center *Position
-	// TODO: define how to get bounding box from wall
+	Center   Position
+	HalfSize vector.Vector2D
+}
+
+func (w *WallShape) BoundingBox() (min vector.Vector2D, max vector.Vector2D) {
+	return vector.Vector2D{
+			X: w.Center.X - w.HalfSize.X,
+			Y: w.Center.Y - w.HalfSize.Y,
+		}, vector.Vector2D{
+			X: w.Center.X + w.HalfSize.X,
+			Y: w.Center.Y + w.HalfSize.Y,
+		}
 }
