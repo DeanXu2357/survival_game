@@ -20,8 +20,7 @@ type UpdateMessage struct {
 type Room struct {
 	ID         string
 	mapConfig  *domain.MapConfig
-	state      *domain.State
-	logic      *domain.Logic
+	game       *domain.Game
 	players    *domain.PlayerRegistry
 	subManager *Manager[UpdateMessage]
 
@@ -38,8 +37,7 @@ func NewRoom(ctx context.Context, id string) *Room {
 	return &Room{
 		ID:         id,
 		mapConfig:  nil, // No map configuration
-		state:      domain.NewGameState(),
-		logic:      domain.NewGameLogic(),
+		game:       domain.NewGame(),
 		players:    domain.NewPlayerRegistry(),
 		subManager: NewManager[UpdateMessage](utils.NewSequentialIDGenerator(fmt.Sprintf("room%s-sub-", id))),
 
@@ -57,8 +55,7 @@ func NewRoomWithMap(ctx context.Context, id string, mapConfig *domain.MapConfig)
 	return &Room{
 		ID:         id,
 		mapConfig:  mapConfig,
-		state:      domain.NewGameStateFromMap(mapConfig),
-		logic:      domain.NewGameLogic(),
+		game:       domain.NewGame(), // TODO: initialize game with mapConfig
 		players:    domain.NewPlayerRegistry(),
 		subManager: NewManager[UpdateMessage](utils.NewSequentialIDGenerator(fmt.Sprintf("room%s-sub-", id))),
 
@@ -142,7 +139,7 @@ func (r *Room) Run() {
 			}
 			currentInputs[playerID] = cmd.Input
 		case <-ticker.C:
-			r.logic.Update(r.state, currentInputs, ports.DeltaTime)
+			r.game.UpdateInLoop(ports.DeltaTime, currentInputs)
 			currentInputs = make(map[string]ports.PlayerInput) // Reset inputs after processing
 			r.broadcastGameUpdate()
 		case <-r.ctx.Done():
@@ -166,7 +163,6 @@ func (r *Room) Shutdown(ctx context.Context) error {
 // AddPlayer creates a new player or reconnects existing players and registers them to the room.
 func (r *Room) AddPlayer(client Client) error {
 	var player *domain.Player
-	var err error
 
 	sessionID := client.SessionID()
 	_, exist := r.players.PlayerID(sessionID)
@@ -174,32 +170,21 @@ func (r *Room) AddPlayer(client Client) error {
 		return nil
 	}
 
-	// Use spawn point if map is configured
-	if r.mapConfig != nil {
-		spawnPoint := r.mapConfig.GetRandomSpawnPoint()
-		if spawnPoint != nil {
-			player, err = r.state.NewPlayerAtPosition(spawnPoint.Position)
-		} else {
-			player, err = r.state.NewPlayer() // fallback to default position
-		}
-	} else {
-		player, err = r.state.NewPlayer()
-	}
-	if err != nil {
+	if err := r.game.JoinPlayer(); err != nil {
 		return fmt.Errorf("failed to create new player: %w", err)
 	}
 
 	r.players.Register(client.SessionID(), player.ID)
 
 	log.Printf("Player created and registered successfully - Client: %s, Player: %s, Position: %+v", client, player.ID, player.Position)
-	log.Printf("Total players in room: %d", len(r.state.Players))
+	log.Printf("Total players in room: %d", r.PlayerCount())
 
 	return nil
 }
 
 // SendStaticData sends static map data (walls, dimensions) to specific clients
 func (r *Room) SendStaticData(sessionIDs []string) {
-	staticData := r.state.ToStaticData()
+	staticData := r.game.Statics()
 
 	payloadBytes, err := json.Marshal(staticData)
 	if err != nil {
@@ -226,7 +211,7 @@ func (r *Room) RemovePlayer(clientID string) {
 }
 
 func (r *Room) broadcastGameUpdate() {
-	gameUpdate := r.state.ToClientState()
+	gameUpdate := r.game.Statics() // TODO: check if this should be static data or delta data after updating.
 
 	payloadBytes, err := json.Marshal(gameUpdate)
 	if err != nil {
@@ -247,7 +232,8 @@ func (r *Room) broadcastGameUpdate() {
 }
 
 func (r *Room) PlayerCount() int {
-	return len(r.state.Players)
+	// TODO: implement player count retrieval
+	panic("not implemented")
 }
 
 func (r *Room) Name() string {

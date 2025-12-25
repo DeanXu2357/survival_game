@@ -20,6 +20,7 @@ func NewComponentManager[T any]() *ComponentManger[T] {
 }
 
 func (cm *ComponentManger[T]) Add(entityID EntityID, component T) bool {
+	// TODO: I should use entityID.Index() as spare index for less slice capacity usage, maybe fix later
 	if int(entityID) >= len(cm.EntityToIndex) {
 		newCap := int(entityID) * 2
 		if newCap < int(entityID)+1 {

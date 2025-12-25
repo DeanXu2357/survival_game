@@ -6,6 +6,10 @@ import (
 	"survival/internal/core/domain/vector"
 )
 
+/*
+ * No sure still needed after refactor, but keeping for now
+ */
+
 type Wall struct {
 	id       string
 	Center   vector.Vector2D `json:"center"`

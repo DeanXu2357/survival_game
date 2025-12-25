@@ -20,7 +20,7 @@ type EntityManager struct {
 	versions []uint32
 	freeList []int
 	count    int
-	rwLock   sync.RWMutex
+	rwLock   sync.RWMutex // not sure if needed
 }
 
 func NewEntityManager() *EntityManager {

@@ -10,9 +10,6 @@ type Grid struct {
 	width, height int
 	cellSlice     []GridCell
 }
-
-type EntityID uint64
-
 type GridCell struct {
 	entries []GridEntry
 }

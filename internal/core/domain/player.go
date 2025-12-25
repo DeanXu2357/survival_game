@@ -6,6 +6,10 @@ import (
 	"survival/internal/core/ports"
 )
 
+/*
+ * No sure still needed after refactor, but keeping for now
+ */
+
 const (
 	playerBaseMovementSpeed float64 = 5
 	playerBaseRotationSpeed float64 = 2
