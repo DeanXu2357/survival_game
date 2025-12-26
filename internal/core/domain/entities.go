@@ -2,9 +2,29 @@ package domain
 
 import "survival/internal/core/domain/vector"
 
-type Meta int64
+type Meta uint64
 
-// todo: implement Meta bit mask functionalities
+const (
+	ComponentPosition Meta = 1 << iota
+	ComponentDirection
+	ComponentMovementSpeed
+	ComponentRotationSpeed
+	ComponentPlayerShape
+	ComponentHealth
+	ComponentWallShape
+)
+
+func (m Meta) Has(mask Meta) bool {
+	return m&mask == mask
+}
+
+func (m Meta) Set(mask Meta) Meta {
+	return m | mask
+}
+
+func (m Meta) Clear(mask Meta) Meta {
+	return m &^ mask
+}
 
 type Position vector.Vector2D
 

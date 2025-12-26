@@ -7,8 +7,9 @@ import (
 )
 
 type Game struct {
-	world *World
-	buf   *CommandBuffer
+	world     *World
+	buf       *CommandBuffer
+	mapConfig *MapConfig
 
 	movementSys MovementSystem
 }
@@ -20,6 +21,7 @@ func NewGame(mapConfig *MapConfig) (*Game, error) {
 	g := &Game{
 		world:       NewWorld(mapConfig.GridSize, gridWidth, gridHeight),
 		buf:         NewCommandBuffer(),
+		mapConfig:   mapConfig,
 		movementSys: *NewMovementSystem(),
 	}
 
@@ -43,9 +45,32 @@ func (g *Game) loadMapEntities(mapConfig *MapConfig) error {
 	return nil
 }
 
+const (
+	defaultPlayerMovementSpeed float64 = 5
+	defaultPlayerRotationSpeed float64 = 2
+	defaultPlayerRadius        float64 = 0.5
+	defaultPlayerHealth        int     = 100
+)
+
 func (g *Game) JoinPlayer() (EntityID, error) {
-	// TODO: to be implemented - allocate player entity and return its ID
-	panic("not implemented")
+	spawnPoint := g.mapConfig.GetRandomSpawnPoint()
+	if spawnPoint == nil {
+		return 0, fmt.Errorf("no spawn point available")
+	}
+
+	id, ok := g.world.CreatePlayer(PlayerConfig{
+		Position:      Position{X: spawnPoint.Position.X, Y: spawnPoint.Position.Y},
+		Direction:     0,
+		MovementSpeed: MovementSpeed(defaultPlayerMovementSpeed),
+		RotationSpeed: RotationSpeed(defaultPlayerRotationSpeed),
+		Radius:        defaultPlayerRadius,
+		Health:        Health(defaultPlayerHealth),
+	})
+	if !ok {
+		return 0, fmt.Errorf("failed to create player entity")
+	}
+
+	return id, nil
 }
 
 func (g *Game) UpdateInLoop(dt float64, playerInputs map[EntityID]ports.PlayerInput) {
