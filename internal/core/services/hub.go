@@ -240,7 +240,11 @@ func (h *Hub) DispatchConnection(ctx context.Context, conn ports.RawConnection, 
 func (h *Hub) initializeDefaultGame() {
 	roomID := DefaultRoomName
 
-	room := createDefaultRoom(h.ctx, roomID)
+	room, err := createDefaultRoom(h.ctx, roomID)
+	if err != nil {
+		log.Printf("Failed to create default room: %v", err)
+		return
+	}
 
 	h.rooms[roomID] = room
 
@@ -270,11 +274,11 @@ func (h *Hub) initializeDefaultGame() {
 	}
 }
 
-func createDefaultRoom(ctx context.Context, roomID string) *Room {
+func createDefaultRoom(ctx context.Context, roomID string) (*Room, error) {
 	jsonLoader := maploader.NewJSONMapLoader("./maps")
 	mapConfig, err := jsonLoader.LoadMap("office_floor_01")
 	if err != nil {
-		log.Printf("Failed to load office_floor_01 from JSON: %v, using empty room", err)
+		log.Printf("Failed to load office_floor_01 from JSON: %v, using default map", err)
 		return NewRoom(ctx, roomID)
 	}
 

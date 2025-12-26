@@ -14,9 +14,22 @@ type World struct {
 
 	WallShape ComponentManger[WallShape]
 
-	// TODO: add positon history ring buffer component manager
-
 	Grid Grid
+}
+
+func NewWorld(gridCellSize float64, gridWidth, gridHeight int) *World {
+	return &World{
+		Entity:        NewEntityManager(),
+		EntityMeta:    *NewComponentManager[Meta](),
+		Position:      *NewComponentManager[Position](),
+		Direction:     *NewComponentManager[Direction](),
+		MovementSpeed: *NewComponentManager[MovementSpeed](),
+		RotationSpeed: *NewComponentManager[RotationSpeed](),
+		PlayerShape:   *NewComponentManager[PlayerShape](),
+		Health:        *NewComponentManager[Health](),
+		WallShape:     *NewComponentManager[WallShape](),
+		Grid:          *NewGrid(gridCellSize, gridWidth, gridHeight),
+	}
 }
 
 // CreateEntity allocates a new entity and returns its ID.

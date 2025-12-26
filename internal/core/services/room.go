@@ -31,31 +31,23 @@ type Room struct {
 	cancel context.CancelFunc
 }
 
-func NewRoom(ctx context.Context, id string) *Room {
-	roomCTX, cancel := context.WithCancel(ctx)
-
-	return &Room{
-		ID:         id,
-		mapConfig:  nil,
-		game:       domain.NewGame(),
-		sessions:   NewSessionRegistry(),
-		subManager: NewManager[UpdateMessage](utils.NewSequentialIDGenerator(fmt.Sprintf("room%s-sub-", id))),
-
-		commands: make(chan ports.Command, 200),
-		outgoing: make(chan UpdateMessage, 400),
-
-		ctx:    roomCTX,
-		cancel: cancel,
-	}
+func NewRoom(ctx context.Context, id string) (*Room, error) {
+	return NewRoomWithMap(ctx, id, domain.DefaultMapConfig())
 }
 
-func NewRoomWithMap(ctx context.Context, id string, mapConfig *domain.MapConfig) *Room {
+func NewRoomWithMap(ctx context.Context, id string, mapConfig *domain.MapConfig) (*Room, error) {
 	roomCTX, cancel := context.WithCancel(ctx)
+
+	game, err := domain.NewGame(mapConfig)
+	if err != nil {
+		cancel()
+		return nil, fmt.Errorf("failed to create game: %w", err)
+	}
 
 	return &Room{
 		ID:         id,
 		mapConfig:  mapConfig,
-		game:       domain.NewGame(), // TODO: initialize game with mapConfig
+		game:       game,
 		sessions:   NewSessionRegistry(),
 		subManager: NewManager[UpdateMessage](utils.NewSequentialIDGenerator(fmt.Sprintf("room%s-sub-", id))),
 
@@ -64,7 +56,7 @@ func NewRoomWithMap(ctx context.Context, id string, mapConfig *domain.MapConfig)
 
 		ctx:    roomCTX,
 		cancel: cancel,
-	}
+	}, nil
 }
 
 func (r *Room) SendCommand(cmd ports.Command) {

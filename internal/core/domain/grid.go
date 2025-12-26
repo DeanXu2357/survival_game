@@ -10,6 +10,15 @@ type Grid struct {
 	width, height int
 	cellSlice     []GridCell
 }
+
+func NewGrid(cellSize float64, width, height int) *Grid {
+	return &Grid{
+		cellSize:  cellSize,
+		width:     width,
+		height:    height,
+		cellSlice: make([]GridCell, width*height),
+	}
+}
 type GridCell struct {
 	entries []GridEntry
 }
