@@ -3,7 +3,7 @@ package domain
 import "sync"
 
 const (
-	maxEntityCount = 10000
+	maxEntityCount = 10000 // the max number of entities allowed in the world in one tic
 )
 
 type EntityID uint64
@@ -15,6 +15,12 @@ func NewEntityID(index int, version uint32) EntityID {
 func (id EntityID) Index() int { return int(id & 0xFFFFFFFF) }
 
 func (id EntityID) Version() uint32 { return uint32(id >> 32) }
+
+/*
+ * Because of rwLock usage. 'IsAlive' will be called frequently in the future,
+ * it could be a performance bottleneck.
+ * We can optimize it later if needed by using atomic operations or other lock-free techniques.
+ */
 
 type EntityManager struct {
 	versions []uint32
