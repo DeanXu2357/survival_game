@@ -1,30 +1,17 @@
 package domain
 
-type WorldCommandType int
-
-const (
-	CreateEntityCommand WorldCommandType = iota
-	DestroyEntityCommand
-	UpdatePlayerCommand
-)
-
 type WorldCommand struct {
-	Type     WorldCommandType
-	EntityID EntityID
+	EntityID   EntityID
+	UpdateMeta Meta
 
-	Position  *Position
-	Direction *Direction
-	Meta      *Meta
-}
-
-func NewPlayerUpdateCommand(id EntityID, pos *Position, dir *Direction, meta *Meta) WorldCommand {
-	return WorldCommand{
-		Type:      UpdatePlayerCommand,
-		EntityID:  id,
-		Position:  pos,
-		Direction: dir,
-		Meta:      meta,
-	}
+	Position      Position
+	Direction     Direction
+	Meta          Meta
+	RotationSpeed RotationSpeed
+	MovementSpeed MovementSpeed
+	PlayerShape   PlayerShape
+	Health        Health
+	WallShape     WallShape
 }
 
 type CommandBuffer struct {

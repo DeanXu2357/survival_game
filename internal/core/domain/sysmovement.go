@@ -16,40 +16,56 @@ func NewMovementSystem() *MovementSystem {
 
 // Update processes player inputs and updates positions/directions.
 // Returns a map of position deltas for downstream systems (vision, etc.).
-func (ms *MovementSystem) Update(dt float64, world *World, buf *CommandBuffer, playerInputs map[EntityID]ports.PlayerInput) map[EntityID]Position {
+func (ms *MovementSystem) Update(dt float64, world *World, playerInputs map[EntityID]ports.PlayerInput) map[EntityID]Position {
 	positionDeltas := make(map[EntityID]Position)
 
 	for entityID, input := range playerInputs {
-		pos := world.Position.Get(entityID)
-		dir := world.Direction.Get(entityID)
-		moveSpeed := world.MovementSpeed.Get(entityID)
-		rotSpeed := world.RotationSpeed.Get(entityID)
-		playerShape := world.PlayerShape.Get(entityID)
+		pos, posExist := world.Position.Get(entityID)
+		dir, dirExist := world.Direction.Get(entityID)
+		moveSpeed, moveSpeedExist := world.MovementSpeed.Get(entityID)
+		rotSpeed, rotSpeedExist := world.RotationSpeed.Get(entityID)
+		playerShape, playerShapeExist := world.PlayerShape.Get(entityID)
 
-		if pos == nil || dir == nil || moveSpeed == nil || rotSpeed == nil {
+		if !posExist || !dirExist || !moveSpeedExist || !rotSpeedExist || !playerShapeExist {
+			// TODO: log error
 			continue
 		}
 
-		newPos := ms.calculatePosition(*pos, *moveSpeed, input, dt)
+		var updateMeta Meta
 
-		if playerShape != nil {
-			newPos = ms.resolveCollisions(newPos, playerShape.Radius, world)
-		}
-
-		newDir := ms.calculateDirection(*dir, *rotSpeed, input, dt)
+		newPos := resolvePlayerCollisions(
+			calculatePlayerNewPosition(pos, moveSpeed, input, dt),
+			playerShape.Radius,
+			world,
+		)
+		newDir := calculatePlayerNewDirection(dir, rotSpeed, input, dt)
 
 		positionDeltas[entityID] = newPos
 
-		buf.Push(NewPlayerUpdateCommand(entityID, &newPos, &newDir, nil))
+		if newPos != pos {
+			updateMeta = updateMeta.Set(ComponentPosition)
+		}
+		if newDir != dir {
+			updateMeta = updateMeta.Set(ComponentDirection)
+		}
+
+		world.UpdatePlayer(entityID, UpdatePlayer{
+			UpdateMeta:    updateMeta,
+			Position:      newPos,
+			Direction:     newDir,
+			MovementSpeed: moveSpeed,
+			RotationSpeed: rotSpeed,
+			PlayerShape:   PlayerShape{Center: newPos, Radius: playerShape.Radius},
+		})
 	}
 
 	return positionDeltas
 }
 
-// calculatePosition computes new position based on WASD input.
+// calculatePlayerNewPosition computes new position based on WASD input.
 // Uses screen coordinates: Y increases downward.
 // MoveUp decreases Y, MoveDown increases Y.
-func (ms *MovementSystem) calculatePosition(pos Position, speed MovementSpeed, input ports.PlayerInput, dt float64) Position {
+func calculatePlayerNewPosition(pos Position, speed MovementSpeed, input ports.PlayerInput, dt float64) Position {
 	var moveX, moveY float64
 	if input.MoveUp {
 		moveY -= 1
@@ -69,14 +85,12 @@ func (ms *MovementSystem) calculatePosition(pos Position, speed MovementSpeed, i
 		movement = movement.Normalize().Scale(float64(speed) * dt)
 	}
 
-	posVec := vector.Vector2D(pos)
-	newPosVec := posVec.Add(movement)
-	return Position(newPosVec)
+	return Position(vector.Vector2D(pos).Add(movement))
 }
 
-// calculateDirection computes new direction based on rotation input.
+// calculatePlayerNewDirection computes new direction based on rotation input.
 // RotateLeft increases angle (counter-clockwise), RotateRight decreases angle (clockwise).
-func (ms *MovementSystem) calculateDirection(dir Direction, speed RotationSpeed, input ports.PlayerInput, dt float64) Direction {
+func calculatePlayerNewDirection(dir Direction, speed RotationSpeed, input ports.PlayerInput, dt float64) Direction {
 	var rotationDelta float64
 	if input.RotateLeft {
 		rotationDelta += float64(speed) * dt
@@ -87,9 +101,9 @@ func (ms *MovementSystem) calculateDirection(dir Direction, speed RotationSpeed,
 	return Direction(float64(dir) + rotationDelta)
 }
 
-// resolveCollisions checks for wall collisions and adjusts position.
+// resolvePlayerCollisions checks for wall collisions and adjusts position.
 // Uses Circle-AABB collision detection.
-func (ms *MovementSystem) resolveCollisions(pos Position, radius float64, world *World) Position {
+func resolvePlayerCollisions(pos Position, radius float64, world *World) Position {
 	result := vector.Vector2D(pos)
 
 	playerBounds := Bounds{
@@ -105,11 +119,10 @@ func (ms *MovementSystem) resolveCollisions(pos Position, radius float64, world 
 				continue
 			}
 
-			wallShape := world.WallShape.Get(entry.EntityID)
-			if wallShape == nil {
+			wallShape, exist := world.WallShape.Get(entry.EntityID)
+			if !exist {
 				continue
 			}
-
 			wallMin, wallMax := wallShape.BoundingBox()
 			collides, pushOut := circleAABBCollision(Position(result), radius, wallMin, wallMax)
 			if collides {

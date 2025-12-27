@@ -46,16 +46,17 @@ func (cm *ComponentManger[T]) Add(entityID EntityID, component T) bool {
 	return true
 }
 
-func (cm *ComponentManger[T]) Get(entityID EntityID) T {
-	return *cm.getPointer(entityID)
-}
-
-func (cm *ComponentManger[T]) getPointer(entityID EntityID) *T {
-	idx := cm.EntityToIndex[entityID]
-	if idx == -1 {
-		return nil
+func (cm *ComponentManger[T]) Get(entityID EntityID) (T, bool) {
+	idx := -1
+	if int(entityID) < len(cm.EntityToIndex) {
+		idx = cm.EntityToIndex[entityID]
 	}
-	return &cm.data[idx]
+
+	if idx == -1 {
+		var zero T
+		return zero, false
+	}
+	return cm.data[idx], true
 }
 
 func (cm *ComponentManger[T]) Remove(entityID EntityID) bool {
