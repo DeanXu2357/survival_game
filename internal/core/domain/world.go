@@ -15,6 +15,8 @@ type World struct {
 	WallShape ComponentManger[WallShape]
 
 	Grid Grid
+
+	buf *CommandBuffer
 }
 
 func NewWorld(gridCellSize float64, gridWidth, gridHeight int) *World {
@@ -29,6 +31,7 @@ func NewWorld(gridCellSize float64, gridWidth, gridHeight int) *World {
 		Health:        *NewComponentManager[Health](),
 		WallShape:     *NewComponentManager[WallShape](),
 		Grid:          *NewGrid(gridCellSize, gridWidth, gridHeight),
+		buf:           NewCommandBuffer(),
 	}
 }
 
@@ -45,7 +48,32 @@ func (w *World) DestroyEntity(e EntityID) bool {
 	return w.Entity.Free(e)
 }
 
-type PlayerConfig struct {
+// CreatePlayer allocates a player entity and adds all player components.
+// This bypasses CommandBuffer for immediate effect since EntityID must be returned synchronously.
+func (w *World) CreatePlayer(cfg CreatePlayer) (EntityID, bool) {
+	id, ok := w.Entity.Alloc()
+	if !ok {
+		return 0, false
+	}
+
+	w.UpdatePlayer(
+		id,
+		UpdatePlayer{
+			UpdateMeta:    PlayerMeta,
+			Position:      cfg.Position,
+			Direction:     cfg.Direction,
+			MovementSpeed: cfg.MovementSpeed,
+			RotationSpeed: cfg.RotationSpeed,
+			Meta:          PlayerMeta,
+			PlayerShape:   PlayerShape{cfg.Position, cfg.Radius},
+			Health:        cfg.Health,
+		},
+	)
+
+	return id, true
+}
+
+type CreatePlayer struct {
 	Position      Position
 	Direction     Direction
 	MovementSpeed MovementSpeed
@@ -54,23 +82,32 @@ type PlayerConfig struct {
 	Health        Health
 }
 
-// CreatePlayer allocates a player entity and adds all player components.
-// This bypasses CommandBuffer for immediate effect since EntityID must be returned synchronously.
-func (w *World) CreatePlayer(cfg PlayerConfig) (EntityID, bool) {
-	id, ok := w.Entity.Alloc()
-	if !ok {
-		return 0, false
-	}
+func (w *World) UpdatePlayer(id EntityID, player UpdatePlayer) {
+	w.buf.Push(WorldCommand{
+		EntityID:      id,
+		UpdateMeta:    player.UpdateMeta,
+		Position:      player.Position,
+		Direction:     player.Direction,
+		Meta:          player.Meta,
+		RotationSpeed: player.RotationSpeed,
+		MovementSpeed: player.MovementSpeed,
+		PlayerShape:   player.PlayerShape,
+		Health:        player.Health,
+	})
+}
 
-	w.Position.Add(id, cfg.Position)
-	w.Direction.Add(id, cfg.Direction)
-	w.MovementSpeed.Add(id, cfg.MovementSpeed)
-	w.RotationSpeed.Add(id, cfg.RotationSpeed)
-	w.PlayerShape.Add(id, PlayerShape{Center: &cfg.Position, Radius: cfg.Radius})
-	w.Health.Add(id, cfg.Health)
+type UpdatePlayer struct {
+	UpdateMeta Meta
+	Position
+	Direction
+	MovementSpeed
+	RotationSpeed
+	Meta
+	PlayerShape
+	Health
+}
 
-	meta := ComponentPosition.Set(ComponentDirection).Set(ComponentMovementSpeed).Set(ComponentRotationSpeed).Set(ComponentPlayerShape).Set(ComponentHealth)
-	w.EntityMeta.Add(id, meta)
-
-	return id, true
+func (w *World) ApplyCommands() {
+	// todo: implement command application logic
+	panic("not implemented")
 }

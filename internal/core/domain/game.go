@@ -8,7 +8,6 @@ import (
 
 type Game struct {
 	world     *World
-	buf       *CommandBuffer
 	mapConfig *MapConfig
 
 	movementSys MovementSystem
@@ -20,7 +19,6 @@ func NewGame(mapConfig *MapConfig) (*Game, error) {
 
 	g := &Game{
 		world:       NewWorld(mapConfig.GridSize, gridWidth, gridHeight),
-		buf:         NewCommandBuffer(),
 		mapConfig:   mapConfig,
 		movementSys: *NewMovementSystem(),
 	}
@@ -58,7 +56,7 @@ func (g *Game) JoinPlayer() (EntityID, error) {
 		return 0, fmt.Errorf("no spawn point available")
 	}
 
-	id, ok := g.world.CreatePlayer(PlayerConfig{
+	id, ok := g.world.CreatePlayer(CreatePlayer{
 		Position:      Position{X: spawnPoint.Position.X, Y: spawnPoint.Position.Y},
 		Direction:     0,
 		MovementSpeed: MovementSpeed(defaultPlayerMovementSpeed),
@@ -74,18 +72,13 @@ func (g *Game) JoinPlayer() (EntityID, error) {
 }
 
 func (g *Game) UpdateInLoop(dt float64, playerInputs map[EntityID]ports.PlayerInput) {
-	_ = g.movementSys.Update(dt, g.world, g.buf, playerInputs)
+	_ = g.movementSys.Update(dt, g.world, playerInputs)
 
 	// visionDelta := g.visionSys.Update(dt, g.world, g.buf, positionDelta)
 	// aliveDelta := g.combatSys.Update(dt, g.world, g.buf)
 
-	g.applyCommands()
-
+	g.world.ApplyCommands()
 	// note: maybe can log here for debug ?
-}
-
-func (g *Game) applyCommands() {
-	// TODO: to be implemented updating world state from command buffer
 }
 
 func (g *Game) Statics() *StaticGameData {
