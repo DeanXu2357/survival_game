@@ -20,11 +20,12 @@ func NewComponentManager[T any]() *ComponentManger[T] {
 }
 
 func (cm *ComponentManger[T]) Add(entityID EntityID, component T) bool {
-	// TODO: I should use entityID.Index() as spare index for less slice capacity usage, maybe fix later
-	if int(entityID) >= len(cm.EntityToIndex) {
-		newCap := int(entityID) * 2
-		if newCap < int(entityID)+1 {
-			newCap = int(entityID) + 1
+	idx := entityID.Index()
+
+	if idx >= len(cm.EntityToIndex) {
+		newCap := idx * 2
+		if newCap < idx+1 {
+			newCap = idx + 1
 		}
 		newSparse := make([]int, newCap)
 		copy(newSparse, cm.EntityToIndex)
@@ -34,7 +35,7 @@ func (cm *ComponentManger[T]) Add(entityID EntityID, component T) bool {
 		cm.EntityToIndex = newSparse
 	}
 
-	if cm.EntityToIndex[entityID] != -1 { // already has component
+	if cm.EntityToIndex[idx] != -1 { // already has component
 		return false
 	}
 
@@ -42,14 +43,15 @@ func (cm *ComponentManger[T]) Add(entityID EntityID, component T) bool {
 	cm.IndexToEntityID = append(cm.IndexToEntityID, entityID)
 
 	index := len(cm.data) - 1
-	cm.EntityToIndex[entityID] = index
+	cm.EntityToIndex[idx] = index
 	return true
 }
 
 func (cm *ComponentManger[T]) Get(entityID EntityID) (T, bool) {
+	eid := entityID.Index()
 	idx := -1
-	if int(entityID) < len(cm.EntityToIndex) {
-		idx = cm.EntityToIndex[entityID]
+	if eid < len(cm.EntityToIndex) {
+		idx = cm.EntityToIndex[eid]
 	}
 
 	if idx == -1 {
@@ -59,8 +61,28 @@ func (cm *ComponentManger[T]) Get(entityID EntityID) (T, bool) {
 	return cm.data[idx], true
 }
 
+func (cm *ComponentManger[T]) Set(entityID EntityID, component T) bool {
+	eid := entityID.Index()
+	if eid >= len(cm.EntityToIndex) {
+		return false
+	}
+
+	idx := cm.EntityToIndex[eid]
+	if idx == -1 {
+		return false
+	}
+
+	cm.data[idx] = component
+	return true
+}
+
 func (cm *ComponentManger[T]) Remove(entityID EntityID) bool {
-	idx := cm.EntityToIndex[entityID]
+	eid := entityID.Index()
+	if eid >= len(cm.EntityToIndex) {
+		return false
+	}
+
+	idx := cm.EntityToIndex[eid]
 	if idx == -1 {
 		return false
 	}
@@ -71,10 +93,10 @@ func (cm *ComponentManger[T]) Remove(entityID EntityID) bool {
 
 		cm.data[idx] = cm.data[lastIndex]
 		cm.IndexToEntityID[idx] = lastEntityID
-		cm.EntityToIndex[lastEntityID] = idx
+		cm.EntityToIndex[lastEntityID.Index()] = idx
 	}
 
-	cm.EntityToIndex[entityID] = -1
+	cm.EntityToIndex[eid] = -1
 	cm.data = cm.data[:lastIndex]
 	cm.IndexToEntityID = cm.IndexToEntityID[:lastIndex]
 	return true
