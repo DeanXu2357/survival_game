@@ -3,23 +3,23 @@ package services
 import (
 	"sync"
 
-	"survival/internal/core/domain"
+	"survival/internal/core/domain/state"
 )
 
 type SessionRegistry struct {
-	mu               sync.RWMutex
-	sessionToEntity  map[string]domain.EntityID
-	entityToSession  map[domain.EntityID]string
+	mu              sync.RWMutex
+	sessionToEntity map[string]state.EntityID
+	entityToSession map[state.EntityID]string
 }
 
 func NewSessionRegistry() *SessionRegistry {
 	return &SessionRegistry{
-		sessionToEntity: make(map[string]domain.EntityID),
-		entityToSession: make(map[domain.EntityID]string),
+		sessionToEntity: make(map[string]state.EntityID),
+		entityToSession: make(map[state.EntityID]string),
 	}
 }
 
-func (sr *SessionRegistry) Register(sessionID string, entityID domain.EntityID) {
+func (sr *SessionRegistry) Register(sessionID string, entityID state.EntityID) {
 	sr.mu.Lock()
 	defer sr.mu.Unlock()
 	if oldEntityID, exists := sr.sessionToEntity[sessionID]; exists {
@@ -38,14 +38,14 @@ func (sr *SessionRegistry) Unregister(sessionID string) {
 	}
 }
 
-func (sr *SessionRegistry) EntityID(sessionID string) (domain.EntityID, bool) {
+func (sr *SessionRegistry) EntityID(sessionID string) (state.EntityID, bool) {
 	sr.mu.RLock()
 	defer sr.mu.RUnlock()
 	entityID, ok := sr.sessionToEntity[sessionID]
 	return entityID, ok
 }
 
-func (sr *SessionRegistry) SessionID(entityID domain.EntityID) (string, bool) {
+func (sr *SessionRegistry) SessionID(entityID state.EntityID) (string, bool) {
 	sr.mu.RLock()
 	defer sr.mu.RUnlock()
 	sessionID, ok := sr.entityToSession[entityID]
@@ -65,8 +65,8 @@ func (sr *SessionRegistry) AllSessionIDs() []string {
 func (sr *SessionRegistry) Clear() {
 	sr.mu.Lock()
 	defer sr.mu.Unlock()
-	sr.sessionToEntity = make(map[string]domain.EntityID)
-	sr.entityToSession = make(map[domain.EntityID]string)
+	sr.sessionToEntity = make(map[string]state.EntityID)
+	sr.entityToSession = make(map[state.EntityID]string)
 }
 
 func (sr *SessionRegistry) Count() int {

@@ -1,4 +1,4 @@
-package domain
+package state
 
 import (
 	"iter"
@@ -19,8 +19,9 @@ func NewGrid(cellSize float64, width, height int) *Grid {
 		cellSlice: make([]GridCell, width*height),
 	}
 }
+
 type GridCell struct {
-	entries []GridEntry
+	Entries []GridEntry
 }
 
 type GridEntry struct {
@@ -47,7 +48,7 @@ func (g *Grid) Add(id EntityID, bounds Bounds, layer LayerMask) []int {
 		for gy := minGY; gy <= maxGY; gy++ {
 			index := g.GridIndex(gx, gy)
 			if index != -1 {
-				g.cellSlice[index].entries = append(g.cellSlice[index].entries, entry)
+				g.cellSlice[index].Entries = append(g.cellSlice[index].Entries, entry)
 				indexes = append(indexes, index)
 			}
 		}
@@ -59,11 +60,11 @@ func (g *Grid) Remove(indexes []uint64, id EntityID) {
 	for _, cellIDX := range indexes {
 		cell := &g.cellSlice[cellIDX]
 
-		for i, entry := range cell.entries {
+		for i, entry := range cell.Entries {
 			if entry.EntityID == id {
-				last := len(cell.entries) - 1
-				cell.entries[i] = cell.entries[last]
-				cell.entries = cell.entries[:last]
+				last := len(cell.Entries) - 1
+				cell.Entries[i] = cell.Entries[last]
+				cell.Entries = cell.Entries[:last]
 				break
 			}
 		}

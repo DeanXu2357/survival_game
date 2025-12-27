@@ -3,14 +3,16 @@ package domain
 import (
 	"fmt"
 
+	"survival/internal/core/domain/state"
+	"survival/internal/core/domain/system"
 	"survival/internal/core/ports"
 )
 
 type Game struct {
-	world     *World
+	world     *state.World
 	mapConfig *MapConfig
 
-	movementSys MovementSystem
+	movementSys system.MovementSystem
 }
 
 func NewGame(mapConfig *MapConfig) (*Game, error) {
@@ -18,9 +20,9 @@ func NewGame(mapConfig *MapConfig) (*Game, error) {
 	gridHeight := int(mapConfig.Dimensions.Y / mapConfig.GridSize)
 
 	g := &Game{
-		world:       NewWorld(mapConfig.GridSize, gridWidth, gridHeight),
+		world:       state.NewWorld(mapConfig.GridSize, gridWidth, gridHeight),
 		mapConfig:   mapConfig,
-		movementSys: *NewMovementSystem(),
+		movementSys: *system.NewMovementSystem(),
 	}
 
 	if err := g.loadMapEntities(mapConfig); err != nil {
@@ -35,8 +37,8 @@ func (g *Game) loadMapEntities(mapConfig *MapConfig) error {
 		if !ok {
 			return fmt.Errorf("failed to allocate entity for wall %d", i)
 		}
-		g.world.WallShape.Add(id, WallShape{
-			Center:   Position{X: wallCfg.Center.X, Y: wallCfg.Center.Y},
+		g.world.WallShape.Add(id, state.WallShape{
+			Center:   state.Position{X: wallCfg.Center.X, Y: wallCfg.Center.Y},
 			HalfSize: wallCfg.HalfSize,
 		})
 	}
@@ -50,19 +52,19 @@ const (
 	defaultPlayerHealth        int     = 100
 )
 
-func (g *Game) JoinPlayer() (EntityID, error) {
+func (g *Game) JoinPlayer() (state.EntityID, error) {
 	spawnPoint := g.mapConfig.GetRandomSpawnPoint()
 	if spawnPoint == nil {
 		return 0, fmt.Errorf("no spawn point available")
 	}
 
-	id, ok := g.world.CreatePlayer(CreatePlayer{
-		Position:      Position{X: spawnPoint.Position.X, Y: spawnPoint.Position.Y},
+	id, ok := g.world.CreatePlayer(state.CreatePlayer{
+		Position:      state.Position{X: spawnPoint.Position.X, Y: spawnPoint.Position.Y},
 		Direction:     0,
-		MovementSpeed: MovementSpeed(defaultPlayerMovementSpeed),
-		RotationSpeed: RotationSpeed(defaultPlayerRotationSpeed),
+		MovementSpeed: state.MovementSpeed(defaultPlayerMovementSpeed),
+		RotationSpeed: state.RotationSpeed(defaultPlayerRotationSpeed),
 		Radius:        defaultPlayerRadius,
-		Health:        Health(defaultPlayerHealth),
+		Health:        state.Health(defaultPlayerHealth),
 	})
 	if !ok {
 		return 0, fmt.Errorf("failed to create player entity")
@@ -71,7 +73,7 @@ func (g *Game) JoinPlayer() (EntityID, error) {
 	return id, nil
 }
 
-func (g *Game) UpdateInLoop(dt float64, playerInputs map[EntityID]ports.PlayerInput) {
+func (g *Game) UpdateInLoop(dt float64, playerInputs map[state.EntityID]ports.PlayerInput) {
 	_ = g.movementSys.Update(dt, g.world, playerInputs)
 
 	// visionDelta := g.visionSys.Update(dt, g.world, g.buf, positionDelta)

@@ -1,4 +1,4 @@
-package domain
+package state
 
 import "survival/internal/core/domain/vector"
 

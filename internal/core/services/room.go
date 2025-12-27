@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"survival/internal/core/domain"
+	"survival/internal/core/domain/state"
 	"survival/internal/core/ports"
 	"survival/internal/utils"
 )
@@ -119,7 +120,7 @@ func (r *Room) Run() {
 	ticker := time.NewTicker(time.Second / ports.TargetTickRate)
 	defer ticker.Stop()
 
-	currentInputs := make(map[domain.EntityID]ports.PlayerInput)
+	currentInputs := make(map[state.EntityID]ports.PlayerInput)
 
 	for {
 		select {
@@ -132,7 +133,7 @@ func (r *Room) Run() {
 			currentInputs[entityID] = cmd.Input
 		case <-ticker.C:
 			r.game.UpdateInLoop(ports.DeltaTime, currentInputs)
-			currentInputs = make(map[domain.EntityID]ports.PlayerInput) // Reset inputs after processing
+			currentInputs = make(map[state.EntityID]ports.PlayerInput) // Reset inputs after processing
 			r.broadcastGameUpdate()
 		case <-r.ctx.Done():
 			return

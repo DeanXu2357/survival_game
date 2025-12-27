@@ -1,4 +1,4 @@
-package domain
+package state
 
 type ComponentManger[T any] struct {
 	data            []T

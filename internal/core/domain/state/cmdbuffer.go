@@ -1,4 +1,4 @@
-package domain
+package state
 
 type WorldCommand struct {
 	EntityID   EntityID

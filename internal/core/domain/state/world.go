@@ -1,4 +1,4 @@
-package domain
+package state
 
 type World struct {
 	Entity *EntityManager

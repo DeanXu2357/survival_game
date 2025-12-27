@@ -1,12 +1,13 @@
 package domain
 
 import (
+	"survival/internal/core/domain/state"
 	"survival/internal/core/domain/vector"
 )
 
 // PlayerSnapshot represents essential player data for client updates
 type PlayerSnapshot struct {
-	ID        EntityID        `json:"id"`
+	ID        state.EntityID  `json:"id"`
 	Position  vector.Vector2D `json:"position"`
 	Direction float64         `json:"direction"`
 	Health    int             `json:"health"`
