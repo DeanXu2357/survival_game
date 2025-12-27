@@ -12,6 +12,8 @@ const (
 	ComponentPlayerShape
 	ComponentHealth
 	ComponentWallShape
+
+	PlayerMeta = ComponentPosition | ComponentDirection | ComponentMovementSpeed | ComponentRotationSpeed | ComponentPlayerShape | ComponentHealth
 )
 
 func (m Meta) Has(mask Meta) bool {
@@ -31,7 +33,7 @@ type Position vector.Vector2D
 type Direction float64
 
 type PlayerShape struct {
-	Center *Position
+	Center Position
 	Radius float64
 }
 
@@ -46,7 +48,7 @@ type WallShape struct {
 	HalfSize vector.Vector2D
 }
 
-func (w *WallShape) BoundingBox() (min vector.Vector2D, max vector.Vector2D) {
+func (w WallShape) BoundingBox() (min vector.Vector2D, max vector.Vector2D) {
 	return vector.Vector2D{
 			X: w.Center.X - w.HalfSize.X,
 			Y: w.Center.Y - w.HalfSize.Y,
