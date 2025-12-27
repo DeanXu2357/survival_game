@@ -46,7 +46,11 @@ func (cm *ComponentManger[T]) Add(entityID EntityID, component T) bool {
 	return true
 }
 
-func (cm *ComponentManger[T]) Get(entityID EntityID) *T {
+func (cm *ComponentManger[T]) Get(entityID EntityID) T {
+	return *cm.getPointer(entityID)
+}
+
+func (cm *ComponentManger[T]) getPointer(entityID EntityID) *T {
 	idx := cm.EntityToIndex[entityID]
 	if idx == -1 {
 		return nil
