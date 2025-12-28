@@ -1,25 +1,27 @@
 package state
 
-type ComponentManger[T any] struct {
+import "iter"
+
+type ComponentManager[T any] struct {
 	data            []T
 	IndexToEntityID []EntityID
 	EntityToIndex   []int
 }
 
-func NewComponentManager[T any]() *ComponentManger[T] {
+func NewComponentManager[T any]() *ComponentManager[T] {
 	sparse := make([]int, maxEntityCount)
 	for i := range sparse {
 		sparse[i] = -1
 	}
 
-	return &ComponentManger[T]{
+	return &ComponentManager[T]{
 		data:            make([]T, 0, 1024),
 		IndexToEntityID: make([]EntityID, 0, 1024),
 		EntityToIndex:   sparse,
 	}
 }
 
-func (cm *ComponentManger[T]) Add(entityID EntityID, component T) bool {
+func (cm *ComponentManager[T]) Add(entityID EntityID, component T) bool {
 	idx := entityID.Index()
 
 	if idx >= len(cm.EntityToIndex) {
@@ -47,7 +49,7 @@ func (cm *ComponentManger[T]) Add(entityID EntityID, component T) bool {
 	return true
 }
 
-func (cm *ComponentManger[T]) Get(entityID EntityID) (T, bool) {
+func (cm *ComponentManager[T]) Get(entityID EntityID) (T, bool) {
 	eid := entityID.Index()
 	idx := -1
 	if eid < len(cm.EntityToIndex) {
@@ -61,7 +63,7 @@ func (cm *ComponentManger[T]) Get(entityID EntityID) (T, bool) {
 	return cm.data[idx], true
 }
 
-func (cm *ComponentManger[T]) Set(entityID EntityID, component T) bool {
+func (cm *ComponentManager[T]) Set(entityID EntityID, component T) bool {
 	eid := entityID.Index()
 	if eid >= len(cm.EntityToIndex) {
 		return false
@@ -76,7 +78,7 @@ func (cm *ComponentManger[T]) Set(entityID EntityID, component T) bool {
 	return true
 }
 
-func (cm *ComponentManger[T]) Remove(entityID EntityID) bool {
+func (cm *ComponentManager[T]) Remove(entityID EntityID) bool {
 	eid := entityID.Index()
 	if eid >= len(cm.EntityToIndex) {
 		return false

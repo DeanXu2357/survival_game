@@ -29,21 +29,21 @@ func TestNewComponentManager(t *testing.T) {
 func TestComponentManager_Add(t *testing.T) {
 	tests := []struct {
 		name     string
-		setup    func(*ComponentManger[testComponent])
+		setup    func(*ComponentManager[testComponent])
 		entityID EntityID
 		comp     testComponent
 		wantOK   bool
 	}{
 		{
 			name:     "success",
-			setup:    func(cm *ComponentManger[testComponent]) {},
+			setup:    func(cm *ComponentManager[testComponent]) {},
 			entityID: NewEntityID(0, 0),
 			comp:     testComponent{value: 42},
 			wantOK:   true,
 		},
 		{
 			name: "duplicate returns false",
-			setup: func(cm *ComponentManger[testComponent]) {
+			setup: func(cm *ComponentManager[testComponent]) {
 				cm.Add(NewEntityID(0, 0), testComponent{value: 1})
 			},
 			entityID: NewEntityID(0, 0),
@@ -52,7 +52,7 @@ func TestComponentManager_Add(t *testing.T) {
 		},
 		{
 			name:     "auto resize for large index",
-			setup:    func(cm *ComponentManger[testComponent]) {},
+			setup:    func(cm *ComponentManager[testComponent]) {},
 			entityID: NewEntityID(maxEntityCount+100, 0),
 			comp:     testComponent{value: 99},
 			wantOK:   true,
@@ -85,14 +85,14 @@ func TestComponentManager_Add(t *testing.T) {
 func TestComponentManager_Get(t *testing.T) {
 	tests := []struct {
 		name      string
-		setup     func(*ComponentManger[testComponent])
+		setup     func(*ComponentManager[testComponent])
 		entityID  EntityID
 		wantValue int
 		wantOK    bool
 	}{
 		{
 			name: "found",
-			setup: func(cm *ComponentManger[testComponent]) {
+			setup: func(cm *ComponentManager[testComponent]) {
 				cm.Add(NewEntityID(5, 0), testComponent{value: 100})
 			},
 			entityID:  NewEntityID(5, 0),
@@ -101,14 +101,14 @@ func TestComponentManager_Get(t *testing.T) {
 		},
 		{
 			name:      "not found",
-			setup:     func(cm *ComponentManger[testComponent]) {},
+			setup:     func(cm *ComponentManager[testComponent]) {},
 			entityID:  NewEntityID(10, 0),
 			wantValue: 0,
 			wantOK:    false,
 		},
 		{
 			name:      "out of bounds",
-			setup:     func(cm *ComponentManger[testComponent]) {},
+			setup:     func(cm *ComponentManager[testComponent]) {},
 			entityID:  NewEntityID(maxEntityCount+500, 0),
 			wantValue: 0,
 			wantOK:    false,
@@ -134,13 +134,13 @@ func TestComponentManager_Get(t *testing.T) {
 func TestComponentManager_Remove(t *testing.T) {
 	tests := []struct {
 		name     string
-		setup    func(*ComponentManger[testComponent])
+		setup    func(*ComponentManager[testComponent])
 		entityID EntityID
 		wantOK   bool
 	}{
 		{
 			name: "success",
-			setup: func(cm *ComponentManger[testComponent]) {
+			setup: func(cm *ComponentManager[testComponent]) {
 				cm.Add(NewEntityID(0, 0), testComponent{value: 1})
 			},
 			entityID: NewEntityID(0, 0),
@@ -148,7 +148,7 @@ func TestComponentManager_Remove(t *testing.T) {
 		},
 		{
 			name:     "not found",
-			setup:    func(cm *ComponentManger[testComponent]) {},
+			setup:    func(cm *ComponentManager[testComponent]) {},
 			entityID: NewEntityID(99, 0),
 			wantOK:   false,
 		},
@@ -254,14 +254,14 @@ func TestComponentManager_Integration(t *testing.T) {
 func TestComponentManager_Set(t *testing.T) {
 	tests := []struct {
 		name     string
-		setup    func(*ComponentManger[testComponent])
+		setup    func(*ComponentManager[testComponent])
 		entityID EntityID
 		newComp  testComponent
 		wantOK   bool
 	}{
 		{
 			name: "success update",
-			setup: func(cm *ComponentManger[testComponent]) {
+			setup: func(cm *ComponentManager[testComponent]) {
 				cm.Add(NewEntityID(1, 0), testComponent{value: 10})
 			},
 			entityID: NewEntityID(1, 0),
@@ -270,14 +270,14 @@ func TestComponentManager_Set(t *testing.T) {
 		},
 		{
 			name:     "fail - component not added yet",
-			setup:    func(cm *ComponentManger[testComponent]) {}, // 空的
+			setup:    func(cm *ComponentManager[testComponent]) {}, // 空的
 			entityID: NewEntityID(1, 0),
 			newComp:  testComponent{value: 99},
 			wantOK:   false,
 		},
 		{
 			name:     "fail - out of bounds",
-			setup:    func(cm *ComponentManger[testComponent]) {},
+			setup:    func(cm *ComponentManager[testComponent]) {},
 			entityID: NewEntityID(maxEntityCount+100, 0),
 			newComp:  testComponent{value: 99},
 			wantOK:   false,
