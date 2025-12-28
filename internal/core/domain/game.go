@@ -37,9 +37,11 @@ func (g *Game) loadMapEntities(mapConfig *MapConfig) error {
 		if !ok {
 			return fmt.Errorf("failed to allocate entity for wall %d", i)
 		}
-		g.world.WallShape.Add(id, state.WallShape{
-			Center:   state.Position{X: wallCfg.Center.X, Y: wallCfg.Center.Y},
-			HalfSize: wallCfg.HalfSize,
+		// TODO: refactor this , shouldn't set world property directly
+		g.world.Collider.Add(id, state.Collider{
+			Center:    state.Position{X: wallCfg.Center.X, Y: wallCfg.Center.Y},
+			HalfSize:  wallCfg.HalfSize,
+			ShapeType: state.ColliderBox,
 		})
 	}
 	return nil
@@ -83,7 +85,10 @@ func (g *Game) UpdateInLoop(dt float64, playerInputs map[state.EntityID]ports.Pl
 	// note: maybe can log here for debug ?
 }
 
-func (g *Game) Statics() *StaticGameData {
-	// TODO: to be implemented
-	panic("not implemented")
+func (g *Game) Statics() []state.StaticEntity {
+	return g.world.StaticEntities()
+}
+
+func (g *Game) PlayerSnapshotWithLocation(playerID state.EntityID) (state.PlayerSnapshotWithView, bool) {
+	return g.world.PlayerSnapshotWithView(playerID)
 }

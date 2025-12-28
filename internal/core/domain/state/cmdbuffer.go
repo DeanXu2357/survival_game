@@ -9,9 +9,9 @@ type WorldCommand struct {
 	Meta          Meta
 	RotationSpeed RotationSpeed
 	MovementSpeed MovementSpeed
-	PlayerShape   PlayerShape
+	PlayerShape   PlayerHitbox
 	Health        Health
-	WallShape     WallShape
+	WallShape     Collider
 }
 
 type CommandBuffer struct {

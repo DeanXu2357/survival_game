@@ -1,6 +1,7 @@
 package services
 
 import (
+	"iter"
 	"sync"
 
 	"survival/internal/core/domain/state"
@@ -60,6 +61,28 @@ func (sr *SessionRegistry) AllSessionIDs() []string {
 		ids = append(ids, id)
 	}
 	return ids
+}
+
+func (sr *SessionRegistry) AllEntityIDs() []state.EntityID {
+	sr.mu.RLock()
+	defer sr.mu.RUnlock()
+	ids := make([]state.EntityID, 0, len(sr.entityToSession))
+	for id := range sr.entityToSession {
+		ids = append(ids, id)
+	}
+	return ids
+}
+
+func (sr *SessionRegistry) All() iter.Seq2[state.EntityID, string] {
+	sr.mu.RLock()
+	defer sr.mu.RUnlock()
+	return func(yield func(state.EntityID, string) bool) {
+		for entityID, sessionID := range sr.entityToSession {
+			if !yield(entityID, sessionID) {
+				return
+			}
+		}
+	}
 }
 
 func (sr *SessionRegistry) Clear() {

@@ -113,8 +113,6 @@ func (r *Room) Run() {
 		log.Printf("Room %s stopped", r.ID)
 	}()
 
-	// TODO: should extract  game run and member management to separate methods.
-
 	go r.responsePump()
 
 	ticker := time.NewTicker(time.Second / ports.TargetTickRate)
@@ -160,6 +158,7 @@ func (r *Room) AddPlayer(client Client) error {
 		return nil
 	}
 
+	// TODO: check reconnection logic exist ?
 	entityID, err := r.game.JoinPlayer()
 	if err != nil {
 		return fmt.Errorf("failed to create new player: %w", err)
@@ -176,6 +175,8 @@ func (r *Room) AddPlayer(client Client) error {
 // SendStaticData sends static map data (walls, dimensions) to specific clients
 func (r *Room) SendStaticData(sessionIDs []string) {
 	staticData := r.game.Statics()
+
+	// TODO: transform to protocol struct
 
 	payloadBytes, err := json.Marshal(staticData)
 	if err != nil {
@@ -202,22 +203,28 @@ func (r *Room) RemovePlayer(sessionID string) {
 }
 
 func (r *Room) broadcastGameUpdate() {
-	gameUpdate := r.game.Statics() // TODO: check if this should be static data or delta data after updating.
+	for entityID, sessionID := range r.sessions.All() {
+		snapshot, exist := r.game.PlayerSnapshotWithLocation(entityID)
+		if !exist {
+			// TODO: log not find
+			continue
+		}
 
-	payloadBytes, err := json.Marshal(gameUpdate)
-	if err != nil {
-		log.Printf("Failed to marshal game update: %v", err)
-		return
-	}
+		// TODO: transform to protocol struct
 
-	envelope := ports.ResponseEnvelope{
-		EnvelopeType: ports.GameUpdateEnvelope,
-		Payload:      json.RawMessage(payloadBytes),
-	}
+		bytes, err := json.Marshal(snapshot)
+		if err != nil {
+			// TODO: log not find
+			continue
+		}
 
-	r.outgoing <- UpdateMessage{
-		ToSessions: r.sessions.AllSessionIDs(),
-		Envelope:   envelope,
+		r.outgoing <- UpdateMessage{
+			ToSessions: []string{sessionID},
+			Envelope: ports.ResponseEnvelope{
+				EnvelopeType: ports.GameUpdateEnvelope,
+				Payload:      bytes,
+			},
+		}
 	}
 }
 

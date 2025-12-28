@@ -25,7 +25,7 @@ func (ms *MovementSystem) Update(dt float64, world *state.World, playerInputs ma
 		dir, dirExist := world.Direction.Get(entityID)
 		moveSpeed, moveSpeedExist := world.MovementSpeed.Get(entityID)
 		rotSpeed, rotSpeedExist := world.RotationSpeed.Get(entityID)
-		playerShape, playerShapeExist := world.PlayerShape.Get(entityID)
+		playerShape, playerShapeExist := world.PlayerHitbox.Get(entityID)
 
 		if !posExist || !dirExist || !moveSpeedExist || !rotSpeedExist || !playerShapeExist {
 			// TODO: log error
@@ -56,7 +56,7 @@ func (ms *MovementSystem) Update(dt float64, world *state.World, playerInputs ma
 			Direction:     newDir,
 			MovementSpeed: moveSpeed,
 			RotationSpeed: rotSpeed,
-			PlayerShape:   state.PlayerShape{Center: newPos, Radius: playerShape.Radius},
+			PlayerHitbox:  state.PlayerHitbox{Center: newPos, Radius: playerShape.Radius},
 		})
 	}
 
@@ -120,7 +120,7 @@ func resolvePlayerCollisions(pos state.Position, radius float64, world *state.Wo
 				continue
 			}
 
-			wallShape, exist := world.WallShape.Get(entry.EntityID)
+			wallShape, exist := world.Collider.Get(entry.EntityID)
 			if !exist {
 				continue
 			}

@@ -103,3 +103,14 @@ func (cm *ComponentManager[T]) Remove(entityID EntityID) bool {
 	cm.IndexToEntityID = cm.IndexToEntityID[:lastIndex]
 	return true
 }
+
+func (cm *ComponentManager[T]) All() iter.Seq2[EntityID, T] {
+	return func(yield func(EntityID, T) bool) {
+		for i, component := range cm.data {
+			entityID := cm.IndexToEntityID[i]
+			if !yield(entityID, component) {
+				return
+			}
+		}
+	}
+}

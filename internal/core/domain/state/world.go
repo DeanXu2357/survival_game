@@ -3,16 +3,17 @@ package state
 type World struct {
 	Entity *EntityManager
 
-	EntityMeta    ComponentManger[Meta]
-	Position      ComponentManger[Position]
-	Direction     ComponentManger[Direction]
-	MovementSpeed ComponentManger[MovementSpeed]
-	RotationSpeed ComponentManger[RotationSpeed]
+	EntityMeta    ComponentManager[Meta]
+	Position      ComponentManager[Position]
+	Direction     ComponentManager[Direction]
+	MovementSpeed ComponentManager[MovementSpeed]
+	RotationSpeed ComponentManager[RotationSpeed]
+	ViewIDs       ComponentManager[ViewIDs]
 
-	PlayerShape ComponentManger[PlayerShape]
-	Health      ComponentManger[Health]
+	PlayerHitbox ComponentManager[PlayerHitbox]
+	Health       ComponentManager[Health]
 
-	WallShape ComponentManger[WallShape]
+	Collider ComponentManager[Collider]
 
 	Grid Grid
 
@@ -27,9 +28,9 @@ func NewWorld(gridCellSize float64, gridWidth, gridHeight int) *World {
 		Direction:     *NewComponentManager[Direction](),
 		MovementSpeed: *NewComponentManager[MovementSpeed](),
 		RotationSpeed: *NewComponentManager[RotationSpeed](),
-		PlayerShape:   *NewComponentManager[PlayerShape](),
+		PlayerHitbox:  *NewComponentManager[PlayerHitbox](),
 		Health:        *NewComponentManager[Health](),
-		WallShape:     *NewComponentManager[WallShape](),
+		Collider:      *NewComponentManager[Collider](),
 		Grid:          *NewGrid(gridCellSize, gridWidth, gridHeight),
 		buf:           NewCommandBuffer(),
 	}
@@ -65,7 +66,7 @@ func (w *World) CreatePlayer(cfg CreatePlayer) (EntityID, bool) {
 			MovementSpeed: cfg.MovementSpeed,
 			RotationSpeed: cfg.RotationSpeed,
 			Meta:          PlayerMeta,
-			PlayerShape:   PlayerShape{cfg.Position, cfg.Radius},
+			PlayerHitbox:  PlayerHitbox{cfg.Position, cfg.Radius},
 			Health:        cfg.Health,
 		},
 	)
@@ -91,7 +92,7 @@ func (w *World) UpdatePlayer(id EntityID, player UpdatePlayer) {
 		Meta:          player.Meta,
 		RotationSpeed: player.RotationSpeed,
 		MovementSpeed: player.MovementSpeed,
-		PlayerShape:   player.PlayerShape,
+		PlayerShape:   player.PlayerHitbox,
 		Health:        player.Health,
 	})
 }
@@ -103,11 +104,101 @@ type UpdatePlayer struct {
 	MovementSpeed
 	RotationSpeed
 	Meta
-	PlayerShape
+	PlayerHitbox
 	Health
 }
 
 func (w *World) ApplyCommands() {
 	// todo: implement command application logic
 	panic("not implemented")
+}
+
+func (w *World) PlayerSnapshot(id EntityID) (PlayerSnapshot, bool) {
+	if !w.Entity.IsAlive(id) {
+		return PlayerSnapshot{}, false
+	}
+	player, exist := w.playerLocation(id)
+	if !exist {
+		return PlayerSnapshot{}, false
+	}
+	return player, true
+}
+
+func (w *World) PlayerSnapshotWithView(id EntityID) (PlayerSnapshotWithView, bool) {
+	if !w.Entity.IsAlive(id) {
+		return PlayerSnapshotWithView{}, false
+	}
+	player, exist := w.playerLocation(id)
+	if !exist {
+		return PlayerSnapshotWithView{}, false
+	}
+	viewIDs, exist := w.ViewIDs.Get(id)
+	if !exist {
+		// TODO: log error
+		return PlayerSnapshotWithView{Player: player}, true
+	}
+
+	views := make([]PlayerSnapshot, len(viewIDs))
+	for i, viewID := range viewIDs {
+		views[i], exist = w.playerLocation(viewID)
+		if !exist {
+			// TODO: log error
+			continue
+		}
+	}
+	return PlayerSnapshotWithView{Player: player, Views: views}, true
+}
+
+func (w *World) StaticEntities() []StaticEntity {
+	staticEntities := make([]StaticEntity, 0)
+	for entityID, collider := range w.Collider.All() {
+		staticEntities = append(staticEntities, StaticEntity{
+			ID:       entityID,
+			Collider: collider,
+		})
+	}
+	return staticEntities
+}
+
+func (w *World) playerLocation(id EntityID) (PlayerSnapshot, bool) {
+	snapshot := PlayerSnapshot{ID: id}
+
+	meta, exist := w.EntityMeta.Get(id)
+	if !exist {
+		return PlayerSnapshot{}, false
+	}
+
+	var position Position
+	if !meta.Has(ComponentPosition) {
+		position, exist = w.Position.Get(id)
+		if !exist {
+			// TODO: log error
+		}
+		snapshot.Position = position
+	}
+
+	if !meta.Has(ComponentDirection) {
+		direction, exist := w.Direction.Get(id)
+		if !exist {
+			// TODO: log error
+		}
+		snapshot.Direction = direction
+	}
+	return snapshot, true
+}
+
+type PlayerSnapshot struct {
+	ID        EntityID  `json:"id"`
+	Direction Direction `json:"direction"`
+	Position  Position  `json:"position"`
+}
+
+type PlayerSnapshotWithView struct {
+	Player PlayerSnapshot   `json:"player"`
+	Views  []PlayerSnapshot `json:"views"`
+}
+
+type StaticEntity struct {
+	ID       EntityID `json:"id"`
+	Collider Collider `json:"collider"`
 }

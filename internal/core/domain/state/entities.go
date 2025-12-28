@@ -9,11 +9,14 @@ const (
 	ComponentDirection
 	ComponentMovementSpeed
 	ComponentRotationSpeed
-	ComponentPlayerShape
+	ComponentPlayerHitbox
 	ComponentHealth
-	ComponentWallShape
+	ComponentCollider
+	ComponentViewIDs
 
-	PlayerMeta = ComponentPosition | ComponentDirection | ComponentMovementSpeed | ComponentRotationSpeed | ComponentPlayerShape | ComponentHealth
+	PlayerMeta = ComponentPosition | ComponentDirection | ComponentMovementSpeed |
+		ComponentRotationSpeed | ComponentPlayerHitbox | ComponentHealth |
+		ComponentViewIDs
 )
 
 func (m Meta) Has(mask Meta) bool {
@@ -32,8 +35,8 @@ type Position vector.Vector2D
 
 type Direction float64
 
-type PlayerShape struct {
-	Center Position
+type PlayerHitbox struct {
+	Center Position // TODO: refactor to vector2D offset design
 	Radius float64
 }
 
@@ -43,17 +46,39 @@ type RotationSpeed float64
 
 type Health int
 
-type WallShape struct {
-	Center   Position
+type Collider struct {
+	// Center deprecated
+	Center   Position // TODO: refactor to vector2D offset design
 	HalfSize vector.Vector2D
+
+	ShapeType ColliderShape
+	Radius    float64
+	Offset    vector.Vector2D
 }
 
-func (w WallShape) BoundingBox() (min vector.Vector2D, max vector.Vector2D) {
-	return vector.Vector2D{
-			X: w.Center.X - w.HalfSize.X,
-			Y: w.Center.Y - w.HalfSize.Y,
-		}, vector.Vector2D{
-			X: w.Center.X + w.HalfSize.X,
-			Y: w.Center.Y + w.HalfSize.Y,
-		}
+type ColliderShape uint8
+
+const (
+	ColliderShapeNone ColliderShape = iota
+	ColliderCircle
+	ColliderBox
+)
+
+func (w Collider) BoundingBox() (min vector.Vector2D, max vector.Vector2D) {
+	if w.ShapeType == ColliderBox {
+		return vector.Vector2D{
+				X: w.Center.X - w.HalfSize.X,
+				Y: w.Center.Y - w.HalfSize.Y,
+			}, vector.Vector2D{
+				X: w.Center.X + w.HalfSize.X,
+				Y: w.Center.Y + w.HalfSize.Y,
+			}
+	}
+
+	// TODO: generate circle bounding box
+	//if w.ShapeType == ColliderCircle {
+	//}
+	return vector.Vector2D{}, vector.Vector2D{}
 }
+
+type ViewIDs []EntityID
