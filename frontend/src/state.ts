@@ -7,11 +7,6 @@ export interface Player {
   ID: number;
   Position: Vector2D;
   Direction: number;
-  Radius: number;
-  RotationSpeed: number;
-  MovementSpeed: number;
-  Health: number;
-  IsAlive: boolean;
 }
 
 export interface Wall {

@@ -1,4 +1,4 @@
-import type { PlayerInput, ClientGameState, StaticGameData } from '../state';
+import type { PlayerInput, Player, Wall } from '../state';
 import { gameState } from '../state';
 import { SessionManager } from '../session';
 import type { AppStateManager } from '../managers/app-state';
@@ -17,7 +17,9 @@ import {
   type ResponseEnvelope,
   type SystemSetSessionPayload,
   type RoomListResponsePayload,
-  type JoinRoomResponsePayload
+  type JoinRoomResponsePayload,
+  type GameUpdatePayload,
+  type StaticDataPayload
 } from './protocols';
 
 export class NetworkClient {
@@ -325,14 +327,36 @@ export class NetworkClient {
 
   private handleGameUpdate(payload: any): void {
     try {
-      let gameUpdate: ClientGameState;
+      let update: GameUpdatePayload;
       if (typeof payload === 'string') {
-        gameUpdate = JSON.parse(payload);
+        update = JSON.parse(payload);
       } else {
-        gameUpdate = payload;
+        update = payload;
       }
 
-      gameState.updateState(gameUpdate);
+      const players: { [key: number]: Player } = {};
+
+      players[update.me.id] = {
+        ID: update.me.id,
+        Position: { x: update.me.x, y: update.me.y },
+        Direction: update.me.dir
+      };
+
+      for (const view of update.views) {
+        players[view.id] = {
+          ID: view.id,
+          Position: { x: view.x, y: view.y },
+          Direction: view.dir
+        };
+      }
+
+      gameState.setCurrentPlayerID(update.me.id);
+
+      gameState.updateState({
+        players,
+        projectiles: [],
+        timestamp: update.timestamp
+      });
     } catch (error) {
       console.error('Error processing game update:', error);
     }
@@ -340,15 +364,26 @@ export class NetworkClient {
 
   private handleStaticData(payload: any): void {
     try {
-      let staticData: StaticGameData;
+      let data: StaticDataPayload;
       if (typeof payload === 'string') {
-        staticData = JSON.parse(payload);
+        data = JSON.parse(payload);
       } else {
-        staticData = payload;
+        data = payload;
       }
 
-      console.log('Received static data:', staticData);
-      gameState.updateStaticData(staticData);
+      const walls: Wall[] = data.colliders.map(c => ({
+        id: String(c.id),
+        center: { x: c.x, y: c.y },
+        half_size: { x: c.half_x, y: c.half_y },
+        rotation: c.rotation
+      }));
+
+      console.log('Received static data:', data);
+      gameState.updateStaticData({
+        walls,
+        mapWidth: data.map_width || 800,
+        mapHeight: data.map_height || 600
+      });
     } catch (error) {
       console.error('Error processing static data:', error);
     }
