@@ -18,21 +18,26 @@ type World struct {
 	Grid Grid
 
 	buf *CommandBuffer
+
+	Width, Height float64
 }
 
 func NewWorld(gridCellSize float64, gridWidth, gridHeight int) *World {
 	return &World{
 		Entity:        NewEntityManager(),
-		EntityMeta:    *NewComponentManager[Meta](),
+		EntityMeta:    *NewComponentManager[Meta](), // TODO: refactor this, use pointer or not
 		Position:      *NewComponentManager[Position](),
 		Direction:     *NewComponentManager[Direction](),
 		MovementSpeed: *NewComponentManager[MovementSpeed](),
 		RotationSpeed: *NewComponentManager[RotationSpeed](),
+		ViewIDs:       *NewComponentManager[ViewIDs](),
 		PlayerHitbox:  *NewComponentManager[PlayerHitbox](),
 		Health:        *NewComponentManager[Health](),
 		Collider:      *NewComponentManager[Collider](),
 		Grid:          *NewGrid(gridCellSize, gridWidth, gridHeight),
 		buf:           NewCommandBuffer(),
+		Width:         0,
+		Height:        0,
 	}
 }
 
@@ -109,8 +114,59 @@ type UpdatePlayer struct {
 }
 
 func (w *World) ApplyCommands() {
-	// todo: implement command application logic
-	panic("not implemented")
+	for !w.buf.IsEmpty() {
+		cmd, ok := w.buf.Pop()
+		if !ok {
+			// TODO: log error
+			continue
+		}
+
+		entityID := cmd.EntityID
+		if !w.Entity.IsAlive(entityID) {
+			continue
+		}
+
+		meta, exist := w.EntityMeta.Get(entityID)
+		if !exist {
+			continue
+		}
+
+		if meta.Has(ComponentPosition) {
+			if !w.Position.Set(entityID, cmd.Position) {
+				// TODO: log error
+			}
+		}
+		if meta.Has(ComponentDirection) {
+			if !w.Direction.Set(entityID, cmd.Direction) {
+				// TODO: log error
+			}
+		}
+		if meta.Has(ComponentMovementSpeed) {
+			if !w.MovementSpeed.Set(entityID, cmd.MovementSpeed) {
+				// TODO: log error
+			}
+		}
+		if meta.Has(ComponentRotationSpeed) {
+			if !w.RotationSpeed.Set(entityID, cmd.RotationSpeed) {
+				// TODO: log error
+			}
+		}
+		if meta.Has(ComponentPlayerHitbox) {
+			if !w.PlayerHitbox.Set(entityID, cmd.PlayerShape) {
+				// TODO: log error
+			}
+		}
+		if meta.Has(ComponentHealth) {
+			if !w.Health.Set(entityID, cmd.Health) {
+				// TODO: log error
+			}
+		}
+		if meta.Has(ComponentCollider) {
+			if !w.Collider.Set(entityID, cmd.Collider) {
+				// TODO: log error
+			}
+		}
+	}
 }
 
 func (w *World) PlayerSnapshot(id EntityID) (PlayerSnapshot, bool) {
@@ -160,6 +216,13 @@ func (w *World) StaticEntities() []StaticEntity {
 	return staticEntities
 }
 
+func (w *World) MapInfo() MapInfo {
+	return MapInfo{
+		Width:  w.Width,
+		Height: w.Height,
+	}
+}
+
 func (w *World) playerLocation(id EntityID) (PlayerSnapshot, bool) {
 	snapshot := PlayerSnapshot{ID: id}
 
@@ -201,4 +264,9 @@ type PlayerSnapshotWithView struct {
 type StaticEntity struct {
 	ID       EntityID `json:"id"`
 	Collider Collider `json:"collider"`
+}
+
+type MapInfo struct {
+	Width  float64
+	Height float64
 }

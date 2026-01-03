@@ -106,3 +106,33 @@ type ErrorPayload struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 }
+
+type GameUpdatePayload struct {
+	Me        PlayerInfo   `json:"me"`
+	Views     []PlayerInfo `json:"views"`
+	Timestamp int64        `json:"timestamp"` // timestamp unix milli
+}
+
+type PlayerInfo struct {
+	ID  uint64  `json:"id"`
+	X   float64 `json:"x"`
+	Y   float64 `json:"y"`
+	Dir float64 `json:"dir"`
+}
+
+type StaticDataPayload struct {
+	Colliders []Collider `json:"colliders"`
+	MapWidth  float64    `json:"map_width"`
+	MapHeight float64    `json:"map_height"`
+}
+
+type Collider struct {
+	ID        uint64  `json:"id"`
+	X         float64 `json:"x"`
+	Y         float64 `json:"y"`
+	HalfX     float64 `json:"half_x"`
+	HalfY     float64 `json:"half_y"`
+	Radius    float64 `json:"radius"`
+	ShapeType uint8   `json:"shapeType"`
+	Rotation  float64 `json:"rotation"`
+}

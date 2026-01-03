@@ -48,8 +48,9 @@ type Health int
 
 type Collider struct {
 	// Center deprecated
-	Center   Position // TODO: refactor to vector2D offset design
-	HalfSize vector.Vector2D
+	Center    Position // TODO: refactor to vector2D offset design
+	HalfSize  vector.Vector2D
+	Direction Direction
 
 	ShapeType ColliderShape
 	Radius    float64

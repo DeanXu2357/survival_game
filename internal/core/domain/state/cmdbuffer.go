@@ -11,7 +11,7 @@ type WorldCommand struct {
 	MovementSpeed MovementSpeed
 	PlayerShape   PlayerHitbox
 	Health        Health
-	WallShape     Collider
+	Collider      Collider
 }
 
 type CommandBuffer struct {

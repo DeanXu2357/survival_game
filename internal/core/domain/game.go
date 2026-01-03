@@ -19,8 +19,12 @@ func NewGame(mapConfig *MapConfig) (*Game, error) {
 	gridWidth := int(mapConfig.Dimensions.X / mapConfig.GridSize)
 	gridHeight := int(mapConfig.Dimensions.Y / mapConfig.GridSize)
 
+	world := state.NewWorld(mapConfig.GridSize, gridWidth, gridHeight)
+	world.Width = mapConfig.Dimensions.X
+	world.Height = mapConfig.Dimensions.Y
+
 	g := &Game{
-		world:       state.NewWorld(mapConfig.GridSize, gridWidth, gridHeight),
+		world:       world,
 		mapConfig:   mapConfig,
 		movementSys: *system.NewMovementSystem(),
 	}
@@ -91,4 +95,8 @@ func (g *Game) Statics() []state.StaticEntity {
 
 func (g *Game) PlayerSnapshotWithLocation(playerID state.EntityID) (state.PlayerSnapshotWithView, bool) {
 	return g.world.PlayerSnapshotWithView(playerID)
+}
+
+func (g *Game) MapInfo() state.MapInfo {
+	return g.world.MapInfo()
 }

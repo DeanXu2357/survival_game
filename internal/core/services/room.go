@@ -175,17 +175,35 @@ func (r *Room) AddPlayer(client Client) error {
 // SendStaticData sends static map data (walls, dimensions) to specific clients
 func (r *Room) SendStaticData(sessionIDs []string) {
 	staticData := r.game.Statics()
+	mapInfo := r.game.MapInfo()
 
-	// TODO: transform to protocol struct
+	colliders := make([]ports.Collider, len(staticData))
+	for i, entity := range staticData {
+		colliders[i] = ports.Collider{
+			ID:        uint64(entity.ID),
+			X:         entity.Collider.Center.X,
+			Y:         entity.Collider.Center.Y,
+			HalfX:     entity.Collider.HalfSize.X,
+			HalfY:     entity.Collider.HalfSize.Y,
+			Radius:    entity.Collider.Radius,
+			ShapeType: uint8(entity.Collider.ShapeType),
+			Rotation:  0,
+		}
+	}
 
-	payloadBytes, err := json.Marshal(staticData)
+	payloadBytes, err := json.Marshal(ports.StaticDataPayload{
+		Colliders: colliders,
+		MapWidth:  mapInfo.Width,
+		MapHeight: mapInfo.Height,
+	})
 	if err != nil {
+		log.Printf("Failed to marshal static data: %v", err)
 		return
 	}
 
 	envelope := ports.ResponseEnvelope{
 		EnvelopeType: ports.StaticDataEnvelope,
-		Payload:      json.RawMessage(payloadBytes),
+		Payload:      payloadBytes,
 	}
 
 	r.outgoing <- UpdateMessage{
@@ -210,11 +228,31 @@ func (r *Room) broadcastGameUpdate() {
 			continue
 		}
 
-		// TODO: transform to protocol struct
+		viewInfo := make([]ports.PlayerInfo, len(snapshot.Views))
+		if len(snapshot.Views) > 0 {
+			for i, view := range snapshot.Views {
+				viewInfo[i] = ports.PlayerInfo{
+					ID:  uint64(view.ID),
+					X:   view.Position.X,
+					Y:   view.Position.Y,
+					Dir: float64(view.Direction),
+				}
+			}
+		}
 
-		bytes, err := json.Marshal(snapshot)
+		bytes, err := json.Marshal(ports.GameUpdatePayload{
+			Me: ports.PlayerInfo{
+				ID:  uint64(entityID),
+				X:   snapshot.Player.Position.X,
+				Y:   snapshot.Player.Position.Y,
+				Dir: float64(snapshot.Player.Direction),
+			},
+			Views:     viewInfo,
+			Timestamp: time.Now().UnixMilli(),
+		})
 		if err != nil {
 			// TODO: log not find
+			fmt.Println("Failed to marshal game update payload:", err)
 			continue
 		}
 
@@ -225,6 +263,7 @@ func (r *Room) broadcastGameUpdate() {
 				Payload:      bytes,
 			},
 		}
+
 	}
 }
 
