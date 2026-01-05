@@ -5,7 +5,8 @@ import "survival/internal/core/domain/vector"
 type Meta uint64
 
 const (
-	ComponentPosition Meta = 1 << iota
+	ComponentMeta Meta = 1 << iota
+	ComponentPosition
 	ComponentDirection
 	ComponentMovementSpeed
 	ComponentRotationSpeed
@@ -14,7 +15,7 @@ const (
 	ComponentCollider
 	ComponentViewIDs
 
-	PlayerMeta = ComponentPosition | ComponentDirection | ComponentMovementSpeed |
+	PlayerMeta = ComponentMeta | ComponentPosition | ComponentDirection | ComponentMovementSpeed |
 		ComponentRotationSpeed | ComponentPlayerHitbox | ComponentHealth |
 		ComponentViewIDs
 )

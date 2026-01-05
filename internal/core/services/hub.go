@@ -178,7 +178,7 @@ func (h *Hub) JoinRoom(clientID, roomID string) error {
 
 	// Send static data (map, walls, etc.) to the newly joined client
 	room.SendStaticData([]string{client.SessionID()})
-	log.Printf("Client %s (session: %s) joined room %s", clientID, client.SessionID(), roomID)
+	log.Printf("[JoinRoom] Client %s (session: %s) joined room %s, SendStaticData called", clientID, client.SessionID(), roomID)
 
 	handler := func(cmd ports.RequestCommand) {
 		if cmd.EnvelopeType != ports.PlayerInputEnvelope {

@@ -21,6 +21,14 @@ func NewComponentManager[T any]() *ComponentManager[T] {
 	}
 }
 
+func (cm *ComponentManager[T]) Upsert(entityID EntityID, component T) bool {
+	if _, ok := cm.Get(entityID); !ok {
+		return cm.Add(entityID, component)
+	}
+
+	return cm.Set(entityID, component)
+}
+
 func (cm *ComponentManager[T]) Add(entityID EntityID, component T) bool {
 	idx := entityID.Index()
 

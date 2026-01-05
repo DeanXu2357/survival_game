@@ -1,5 +1,10 @@
 package state
 
+import (
+	"fmt"
+	"log"
+)
+
 type World struct {
 	Entity *EntityManager
 
@@ -62,6 +67,8 @@ func (w *World) CreatePlayer(cfg CreatePlayer) (EntityID, bool) {
 		return 0, false
 	}
 
+	fmt.Printf("Allocated Player EntityID %d\n", id)
+
 	w.UpdatePlayer(
 		id,
 		UpdatePlayer{
@@ -89,6 +96,7 @@ type CreatePlayer struct {
 }
 
 func (w *World) UpdatePlayer(id EntityID, player UpdatePlayer) {
+	log.Printf("Queue UpdatePlayer command for EntityID %d", id)
 	w.buf.Push(WorldCommand{
 		EntityID:      id,
 		UpdateMeta:    player.UpdateMeta,
@@ -114,55 +122,59 @@ type UpdatePlayer struct {
 }
 
 func (w *World) ApplyCommands() {
+	log.Printf("Call ApplyCommands with %d commands in buffer", w.buf.Len())
 	for !w.buf.IsEmpty() {
 		cmd, ok := w.buf.Pop()
 		if !ok {
-			// TODO: log error
+			log.Printf("ApplyCommands: CommandBuffer is empty unexpectedly")
 			continue
 		}
 
 		entityID := cmd.EntityID
 		if !w.Entity.IsAlive(entityID) {
+			log.Printf("ApplyCommands: EntityID %d is not alive, skipping command", entityID)
 			continue
 		}
 
-		meta, exist := w.EntityMeta.Get(entityID)
-		if !exist {
-			continue
-		}
+		log.Printf("Applying command for EntityID %d with UpdateMeta %b", entityID, cmd.UpdateMeta)
 
-		if meta.Has(ComponentPosition) {
-			if !w.Position.Set(entityID, cmd.Position) {
+		if cmd.UpdateMeta.Has(ComponentMeta) {
+			if !w.EntityMeta.Upsert(entityID, cmd.Meta) {
 				// TODO: log error
 			}
 		}
-		if meta.Has(ComponentDirection) {
-			if !w.Direction.Set(entityID, cmd.Direction) {
+		if cmd.UpdateMeta.Has(ComponentPosition) {
+			if !w.Position.Upsert(entityID, cmd.Position) {
 				// TODO: log error
 			}
 		}
-		if meta.Has(ComponentMovementSpeed) {
-			if !w.MovementSpeed.Set(entityID, cmd.MovementSpeed) {
+		if cmd.UpdateMeta.Has(ComponentDirection) {
+			if !w.Direction.Upsert(entityID, cmd.Direction) {
 				// TODO: log error
 			}
 		}
-		if meta.Has(ComponentRotationSpeed) {
-			if !w.RotationSpeed.Set(entityID, cmd.RotationSpeed) {
+		if cmd.UpdateMeta.Has(ComponentMovementSpeed) {
+			if !w.MovementSpeed.Upsert(entityID, cmd.MovementSpeed) {
 				// TODO: log error
 			}
 		}
-		if meta.Has(ComponentPlayerHitbox) {
-			if !w.PlayerHitbox.Set(entityID, cmd.PlayerShape) {
+		if cmd.UpdateMeta.Has(ComponentRotationSpeed) {
+			if !w.RotationSpeed.Upsert(entityID, cmd.RotationSpeed) {
 				// TODO: log error
 			}
 		}
-		if meta.Has(ComponentHealth) {
-			if !w.Health.Set(entityID, cmd.Health) {
+		if cmd.UpdateMeta.Has(ComponentPlayerHitbox) {
+			if !w.PlayerHitbox.Upsert(entityID, cmd.PlayerShape) {
 				// TODO: log error
 			}
 		}
-		if meta.Has(ComponentCollider) {
-			if !w.Collider.Set(entityID, cmd.Collider) {
+		if cmd.UpdateMeta.Has(ComponentHealth) {
+			if !w.Health.Upsert(entityID, cmd.Health) {
+				// TODO: log error
+			}
+		}
+		if cmd.UpdateMeta.Has(ComponentCollider) {
+			if !w.Collider.Upsert(entityID, cmd.Collider) {
 				// TODO: log error
 			}
 		}
@@ -186,11 +198,13 @@ func (w *World) PlayerSnapshotWithView(id EntityID) (PlayerSnapshotWithView, boo
 	}
 	player, exist := w.playerLocation(id)
 	if !exist {
+		log.Printf("PlayerSnapshotWithView: failed to get player location for EntityID %d", id)
 		return PlayerSnapshotWithView{}, false
 	}
 	viewIDs, exist := w.ViewIDs.Get(id)
 	if !exist {
 		// TODO: log error
+		log.Printf("PlayerSnapshotWithView: no ViewIDs component for EntityID %d", id)
 		return PlayerSnapshotWithView{Player: player}, true
 	}
 
@@ -228,24 +242,26 @@ func (w *World) playerLocation(id EntityID) (PlayerSnapshot, bool) {
 
 	meta, exist := w.EntityMeta.Get(id)
 	if !exist {
+		log.Printf("playerLocation: no Meta component for EntityID %d", id)
 		return PlayerSnapshot{}, false
 	}
 
-	var position Position
-	if !meta.Has(ComponentPosition) {
-		position, exist = w.Position.Get(id)
-		if !exist {
+	if meta.Has(ComponentPosition) {
+		if position, exist := w.Position.Get(id); exist {
+			snapshot.Position = position
+		} else {
+			log.Printf("playerLocation: no Position component for EntityID %d", id)
 			// TODO: log error
 		}
-		snapshot.Position = position
 	}
 
-	if !meta.Has(ComponentDirection) {
-		direction, exist := w.Direction.Get(id)
-		if !exist {
+	if meta.Has(ComponentDirection) {
+		if direction, exist := w.Direction.Get(id); exist {
+			snapshot.Direction = direction
+		} else {
+			log.Printf("playerLocation: no Direction component for EntityID %d", id)
 			// TODO: log error
 		}
-		snapshot.Direction = direction
 	}
 	return snapshot, true
 }

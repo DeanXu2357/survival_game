@@ -1,5 +1,7 @@
 package state
 
+import "sync"
+
 type WorldCommand struct {
 	EntityID   EntityID
 	UpdateMeta Meta
@@ -15,6 +17,7 @@ type WorldCommand struct {
 }
 
 type CommandBuffer struct {
+	mu       sync.RWMutex
 	commands []WorldCommand
 }
 
@@ -25,10 +28,16 @@ func NewCommandBuffer() *CommandBuffer {
 }
 
 func (cb *CommandBuffer) Push(cmd WorldCommand) {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+
 	cb.commands = append(cb.commands, cmd)
 }
 
 func (cb *CommandBuffer) Pop() (WorldCommand, bool) {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+
 	if len(cb.commands) == 0 {
 		return WorldCommand{}, false
 	}
@@ -38,13 +47,19 @@ func (cb *CommandBuffer) Pop() (WorldCommand, bool) {
 }
 
 func (cb *CommandBuffer) Clear() {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+
 	cb.commands = cb.commands[:0]
 }
 
 func (cb *CommandBuffer) Len() int {
+	cb.mu.RLock()
+	defer cb.mu.RUnlock()
+
 	return len(cb.commands)
 }
 
 func (cb *CommandBuffer) IsEmpty() bool {
-	return len(cb.commands) == 0
+	return cb.Len() == 0
 }

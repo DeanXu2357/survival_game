@@ -42,7 +42,7 @@ func (g *Game) loadMapEntities(mapConfig *MapConfig) error {
 			return fmt.Errorf("failed to allocate entity for wall %d", i)
 		}
 		// TODO: refactor this , shouldn't set world property directly
-		g.world.Collider.Add(id, state.Collider{
+		g.world.Collider.Upsert(id, state.Collider{
 			Center:    state.Position{X: wallCfg.Center.X, Y: wallCfg.Center.Y},
 			HalfSize:  wallCfg.HalfSize,
 			ShapeType: state.ColliderBox,
@@ -75,6 +75,8 @@ func (g *Game) JoinPlayer() (state.EntityID, error) {
 	if !ok {
 		return 0, fmt.Errorf("failed to create player entity")
 	}
+
+	g.world.ApplyCommands()
 
 	return id, nil
 }

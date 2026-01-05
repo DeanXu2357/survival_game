@@ -259,11 +259,10 @@ export class PixiRenderer extends AbstractRenderer {
       fontFamily: 'Arial',
       fontSize: 14,
       fill: 0xffffff,
-      align: 'left'
+      align: 'right'
     });
-    
-    this.debugText.x = 10;
-    this.debugText.y = 10;
+
+    this.debugText.anchor.set(1, 1);
     this.debugContainer.addChild(this.debugText);
   }
 
@@ -405,7 +404,7 @@ export class PixiRenderer extends AbstractRenderer {
   }
 
   private updateDebugDisplay(gameStateParam: ClientGameState, staticData: StaticGameData): void {
-    if (!this.debugText) return;
+    if (!this.debugText || !this.config) return;
 
     const debugInfo = [
       `Players: ${Object.keys(gameStateParam.players).length}`,
@@ -417,5 +416,7 @@ export class PixiRenderer extends AbstractRenderer {
     ];
 
     this.debugText.text = debugInfo.join('\n');
+    this.debugText.x = this.config.width - 10;
+    this.debugText.y = this.config.height - 10;
   }
 }

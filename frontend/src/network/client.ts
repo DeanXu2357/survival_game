@@ -227,7 +227,7 @@ export class NetworkClient {
   }
 
   private handleServerMessage(envelope: ResponseEnvelope): void {
-    console.log('Received server message:', envelope.envelope_type);
+    console.log('[WS] Received:', envelope.envelope_type);
 
     switch (envelope.envelope_type) {
       case RESPONSE_TYPES.ROOM_LIST_RESPONSE:
@@ -334,6 +334,8 @@ export class NetworkClient {
         update = payload;
       }
 
+      console.log('[GameUpdate] me:', update.me, 'views:', update.views?.length);
+
       const players: { [key: number]: Player } = {};
 
       players[update.me.id] = {
@@ -378,7 +380,9 @@ export class NetworkClient {
         rotation: c.rotation
       }));
 
-      console.log('Received static data:', data);
+      console.log('[StaticData] Colliders count:', data.colliders?.length);
+      console.log('[StaticData] Map size:', data.map_width, 'x', data.map_height);
+      console.log('[StaticData] Walls converted:', walls.length);
       gameState.updateStaticData({
         walls,
         mapWidth: data.map_width || 800,

@@ -120,6 +120,8 @@ func (r *Room) Run() {
 
 	currentInputs := make(map[state.EntityID]ports.PlayerInput)
 
+	log.Printf("[Room %s] started", r.ID)
+
 	for {
 		select {
 		case cmd := <-r.commands:
@@ -153,6 +155,7 @@ func (r *Room) Shutdown(ctx context.Context) error {
 
 // AddPlayer creates a new player or reconnects existing players and registers them to the room.
 func (r *Room) AddPlayer(client Client) error {
+	log.Printf("Adding player for session %s to room %s", client.SessionID(), r.ID)
 	sessionID := client.SessionID()
 	if _, exist := r.sessions.EntityID(sessionID); exist {
 		return nil
@@ -176,6 +179,9 @@ func (r *Room) AddPlayer(client Client) error {
 func (r *Room) SendStaticData(sessionIDs []string) {
 	staticData := r.game.Statics()
 	mapInfo := r.game.MapInfo()
+
+	log.Printf("[SendStaticData] Sending %d colliders, map: %.0fx%.0f to sessions: %v",
+		len(staticData), mapInfo.Width, mapInfo.Height, sessionIDs)
 
 	colliders := make([]ports.Collider, len(staticData))
 	for i, entity := range staticData {
@@ -224,7 +230,7 @@ func (r *Room) broadcastGameUpdate() {
 	for entityID, sessionID := range r.sessions.All() {
 		snapshot, exist := r.game.PlayerSnapshotWithLocation(entityID)
 		if !exist {
-			// TODO: log not find
+			log.Printf("[broadcastGameUpdate] Snapshot not found for entityID: %d, sessionID: %s", entityID, sessionID)
 			continue
 		}
 
