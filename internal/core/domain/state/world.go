@@ -122,11 +122,10 @@ type UpdatePlayer struct {
 }
 
 func (w *World) ApplyCommands() {
-	log.Printf("Call ApplyCommands with %d commands in buffer", w.buf.Len())
 	for !w.buf.IsEmpty() {
 		cmd, ok := w.buf.Pop()
 		if !ok {
-			log.Printf("ApplyCommands: CommandBuffer is empty unexpectedly")
+			log.Printf("[Warning] ApplyCommands: CommandBuffer is empty unexpectedly")
 			continue
 		}
 

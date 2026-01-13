@@ -25,8 +25,9 @@ type Room struct {
 	sessions   *SessionRegistry
 	subManager *Manager[UpdateMessage]
 
-	commands chan ports.Command
-	outgoing chan UpdateMessage
+	joinClientCh chan Client
+	commands     chan ports.Command
+	outgoing     chan UpdateMessage
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -52,8 +53,9 @@ func NewRoomWithMap(ctx context.Context, id string, mapConfig *domain.MapConfig)
 		sessions:   NewSessionRegistry(),
 		subManager: NewManager[UpdateMessage](utils.NewSequentialIDGenerator(fmt.Sprintf("room%s-sub-", id))),
 
-		commands: make(chan ports.Command, 200),
-		outgoing: make(chan UpdateMessage, 400),
+		joinClientCh: make(chan Client, 100),
+		commands:     make(chan ports.Command, 200),
+		outgoing:     make(chan UpdateMessage, 400),
 
 		ctx:    roomCTX,
 		cancel: cancel,
@@ -124,6 +126,10 @@ func (r *Room) Run() {
 
 	for {
 		select {
+		case client := <-r.joinClientCh:
+			if err := r.addPlayer(client); err != nil {
+				log.Printf("Failed to add player to room %s: %v", r.ID, err)
+			}
 		case cmd := <-r.commands:
 			entityID, ok := r.sessions.EntityID(cmd.SessionID)
 			if !ok {
@@ -155,23 +161,31 @@ func (r *Room) Shutdown(ctx context.Context) error {
 
 // AddPlayer creates a new player or reconnects existing players and registers them to the room.
 func (r *Room) AddPlayer(client Client) error {
+	select {
+	case r.joinClientCh <- client:
+		return nil
+	default:
+		return fmt.Errorf("room %s system command channel full, cannot add player %s", r.ID, client.SessionID())
+	}
+}
+
+func (r *Room) addPlayer(client Client) error {
 	log.Printf("Adding player for session %s to room %s", client.SessionID(), r.ID)
 	sessionID := client.SessionID()
 	if _, exist := r.sessions.EntityID(sessionID); exist {
-		return nil
+		return fmt.Errorf("session %s already registered in room %s", sessionID, r.ID)
 	}
 
 	// TODO: check reconnection logic exist ?
 	entityID, err := r.game.JoinPlayer()
 	if err != nil {
-		return fmt.Errorf("failed to create new player: %w", err)
+		return fmt.Errorf("failed to join player for session %s in room %s: %w", sessionID, r.ID, err)
 	}
 
 	r.sessions.Register(sessionID, entityID)
 
 	log.Printf("Player created and registered - Session: %s, EntityID: %d", sessionID, entityID)
 	log.Printf("Total players in room: %d", r.PlayerCount())
-
 	return nil
 }
 
