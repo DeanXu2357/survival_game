@@ -8,6 +8,7 @@ require (
 	github.com/go-playground/validator/v10 v10.27.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/spf13/cobra v1.10.2
+	golang.org/x/term v0.29.0
 )
 
 require (
