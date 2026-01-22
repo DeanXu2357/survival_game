@@ -70,9 +70,9 @@ func parseInput(input KeyEvent) InputEvent {
 	case "s", "S":
 		return InputMoveBackward
 	case "a", "A":
-		return InputMoveRight
-	case "d", "D":
 		return InputMoveLeft
+	case "d", "D":
+		return InputMoveRight
 	case "q", "Q":
 		return InputTurnLeft
 	case "e", "E":

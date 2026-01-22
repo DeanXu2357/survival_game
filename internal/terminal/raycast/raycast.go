@@ -27,7 +27,7 @@ func CastRays(playerX, playerY, playerDir float64, colliders []ports.Collider, n
 	for i := 0; i < numRays; i++ {
 		rayAngle := startAngle - float64(i)*angleStep
 		rayDirX := math.Cos(rayAngle)
-		rayDirY := math.Sin(rayAngle)
+		rayDirY := -math.Sin(rayAngle)
 
 		distance, hit := castSingleRay(playerX, playerY, rayDirX, rayDirY, colliders)
 
