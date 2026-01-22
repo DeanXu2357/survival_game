@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"survival/internal/core/ports"
+	"survival/internal/engine/ports"
 )
 
 func TestJsonCodec_Encode(t *testing.T) {

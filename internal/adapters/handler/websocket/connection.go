@@ -3,7 +3,7 @@ package websocket
 import (
 	"github.com/gorilla/websocket"
 
-	"survival/internal/core/ports"
+	"survival/internal/engine/ports"
 )
 
 // websocketConnection wraps gorilla/websocket.Conn to implement protocol.RawConnection

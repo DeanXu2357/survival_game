@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"survival/internal/adapters/repository/maploader"
-	"survival/internal/core/ports"
+	"survival/internal/engine/ports"
 	"survival/internal/utils"
 )
 

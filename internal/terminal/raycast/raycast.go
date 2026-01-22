@@ -3,12 +3,12 @@ package raycast
 import (
 	"math"
 
-	"survival/internal/core/ports"
+	"survival/internal/engine/ports"
 )
 
 const (
-	FOVAngle    = math.Pi / 2
-	MaxDistance = 20.0
+	FOVAngle     = math.Pi / 2
+	MaxDistance  = 20.0
 	VisionHeight = 1.7
 )
 

@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"survival/internal/core/ports"
+	"survival/internal/engine/ports"
 	"survival/internal/terminal"
 	"survival/internal/terminal/network"
 	"survival/internal/terminal/raycast"

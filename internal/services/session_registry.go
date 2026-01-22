@@ -4,7 +4,7 @@ import (
 	"iter"
 	"sync"
 
-	"survival/internal/core/domain/state"
+	"survival/internal/engine/state"
 )
 
 type SessionRegistry struct {

@@ -9,7 +9,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"survival/internal/core/ports"
+	"survival/internal/engine/ports"
 )
 
 type ConnectionState int
@@ -29,11 +29,11 @@ type Client struct {
 	sessionID string
 	lastError error
 
-	gameUpdateChan chan ports.GameUpdatePayload
-	staticDataChan chan ports.StaticDataPayload
-	roomListChan   chan ports.ListRoomsResponse
+	gameUpdateChan  chan ports.GameUpdatePayload
+	staticDataChan  chan ports.StaticDataPayload
+	roomListChan    chan ports.ListRoomsResponse
 	joinSuccessChan chan string
-	errorChan      chan error
+	errorChan       chan error
 
 	closeChan chan struct{}
 	closeOnce sync.Once

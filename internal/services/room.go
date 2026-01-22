@@ -7,9 +7,9 @@ import (
 	"log"
 	"time"
 
-	"survival/internal/core/domain"
-	"survival/internal/core/domain/state"
-	"survival/internal/core/ports"
+	"survival/internal/engine"
+	"survival/internal/engine/ports"
+	"survival/internal/engine/state"
 	"survival/internal/utils"
 )
 
@@ -20,8 +20,8 @@ type UpdateMessage struct {
 
 type Room struct {
 	ID         string
-	mapConfig  *domain.MapConfig
-	game       *domain.Game
+	mapConfig  *engine.MapConfig
+	game       *engine.Game
 	sessions   *SessionRegistry
 	subManager *Manager[UpdateMessage]
 
@@ -34,13 +34,13 @@ type Room struct {
 }
 
 func NewRoom(ctx context.Context, id string) (*Room, error) {
-	return NewRoomWithMap(ctx, id, domain.DefaultMapConfig())
+	return NewRoomWithMap(ctx, id, engine.DefaultMapConfig())
 }
 
-func NewRoomWithMap(ctx context.Context, id string, mapConfig *domain.MapConfig) (*Room, error) {
+func NewRoomWithMap(ctx context.Context, id string, mapConfig *engine.MapConfig) (*Room, error) {
 	roomCTX, cancel := context.WithCancel(ctx)
 
-	game, err := domain.NewGame(mapConfig)
+	game, err := engine.NewGame(mapConfig)
 	if err != nil {
 		cancel()
 		return nil, fmt.Errorf("failed to create game: %w", err)
@@ -120,6 +120,7 @@ func (r *Room) Run() {
 	ticker := time.NewTicker(time.Second / ports.TargetTickRate)
 	defer ticker.Stop()
 
+	// should room depends on state package ?
 	currentInputs := make(map[state.EntityID]ports.PlayerInput)
 
 	log.Printf("[Room %s] started", r.ID)

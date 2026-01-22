@@ -1,6 +1,8 @@
 package state
 
-import "survival/internal/core/domain/vector"
+import (
+	"survival/internal/engine/vector"
+)
 
 type Meta uint64
 

@@ -4,7 +4,7 @@ import (
 	"sync"
 	"testing"
 
-	"survival/internal/core/domain/state"
+	"survival/internal/engine/state"
 )
 
 func TestSessionRegistry_RegisterAndEntityID(t *testing.T) {

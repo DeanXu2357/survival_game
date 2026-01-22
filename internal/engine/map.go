@@ -1,7 +1,7 @@
-package domain
+package engine
 
 import (
-	"survival/internal/core/domain/vector"
+	"survival/internal/engine/vector"
 )
 
 type MapLoader interface {
