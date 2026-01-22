@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"survival/internal/adapters/repository/maploader"
-	"survival/internal/core/ports"
+	"survival/internal/engine/ports"
 	"survival/internal/utils"
 )
 
@@ -88,6 +88,8 @@ func (h *Hub) hubLoop() error {
 
 				// Join Room
 				// for testing, only support joining the default room
+				// TODO: JoinRoomSuccess should include player's EntityID in payload.
+				// Requires: room.AddPlayer() and hub.JoinRoom() to return EntityID.
 				responseType := ports.JoinRoomSuccessEnvelope
 				var responsePayload ports.ErrorPayload
 				if err := h.JoinRoom(clientID, DefaultRoomName); err != nil {
@@ -176,7 +178,7 @@ func (h *Hub) JoinRoom(clientID, roomID string) error {
 
 	// Send static data (map, walls, etc.) to the newly joined client
 	room.SendStaticData([]string{client.SessionID()})
-	log.Printf("Client %s (session: %s) joined room %s", clientID, client.SessionID(), roomID)
+	log.Printf("[JoinRoom] Client %s (session: %s) joined room %s, SendStaticData called", clientID, client.SessionID(), roomID)
 
 	handler := func(cmd ports.RequestCommand) {
 		if cmd.EnvelopeType != ports.PlayerInputEnvelope {
@@ -192,7 +194,7 @@ func (h *Hub) JoinRoom(clientID, roomID string) error {
 		}
 
 		inputCmd := ports.Command{
-			SessionID: client.SessionID(), // Use session ID to match PlayerRegistry
+			SessionID: client.SessionID(),
 			Input:     *input,
 		}
 
@@ -238,7 +240,11 @@ func (h *Hub) DispatchConnection(ctx context.Context, conn ports.RawConnection, 
 func (h *Hub) initializeDefaultGame() {
 	roomID := DefaultRoomName
 
-	room := createDefaultRoom(h.ctx, roomID)
+	room, err := createDefaultRoom(h.ctx, roomID)
+	if err != nil {
+		log.Printf("Failed to create default room: %v", err)
+		return
+	}
 
 	h.rooms[roomID] = room
 
@@ -268,11 +274,11 @@ func (h *Hub) initializeDefaultGame() {
 	}
 }
 
-func createDefaultRoom(ctx context.Context, roomID string) *Room {
+func createDefaultRoom(ctx context.Context, roomID string) (*Room, error) {
 	jsonLoader := maploader.NewJSONMapLoader("./maps")
 	mapConfig, err := jsonLoader.LoadMap("office_floor_01")
 	if err != nil {
-		log.Printf("Failed to load office_floor_01 from JSON: %v, using empty room", err)
+		log.Printf("Failed to load office_floor_01 from JSON: %v, using default map", err)
 		return NewRoom(ctx, roomID)
 	}
 

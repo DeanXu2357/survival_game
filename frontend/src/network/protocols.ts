@@ -1,6 +1,37 @@
 // Import existing protocol types
 import type { PlayerInput } from '../state';
 
+// Backend payload types (matching protocol.go)
+export interface GameUpdatePayload {
+  me: PlayerInfo;
+  views: PlayerInfo[];
+  timestamp: number;
+}
+
+export interface PlayerInfo {
+  id: number;
+  x: number;
+  y: number;
+  dir: number;
+}
+
+export interface StaticDataPayload {
+  colliders: Collider[];
+  map_width: number;
+  map_height: number;
+}
+
+export interface Collider {
+  id: number;
+  x: number;
+  y: number;
+  half_x: number;
+  half_y: number;
+  radius: number;
+  shapeType: number;
+  rotation: number;
+}
+
 // Existing protocol types
 export interface SystemSetSessionPayload {
   client_id: string;

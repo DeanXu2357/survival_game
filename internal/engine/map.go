@@ -1,7 +1,7 @@
-package domain
+package engine
 
 import (
-	"survival/internal/core/domain/vector"
+	"survival/internal/engine/vector"
 )
 
 type MapLoader interface {
@@ -46,4 +46,17 @@ func (mc *MapConfig) GetRandomSpawnPoint() *SpawnPoint {
 	// For now, return the first spawn point
 	// TODO: implement proper random selection
 	return &mc.SpawnPoints[0]
+}
+
+func DefaultMapConfig() *MapConfig {
+	return &MapConfig{
+		ID:         "default",
+		Name:       "Default Map",
+		Dimensions: vector.Vector2D{X: 800, Y: 600},
+		GridSize:   5,
+		SpawnPoints: []SpawnPoint{
+			{ID: "spawn-1", Position: vector.Vector2D{X: 400, Y: 300}},
+		},
+		Walls: []WallConfig{},
+	}
 }

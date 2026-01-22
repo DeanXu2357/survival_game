@@ -1,7 +1,7 @@
 package weapons
 
 import (
-	"survival/internal/core/domain/vector"
+	"survival/internal/engine/vector"
 )
 
 type Projectile struct {

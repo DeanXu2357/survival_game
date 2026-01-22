@@ -26,13 +26,13 @@ export interface BaseRenderer {
   getType(): RendererType;
   
   // Renderer-specific methods
-  renderPlayers(players: { [key: string]: Player }): void;
+  renderPlayers(players: { [key: number]: Player }): void;
   renderWalls(walls: Wall[]): void;
   renderProjectiles(projectiles: Projectile[]): void;
   updateCamera(targetPlayer: Player): void;
-  
+
   // Event callbacks
-  onPlayerClick?: (playerId: string) => void;
+  onPlayerClick?: (playerId: number) => void;
   onWallClick?: (wallId: string) => void;
 }
 

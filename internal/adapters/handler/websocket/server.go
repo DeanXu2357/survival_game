@@ -11,13 +11,13 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"survival/internal/core/ports"
-	"survival/internal/core/services"
+	"survival/internal/engine/ports"
+	services2 "survival/internal/services"
 	"survival/internal/utils"
 )
 
 type server struct {
-	hub      *services.Hub
+	hub      *services2.Hub
 	http     *http.Server
 	upgrader websocket.Upgrader
 }
@@ -117,7 +117,7 @@ func (s *server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Failed to dispatch connection: %v", err)
 
 		// Handle specific error types
-		if errors.Is(err, services.ErrClientSessionValidationFailed) {
+		if errors.Is(err, services2.ErrClientSessionValidationFailed) {
 			// Send session invalidation message before closing
 			s.sendSessionInvalidMessage(conn, "Session validation failed")
 		}
@@ -174,7 +174,7 @@ func NewServer(ctx context.Context, port string) ports.Server {
 	idGen := utils.NewSequentialIDGenerator("session")
 
 	s := &server{
-		hub:      services.NewHub(ctx, idGen),
+		hub:      services2.NewHub(ctx, idGen),
 		upgrader: upgrader,
 	}
 

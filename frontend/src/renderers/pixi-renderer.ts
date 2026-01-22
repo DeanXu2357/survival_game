@@ -20,7 +20,7 @@ export class PixiRenderer extends AbstractRenderer {
   private debugContainer: PIXI.Container | null = null;
   private debugText: PIXI.Text | null = null;
   
-  private playerSprites: Map<string, PIXI.Graphics> = new Map();
+  private playerSprites: Map<number, PIXI.Graphics> = new Map();
   private wallSprites: Map<string, PIXI.Graphics> = new Map();
   private projectileSprites: Map<string, PIXI.Graphics> = new Map();
   
@@ -78,8 +78,8 @@ export class PixiRenderer extends AbstractRenderer {
     this.updateDebugDisplay(gameState, staticData);
   }
 
-  renderPlayers(players: { [key: string]: Player }): void {
-    const currentPlayers = new Set(Object.keys(players));
+  renderPlayers(players: { [key: number]: Player }): void {
+    const currentPlayers = new Set(Object.keys(players).map(Number));
 
     // Remove sprites for players that no longer exist
     for (const [playerId, sprite] of this.playerSprites) {
@@ -90,7 +90,8 @@ export class PixiRenderer extends AbstractRenderer {
     }
 
     // Update existing players and create new ones
-    for (const [playerId, player] of Object.entries(players)) {
+    for (const [playerIdStr, player] of Object.entries(players)) {
+      const playerId = Number(playerIdStr);
       let sprite = this.playerSprites.get(playerId);
 
       if (!sprite) {
@@ -153,14 +154,16 @@ export class PixiRenderer extends AbstractRenderer {
     if ('players' in gameStateOrPlayer) {
       // It's a ClientGameState
       const currentPlayerId = gameState.currentPlayerID;
-      targetPlayer = currentPlayerId ? gameStateOrPlayer.players[currentPlayerId] : null;
-      
+      targetPlayer = currentPlayerId !== null ? gameStateOrPlayer.players[currentPlayerId] : null;
+
+      // TODO: Remove this fallback once server sends EntityID on join room success.
+      // currentPlayerID should be set from JoinRoomSuccess response, not guessed here.
       if (!targetPlayer) {
-        const playerEntries = Object.entries(gameStateOrPlayer.players);
-        if (playerEntries.length > 0) {
-          const [firstPlayerId, firstPlayer] = playerEntries[0];
+        const playerIds = Object.keys(gameStateOrPlayer.players).map(Number);
+        if (playerIds.length > 0) {
+          const firstPlayerId = playerIds[0];
           gameState.setCurrentPlayerID(firstPlayerId);
-          targetPlayer = firstPlayer;
+          targetPlayer = gameStateOrPlayer.players[firstPlayerId];
         }
       }
     } else {
@@ -256,11 +259,10 @@ export class PixiRenderer extends AbstractRenderer {
       fontFamily: 'Arial',
       fontSize: 14,
       fill: 0xffffff,
-      align: 'left'
+      align: 'right'
     });
-    
-    this.debugText.x = 10;
-    this.debugText.y = 10;
+
+    this.debugText.anchor.set(1, 1);
     this.debugContainer.addChild(this.debugText);
   }
 
@@ -402,7 +404,7 @@ export class PixiRenderer extends AbstractRenderer {
   }
 
   private updateDebugDisplay(gameStateParam: ClientGameState, staticData: StaticGameData): void {
-    if (!this.debugText) return;
+    if (!this.debugText || !this.config) return;
 
     const debugInfo = [
       `Players: ${Object.keys(gameStateParam.players).length}`,
@@ -414,5 +416,7 @@ export class PixiRenderer extends AbstractRenderer {
     ];
 
     this.debugText.text = debugInfo.join('\n');
+    this.debugText.x = this.config.width - 10;
+    this.debugText.y = this.config.height - 10;
   }
 }

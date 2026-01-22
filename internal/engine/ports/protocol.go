@@ -24,6 +24,13 @@ type ResponseEnvelopeType string
 
 type RequestEnvelopeType string
 
+type MovementType uint8
+
+const (
+	MovementTypeAbsolute MovementType = 0
+	MovementTypeRelative MovementType = 1
+)
+
 type RequestEnvelope struct {
 	EnvelopeType RequestEnvelopeType `json:"envelope_type"`
 	Payload      json.RawMessage     `json:"payload"`
@@ -61,17 +68,15 @@ type RequestCommand struct {
 }
 
 type PlayerInput struct {
-	MoveUp       bool  `json:"MoveUp"`
-	MoveDown     bool  `json:"MoveDown"`
-	MoveLeft     bool  `json:"MoveLeft"`
-	MoveRight    bool  `json:"MoveRight"`
-	RotateLeft   bool  `json:"RotateLeft"`
-	RotateRight  bool  `json:"RotateRight"`
-	SwitchWeapon bool  `json:"SwitchWeapon"`
-	Reload       bool  `json:"Reload"`
-	FastReload   bool  `json:"FastReload"`
-	Fire         bool  `json:"Fire"`
-	Timestamp    int64 `json:"Timestamp"`
+	MoveVertical   float64      `json:"MoveVertical"`
+	MoveHorizontal float64      `json:"MoveHorizontal"`
+	LookHorizontal float64      `json:"LookHorizontal"`
+	MovementType   MovementType `json:"MovementType"`
+	SwitchWeapon   bool         `json:"SwitchWeapon"`
+	Reload         bool         `json:"Reload"`
+	FastReload     bool         `json:"FastReload"`
+	Fire           bool         `json:"Fire"`
+	Timestamp      int64        `json:"Timestamp"`
 }
 
 type RequestJoinPayload struct {
@@ -105,4 +110,34 @@ type SystemSetSessionPayload struct {
 type ErrorPayload struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
+}
+
+type GameUpdatePayload struct {
+	Me        PlayerInfo   `json:"me"`
+	Views     []PlayerInfo `json:"views"`
+	Timestamp int64        `json:"timestamp"` // timestamp unix milli
+}
+
+type PlayerInfo struct {
+	ID  uint64  `json:"id"`
+	X   float64 `json:"x"`
+	Y   float64 `json:"y"`
+	Dir float64 `json:"dir"`
+}
+
+type StaticDataPayload struct {
+	Colliders []Collider `json:"colliders"`
+	MapWidth  float64    `json:"map_width"`
+	MapHeight float64    `json:"map_height"`
+}
+
+type Collider struct {
+	ID        uint64  `json:"id"`
+	X         float64 `json:"x"`
+	Y         float64 `json:"y"`
+	HalfX     float64 `json:"half_x"`
+	HalfY     float64 `json:"half_y"`
+	Radius    float64 `json:"radius"`
+	ShapeType uint8   `json:"shapeType"`
+	Rotation  float64 `json:"rotation"`
 }

@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 
-	"survival/internal/core/domain"
+	"survival/internal/engine"
 )
 
 type JSONMapLoader struct {
@@ -24,7 +24,7 @@ func NewJSONMapLoader(directory string) *JSONMapLoader {
 	}
 }
 
-func (j *JSONMapLoader) LoadMap(mapID string) (*domain.MapConfig, error) {
+func (j *JSONMapLoader) LoadMap(mapID string) (*engine.MapConfig, error) {
 	filename := fmt.Sprintf("%s.json", mapID)
 	fullPath := filepath.Join(j.mapsDirectory, filename)
 
@@ -34,7 +34,7 @@ func (j *JSONMapLoader) LoadMap(mapID string) (*domain.MapConfig, error) {
 	}
 
 	var mapData struct {
-		Map domain.MapConfig `json:"map"`
+		Map engine.MapConfig `json:"map"`
 	}
 
 	if err := json.Unmarshal(data, &mapData); err != nil {

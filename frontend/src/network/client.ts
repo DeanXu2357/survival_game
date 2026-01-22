@@ -1,4 +1,4 @@
-import type { PlayerInput, ClientGameState, StaticGameData } from '../state';
+import type { PlayerInput, Player, Wall } from '../state';
 import { gameState } from '../state';
 import { SessionManager } from '../session';
 import type { AppStateManager } from '../managers/app-state';
@@ -17,7 +17,9 @@ import {
   type ResponseEnvelope,
   type SystemSetSessionPayload,
   type RoomListResponsePayload,
-  type JoinRoomResponsePayload
+  type JoinRoomResponsePayload,
+  type GameUpdatePayload,
+  type StaticDataPayload
 } from './protocols';
 
 export class NetworkClient {
@@ -51,7 +53,7 @@ export class NetworkClient {
     // Generate or retrieve client ID
     this.clientId = this.generateClientId();
     this.playerName = this.getPlayerName();
-    
+
     console.log('NetworkClient initialized:', { clientId: this.clientId, playerName: this.playerName });
   }
 
@@ -151,7 +153,7 @@ export class NetworkClient {
       this.reconnectAttempts = 0;
       this.isReconnecting = false;
 
-      gameState.setCurrentPlayerID(this.clientId);
+      // gameState.setCurrentPlayerID(this.clientId);
       gameState.updateDebugInfo({ connectionStatus: true });
 
       this.appState.handleConnectionSuccess();
@@ -169,10 +171,10 @@ export class NetworkClient {
       console.log('WebSocket connected successfully');
       this.reconnectAttempts = 0;
       this.isReconnecting = false;
-      
-      gameState.setCurrentPlayerID(this.clientId);
+
+      // gameState.setCurrentPlayerID(this.clientId);
       gameState.updateDebugInfo({ connectionStatus: true });
-      
+
       this.appState.handleConnectionSuccess();
     };
 
@@ -225,7 +227,7 @@ export class NetworkClient {
   }
 
   private handleServerMessage(envelope: ResponseEnvelope): void {
-    console.log('Received server message:', envelope.envelope_type);
+    console.log('[WS] Received:', envelope.envelope_type);
 
     switch (envelope.envelope_type) {
       case RESPONSE_TYPES.ROOM_LIST_RESPONSE:
@@ -297,6 +299,9 @@ export class NetworkClient {
       return;
     }
 
+    // TODO: Server should send player's EntityID in JoinRoomSuccess response.
+    // Once implemented, set it here: gameState.setCurrentPlayerID(payload.entityId);
+
     this.appState.handleJoinRoomSuccessByRoomId(this.pendingJoinRoomId);
     this.pendingJoinRoomId = null;
   }
@@ -322,14 +327,38 @@ export class NetworkClient {
 
   private handleGameUpdate(payload: any): void {
     try {
-      let gameUpdate: ClientGameState;
+      let update: GameUpdatePayload;
       if (typeof payload === 'string') {
-        gameUpdate = JSON.parse(payload);
+        update = JSON.parse(payload);
       } else {
-        gameUpdate = payload;
+        update = payload;
       }
 
-      gameState.updateState(gameUpdate);
+      console.log('[GameUpdate] me:', update.me, 'views:', update.views?.length);
+
+      const players: { [key: number]: Player } = {};
+
+      players[update.me.id] = {
+        ID: update.me.id,
+        Position: { x: update.me.x, y: update.me.y },
+        Direction: update.me.dir
+      };
+
+      for (const view of update.views) {
+        players[view.id] = {
+          ID: view.id,
+          Position: { x: view.x, y: view.y },
+          Direction: view.dir
+        };
+      }
+
+      gameState.setCurrentPlayerID(update.me.id);
+
+      gameState.updateState({
+        players,
+        projectiles: [],
+        timestamp: update.timestamp
+      });
     } catch (error) {
       console.error('Error processing game update:', error);
     }
@@ -337,15 +366,28 @@ export class NetworkClient {
 
   private handleStaticData(payload: any): void {
     try {
-      let staticData: StaticGameData;
+      let data: StaticDataPayload;
       if (typeof payload === 'string') {
-        staticData = JSON.parse(payload);
+        data = JSON.parse(payload);
       } else {
-        staticData = payload;
+        data = payload;
       }
 
-      console.log('Received static data:', staticData);
-      gameState.updateStaticData(staticData);
+      const walls: Wall[] = data.colliders.map(c => ({
+        id: String(c.id),
+        center: { x: c.x, y: c.y },
+        half_size: { x: c.half_x, y: c.half_y },
+        rotation: c.rotation
+      }));
+
+      console.log('[StaticData] Colliders count:', data.colliders?.length);
+      console.log('[StaticData] Map size:', data.map_width, 'x', data.map_height);
+      console.log('[StaticData] Walls converted:', walls.length);
+      gameState.updateStaticData({
+        walls,
+        mapWidth: data.map_width || 800,
+        mapHeight: data.map_height || 600
+      });
     } catch (error) {
       console.error('Error processing static data:', error);
     }
@@ -359,12 +401,12 @@ export class NetworkClient {
 
   private handleInvalidSession(payload: any): void {
     console.log('Session invalid, clearing local session:', payload.message);
-    
+
     SessionManager.clearSession(this.clientId);
     gameState.clearSession();
-    
+
     console.warn('Your session has expired. Reconnecting...');
-    
+
     // Close current connection and trigger reconnection
     if (this.ws) {
       this.ws.close();
@@ -452,10 +494,10 @@ export class NetworkClient {
       this.ws.close();
       this.ws = null;
     }
-    
+
     this.isReconnecting = false;
     this.reconnectAttempts = 0;
-    
+
     console.log('NetworkClient destroyed');
   }
 }

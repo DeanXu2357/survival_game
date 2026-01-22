@@ -4,14 +4,9 @@ export interface Vector2D {
 }
 
 export interface Player {
-  ID: string;
+  ID: number;
   Position: Vector2D;
   Direction: number;
-  Radius: number;
-  RotationSpeed: number;
-  MovementSpeed: number;
-  Health: number;
-  IsAlive: boolean;
 }
 
 export interface Wall {
@@ -32,7 +27,7 @@ export interface Projectile {
 }
 
 export interface ClientGameState {
-  players: { [key: string]: Player };
+  players: { [key: number]: Player };
   projectiles: Projectile[];
   timestamp: number;
 }
@@ -69,7 +64,7 @@ export type StaticDataCallback = (staticData: StaticGameData) => void;
 class GameState {
   private gameState: ClientGameState | null = null;
   private staticData: StaticGameData | null = null;
-  public currentPlayerID: string | null = null;
+  public currentPlayerID: number | null = null;
   private currentSessionId: string | null = null;
   private staticDataCallbacks: StaticDataCallback[] = [];
   private debugInfo: DebugInfo = {
@@ -88,13 +83,13 @@ class GameState {
   }
 
   getCurrentPlayer(): Player | null {
-    if (!this.gameState || !this.currentPlayerID) {
+    if (!this.gameState || this.currentPlayerID === null) {
       return null;
     }
     return this.gameState.players[this.currentPlayerID] || null;
   }
 
-  setCurrentPlayerID(playerID: string): void {
+  setCurrentPlayerID(playerID: number): void {
     this.currentPlayerID = playerID;
   }
 

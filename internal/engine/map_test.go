@@ -1,9 +1,9 @@
-package domain
+package engine
 
 import (
 	"testing"
 
-	"survival/internal/core/domain/vector"
+	"survival/internal/engine/vector"
 )
 
 // Validation tests moved to individual loader test files

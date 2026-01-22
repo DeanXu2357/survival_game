@@ -13,6 +13,7 @@ export class RenderManager {
   private config: RenderManagerConfig;
   private isActive: boolean = false;
   private renderLoopId: number | null = null;
+  private frameCount: number = 0;
 
   constructor(config: RenderManagerConfig) {
     this.config = config;
@@ -85,8 +86,9 @@ export class RenderManager {
     }
 
     this.isActive = true;
-    console.log('Starting render loop');
-    
+    this.frameCount = 0;
+    console.log('[Render] Starting render loop');
+
     const renderFrame = () => {
       if (!this.isActive || !this.currentRenderer) {
         return;
@@ -95,6 +97,14 @@ export class RenderManager {
       try {
         const currentGameState = gameState.getState();
         const staticData = gameState.getStaticData();
+
+        if (this.frameCount < 5) {
+          console.log('[Render] Frame', this.frameCount,
+            '- gameState:', !!currentGameState,
+            '- staticData:', !!staticData,
+            '- walls:', staticData?.walls?.length ?? 0);
+        }
+        this.frameCount++;
 
         if (currentGameState && staticData) {
           this.currentRenderer.render(currentGameState, staticData);
@@ -114,7 +124,7 @@ export class RenderManager {
       return;
     }
 
-    console.log('Stopping render loop');
+    console.log('[Render] Stopping render loop');
     this.isActive = false;
 
     if (this.renderLoopId !== null) {
@@ -172,7 +182,7 @@ export class RenderManager {
   }
 
   // Event handlers for renderer callbacks
-  setPlayerClickHandler(handler: (playerId: string) => void): void {
+  setPlayerClickHandler(handler: (playerId: number) => void): void {
     if (this.currentRenderer) {
       this.currentRenderer.onPlayerClick = handler;
     }
