@@ -23,9 +23,9 @@ func TestJsonCodec_Encode(t *testing.T) {
 			name: "Encode valid request",
 			fields: fields{
 				EnvelopeType: ports.PlayerInputEnvelope,
-				Payload:      []byte(`{"move_up":true}`),
+				Payload:      []byte(`{"MoveVertical":-1}`),
 			},
-			want:    []byte(`{"envelope_type":"player_input","payload":{"move_up":true}}`),
+			want:    []byte(`{"envelope_type":"player_input","payload":{"MoveVertical":-1}}`),
 			wantErr: false,
 		},
 	}
@@ -47,7 +47,7 @@ func TestJsonCodec_Encode(t *testing.T) {
 				t.Fatalf("Failed to unmarshal actual JSON: %v", err)
 			}
 			// Correct the expected JSON to use "payload" to match the struct field tag
-			tt.want = []byte(`{"envelope_type":"player_input","payload":{"move_up":true}}`)
+			tt.want = []byte(`{"envelope_type":"player_input","payload":{"MoveVertical":-1}}`)
 			if err := json.Unmarshal(tt.want, &wantMap); err != nil {
 				t.Fatalf("Failed to unmarshal expected JSON: %v", err)
 			}
@@ -73,19 +73,19 @@ func TestJsonCodec_Decode(t *testing.T) {
 		{
 			name: "Decode valid request",
 			args: args{
-				data: []byte(`{"envelope_type":"player_input","payload":{"move_up":true}}`),
+				data: []byte(`{"envelope_type":"player_input","payload":{"MoveVertical":-1}}`),
 				v:    &ports.RequestEnvelope{},
 			},
 			wantErr: false,
 			want: &ports.RequestEnvelope{
 				EnvelopeType: ports.PlayerInputEnvelope,
-				Payload:      []byte(`{"move_up":true}`),
+				Payload:      []byte(`{"MoveVertical":-1}`),
 			},
 		},
 		{
 			name: "Decode invalid json",
 			args: args{
-				data: []byte(`{"envelope_type":"player_input","payload":{"move_up":true}`),
+				data: []byte(`{"envelope_type":"player_input","payload":{"MoveVertical":-1}`),
 				v:    &ports.RequestEnvelope{},
 			},
 			wantErr: true,
@@ -116,7 +116,7 @@ func TestJsonCodec_EncodeDecode(t *testing.T) {
 	}
 
 	input := ports.PlayerInput{
-		MoveUp: true,
+		MoveVertical: -1,
 	}
 
 	raw, err := json.Marshal(input)

@@ -172,26 +172,22 @@ func (s *SinglePlayerState) handleGameInput(input terminal.InputEvent) {
 
 	switch input {
 	case terminal.InputMoveForward:
-		s.currentInput.MoveUp = true
-		s.currentInput.MoveDown = false
+		s.currentInput.MoveVertical = 1
 	case terminal.InputMoveBackward:
-		s.currentInput.MoveUp = false
-		s.currentInput.MoveDown = true
+		s.currentInput.MoveVertical = -1
 	case terminal.InputMoveLeft:
-		s.currentInput.MoveLeft = true
-		s.currentInput.MoveRight = false
+		s.currentInput.MoveHorizontal = -1
 	case terminal.InputMoveRight:
-		s.currentInput.MoveLeft = false
-		s.currentInput.MoveRight = true
+		s.currentInput.MoveHorizontal = 1
 	case terminal.InputTurnLeft:
-		s.currentInput.RotateLeft = true
-		s.currentInput.RotateRight = false
+		s.currentInput.LookHorizontal = -1
 	case terminal.InputTurnRight:
-		s.currentInput.RotateLeft = false
-		s.currentInput.RotateRight = true
+		s.currentInput.LookHorizontal = 1
 	case terminal.InputNone:
 		s.currentInput = ports.PlayerInput{}
 	}
+
+	s.currentInput.MovementType = ports.MovementTypeRelative
 
 	if s.currentInput != prevInput {
 		s.inputChanged = true

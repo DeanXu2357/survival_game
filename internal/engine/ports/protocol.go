@@ -24,6 +24,13 @@ type ResponseEnvelopeType string
 
 type RequestEnvelopeType string
 
+type MovementType uint8
+
+const (
+	MovementTypeAbsolute MovementType = 0
+	MovementTypeRelative MovementType = 1
+)
+
 type RequestEnvelope struct {
 	EnvelopeType RequestEnvelopeType `json:"envelope_type"`
 	Payload      json.RawMessage     `json:"payload"`
@@ -61,17 +68,15 @@ type RequestCommand struct {
 }
 
 type PlayerInput struct {
-	MoveUp       bool  `json:"MoveUp"`
-	MoveDown     bool  `json:"MoveDown"`
-	MoveLeft     bool  `json:"MoveLeft"`
-	MoveRight    bool  `json:"MoveRight"`
-	RotateLeft   bool  `json:"RotateLeft"`
-	RotateRight  bool  `json:"RotateRight"`
-	SwitchWeapon bool  `json:"SwitchWeapon"`
-	Reload       bool  `json:"Reload"`
-	FastReload   bool  `json:"FastReload"`
-	Fire         bool  `json:"Fire"`
-	Timestamp    int64 `json:"Timestamp"`
+	MoveVertical   float64      `json:"MoveVertical"`
+	MoveHorizontal float64      `json:"MoveHorizontal"`
+	LookHorizontal float64      `json:"LookHorizontal"`
+	MovementType   MovementType `json:"MovementType"`
+	SwitchWeapon   bool         `json:"SwitchWeapon"`
+	Reload         bool         `json:"Reload"`
+	FastReload     bool         `json:"FastReload"`
+	Fire           bool         `json:"Fire"`
+	Timestamp      int64        `json:"Timestamp"`
 }
 
 type RequestJoinPayload struct {

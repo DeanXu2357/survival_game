@@ -37,7 +37,7 @@ func (ms *MovementSystem) Update(dt float64, world *state.World, playerInputs ma
 		var updateMeta state.Meta
 
 		newPos := resolvePlayerCollisions(
-			calculatePlayerNewPosition(pos, moveSpeed, input, dt),
+			calculatePlayerNewPosition(pos, dir, moveSpeed, input, dt),
 			playerShape.Radius,
 			world,
 		)
@@ -65,22 +65,33 @@ func (ms *MovementSystem) Update(dt float64, world *state.World, playerInputs ma
 	return positionDeltas
 }
 
-// calculatePlayerNewPosition computes new position based on WASD input.
+// calculatePlayerNewPosition computes new position based on analog input.
 // Uses screen coordinates: Y increases downward.
-// MoveUp decreases Y, MoveDown increases Y.
-func calculatePlayerNewPosition(pos state.Position, speed state.MovementSpeed, input ports.PlayerInput, dt float64) state.Position {
+// MoveVertical: Positive = down, Negative = up
+// MoveHorizontal: Positive = right, Negative = left
+func calculatePlayerNewPosition(pos state.Position, dir state.Direction, speed state.MovementSpeed, input ports.PlayerInput, dt float64) state.Position {
 	var moveX, moveY float64
-	if input.MoveUp {
-		moveY -= 1
-	}
-	if input.MoveDown {
-		moveY += 1
-	}
-	if input.MoveLeft {
-		moveX -= 1
-	}
-	if input.MoveRight {
-		moveX += 1
+
+	switch input.MovementType {
+	case ports.MovementTypeRelative:
+		forward := input.MoveVertical
+		strafe := input.MoveHorizontal
+
+		dirRad := float64(dir)
+		cosDir := math.Cos(dirRad)
+		sinDir := math.Sin(dirRad)
+
+		fwdX := sinDir
+		fwdY := -cosDir
+		rightX := cosDir
+		rightY := sinDir
+
+		moveX = (forward * fwdX) + (strafe * rightX)
+		moveY = (forward * fwdY) + (strafe * rightY)
+
+	default:
+		moveX = input.MoveHorizontal
+		moveY = input.MoveVertical
 	}
 
 	movement := vector.Vector2D{X: moveX, Y: moveY}
@@ -92,15 +103,9 @@ func calculatePlayerNewPosition(pos state.Position, speed state.MovementSpeed, i
 }
 
 // calculatePlayerNewDirection computes new direction based on rotation input.
-// RotateLeft increases angle (counter-clockwise), RotateRight decreases angle (clockwise).
+// LookHorizontal: Positive = clockwise (right), Negative = counter-clockwise (left).
 func calculatePlayerNewDirection(dir state.Direction, speed state.RotationSpeed, input ports.PlayerInput, dt float64) state.Direction {
-	var rotationDelta float64
-	if input.RotateLeft {
-		rotationDelta += float64(speed) * dt
-	}
-	if input.RotateRight {
-		rotationDelta -= float64(speed) * dt
-	}
+	rotationDelta := input.LookHorizontal * float64(speed) * dt
 	return state.Direction(float64(dir) + rotationDelta)
 }
 

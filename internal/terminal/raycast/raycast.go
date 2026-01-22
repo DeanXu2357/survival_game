@@ -21,13 +21,14 @@ func CastRays(playerX, playerY, playerDir float64, colliders []ports.Collider, n
 	results := make([]RaycastResult, numRays)
 
 	halfFOV := FOVAngle / 2
-	startAngle := playerDir + halfFOV
+	startAngle := playerDir - halfFOV
 	angleStep := FOVAngle / float64(numRays-1)
 
 	for i := 0; i < numRays; i++ {
-		rayAngle := startAngle - float64(i)*angleStep
-		rayDirX := math.Cos(rayAngle)
-		rayDirY := -math.Sin(rayAngle)
+		rayAngle := startAngle + float64(i)*angleStep
+		// 0 up, 90 right, 180 down, 270 left
+		rayDirX := math.Sin(rayAngle)
+		rayDirY := -math.Cos(rayAngle)
 
 		distance, hit := castSingleRay(playerX, playerY, rayDirX, rayDirY, colliders)
 
