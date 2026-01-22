@@ -4,7 +4,7 @@ import (
 	"math"
 
 	"survival/internal/engine/ports"
-	state2 "survival/internal/engine/state"
+	"survival/internal/engine/state"
 	"survival/internal/engine/vector"
 )
 
@@ -19,8 +19,8 @@ func NewMovementSystem() *MovementSystem {
 
 // Update processes player inputs and updates positions/directions.
 // Returns a map of position deltas for downstream systems (vision, etc.).
-func (ms *MovementSystem) Update(dt float64, world *state2.World, playerInputs map[state2.EntityID]ports.PlayerInput) map[state2.EntityID]state2.Position {
-	positionDeltas := make(map[state2.EntityID]state2.Position)
+func (ms *MovementSystem) Update(dt float64, world *state.World, playerInputs map[state.EntityID]ports.PlayerInput) map[state.EntityID]state.Position {
+	positionDeltas := make(map[state.EntityID]state.Position)
 
 	for entityID, input := range playerInputs {
 		pos, posExist := world.Position.Get(entityID)
@@ -34,7 +34,7 @@ func (ms *MovementSystem) Update(dt float64, world *state2.World, playerInputs m
 			continue
 		}
 
-		var updateMeta state2.Meta
+		var updateMeta state.Meta
 
 		newPos := resolvePlayerCollisions(
 			calculatePlayerNewPosition(pos, moveSpeed, input, dt),
@@ -46,19 +46,19 @@ func (ms *MovementSystem) Update(dt float64, world *state2.World, playerInputs m
 		positionDeltas[entityID] = newPos
 
 		if newPos != pos {
-			updateMeta = updateMeta.Set(state2.ComponentPosition)
+			updateMeta = updateMeta.Set(state.ComponentPosition)
 		}
 		if newDir != dir {
-			updateMeta = updateMeta.Set(state2.ComponentDirection)
+			updateMeta = updateMeta.Set(state.ComponentDirection)
 		}
 
-		world.UpdatePlayer(entityID, state2.UpdatePlayer{
+		world.UpdatePlayer(entityID, state.UpdatePlayer{
 			UpdateMeta:    updateMeta,
 			Position:      newPos,
 			Direction:     newDir,
 			MovementSpeed: moveSpeed,
 			RotationSpeed: rotSpeed,
-			PlayerHitbox:  state2.PlayerHitbox{Center: newPos, Radius: playerShape.Radius},
+			PlayerHitbox:  state.PlayerHitbox{Center: newPos, Radius: playerShape.Radius},
 		})
 	}
 
@@ -68,7 +68,7 @@ func (ms *MovementSystem) Update(dt float64, world *state2.World, playerInputs m
 // calculatePlayerNewPosition computes new position based on WASD input.
 // Uses screen coordinates: Y increases downward.
 // MoveUp decreases Y, MoveDown increases Y.
-func calculatePlayerNewPosition(pos state2.Position, speed state2.MovementSpeed, input ports.PlayerInput, dt float64) state2.Position {
+func calculatePlayerNewPosition(pos state.Position, speed state.MovementSpeed, input ports.PlayerInput, dt float64) state.Position {
 	var moveX, moveY float64
 	if input.MoveUp {
 		moveY -= 1
@@ -88,12 +88,12 @@ func calculatePlayerNewPosition(pos state2.Position, speed state2.MovementSpeed,
 		movement = movement.Normalize().Scale(float64(speed) * dt)
 	}
 
-	return state2.Position(vector.Vector2D(pos).Add(movement))
+	return state.Position(vector.Vector2D(pos).Add(movement))
 }
 
 // calculatePlayerNewDirection computes new direction based on rotation input.
 // RotateLeft increases angle (counter-clockwise), RotateRight decreases angle (clockwise).
-func calculatePlayerNewDirection(dir state2.Direction, speed state2.RotationSpeed, input ports.PlayerInput, dt float64) state2.Direction {
+func calculatePlayerNewDirection(dir state.Direction, speed state.RotationSpeed, input ports.PlayerInput, dt float64) state.Direction {
 	var rotationDelta float64
 	if input.RotateLeft {
 		rotationDelta += float64(speed) * dt
@@ -101,15 +101,15 @@ func calculatePlayerNewDirection(dir state2.Direction, speed state2.RotationSpee
 	if input.RotateRight {
 		rotationDelta -= float64(speed) * dt
 	}
-	return state2.Direction(float64(dir) + rotationDelta)
+	return state.Direction(float64(dir) + rotationDelta)
 }
 
 // resolvePlayerCollisions checks for wall collisions and adjusts position.
 // Uses Circle-AABB collision detection.
-func resolvePlayerCollisions(pos state2.Position, radius float64, world *state2.World) state2.Position {
+func resolvePlayerCollisions(pos state.Position, radius float64, world *state.World) state.Position {
 	result := vector.Vector2D(pos)
 
-	playerBounds := state2.Bounds{
+	playerBounds := state.Bounds{
 		MinX: result.X - radius,
 		MinY: result.Y - radius,
 		MaxX: result.X + radius,
@@ -118,7 +118,7 @@ func resolvePlayerCollisions(pos state2.Position, radius float64, world *state2.
 
 	for _, cell := range world.Grid.CellsInBounds(playerBounds) {
 		for _, entry := range cell.Entries {
-			if !entry.Layer.Has(state2.LayerStatic) {
+			if !entry.Layer.Has(state.LayerStatic) {
 				continue
 			}
 
@@ -127,19 +127,19 @@ func resolvePlayerCollisions(pos state2.Position, radius float64, world *state2.
 				continue
 			}
 			wallMin, wallMax := wallShape.BoundingBox()
-			collides, pushOut := circleAABBCollision(state2.Position(result), radius, wallMin, wallMax)
+			collides, pushOut := circleAABBCollision(state.Position(result), radius, wallMin, wallMax)
 			if collides {
 				result = result.Add(pushOut)
 			}
 		}
 	}
 
-	return state2.Position(result)
+	return state.Position(result)
 }
 
 // circleAABBCollision detects collision between a circle and an AABB.
 // Returns whether collision occurred and the push-out vector to resolve it.
-func circleAABBCollision(circleCenter state2.Position, radius float64, wallMin, wallMax vector.Vector2D) (collides bool, pushOut vector.Vector2D) {
+func circleAABBCollision(circleCenter state.Position, radius float64, wallMin, wallMax vector.Vector2D) (collides bool, pushOut vector.Vector2D) {
 	center := vector.Vector2D(circleCenter)
 
 	closest := vector.Vector2D{
