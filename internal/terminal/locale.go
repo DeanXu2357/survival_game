@@ -26,6 +26,13 @@ type LocaleData struct {
 	SizeLarge         string
 	LangNameTW        string
 	LangNameEN        string
+
+	SPConnecting   string
+	SPWaitingRoom  string
+	SPJoiningRoom  string
+	SPDisconnected string
+	SPError        string
+	SPStatusHint   string
 }
 
 var (
@@ -55,6 +62,13 @@ var (
 		SizeLarge:         "200 x 50 (大)",
 		LangNameTW:        "繁體中文",
 		LangNameEN:        "English",
+
+		SPConnecting:   "連線中...",
+		SPWaitingRoom:  "等待房間...",
+		SPJoiningRoom:  "加入房間中...",
+		SPDisconnected: "連線中斷",
+		SPError:        "錯誤",
+		SPStatusHint:   "WASD 移動, Q/E 轉向, ESC 返回",
 	}
 
 	LangEN = LocaleData{
@@ -83,5 +97,12 @@ var (
 		SizeLarge:         "200 x 50 (Large)",
 		LangNameTW:        "繁體中文",
 		LangNameEN:        "English",
+
+		SPConnecting:   "Connecting...",
+		SPWaitingRoom:  "Waiting for room...",
+		SPJoiningRoom:  "Joining room...",
+		SPDisconnected: "Disconnected",
+		SPError:        "Error",
+		SPStatusHint:   "WASD move, Q/E turn, ESC back",
 	}
 )

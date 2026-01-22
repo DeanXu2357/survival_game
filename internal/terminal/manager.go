@@ -63,8 +63,20 @@ func parseInput(input KeyEvent) InputEvent {
 		return InputMoveForward
 	case "\r", "\n": // Enter
 		return InputAction
-	case "q", "\033": // q or Esc
+	case "\033": // Esc
 		return InputCancel
+	case "w", "W":
+		return InputMoveForward
+	case "s", "S":
+		return InputMoveBackward
+	case "a", "A":
+		return InputMoveRight
+	case "d", "D":
+		return InputMoveLeft
+	case "q", "Q":
+		return InputTurnLeft
+	case "e", "E":
+		return InputTurnRight
 	}
 	return InputNone
 }

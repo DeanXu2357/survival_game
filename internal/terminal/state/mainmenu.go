@@ -46,7 +46,9 @@ func (s *MainMenuState) Update(input terminal.InputEvent, dt time.Duration) term
 
 	case terminal.InputAction:
 		switch s.selectedIndex {
-		case 0, 1:
+		case 0:
+			return terminal.Command{Type: terminal.CmdPush, NextState: NewSinglePlayerState(s.fd, s.logger)}
+		case 1:
 			return terminal.Command{Type: terminal.CmdNone}
 		case 2:
 			return terminal.Command{Type: terminal.CmdPush, NextState: NewSettingState(s.fd, s.logger)}

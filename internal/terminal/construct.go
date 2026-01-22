@@ -29,6 +29,8 @@ const (
 	InputNone InputEvent = iota
 	InputMoveForward
 	InputMoveBackward
+	InputMoveLeft
+	InputMoveRight
 	InputTurnLeft
 	InputTurnRight
 	InputAction
