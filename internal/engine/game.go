@@ -12,7 +12,7 @@ type Game struct {
 	world     *state2.World
 	mapConfig *MapConfig
 
-	movementSys system.MovementSystem
+	movementSys system.BasicMovementSystem
 }
 
 func NewGame(mapConfig *MapConfig) (*Game, error) {
@@ -26,7 +26,7 @@ func NewGame(mapConfig *MapConfig) (*Game, error) {
 	g := &Game{
 		world:       world,
 		mapConfig:   mapConfig,
-		movementSys: *system.NewMovementSystem(),
+		movementSys: *system.NewBasicMovementSystem(),
 	}
 
 	if err := g.loadMapEntities(mapConfig); err != nil {

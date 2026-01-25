@@ -10,16 +10,17 @@ import (
 
 // todo: remove dependency on ports in system layer, system should have own communication structs
 
-type MovementSystem struct {
+type BasicMovementSystem struct {
 }
 
-func NewMovementSystem() *MovementSystem {
-	return &MovementSystem{}
+// NewBasicMovementSystem creates a new BasicMovementSystem instance in 2D.
+func NewBasicMovementSystem() *BasicMovementSystem {
+	return &BasicMovementSystem{}
 }
 
 // Update processes player inputs and updates positions/directions.
 // Returns a map of position deltas for downstream systems (vision, etc.).
-func (ms *MovementSystem) Update(dt float64, world *state.World, playerInputs map[state.EntityID]ports.PlayerInput) map[state.EntityID]state.Position {
+func (ms *BasicMovementSystem) Update(dt float64, world *state.World, playerInputs map[state.EntityID]ports.PlayerInput) map[state.EntityID]state.Position {
 	positionDeltas := make(map[state.EntityID]state.Position)
 
 	for entityID, input := range playerInputs {
@@ -36,12 +37,12 @@ func (ms *MovementSystem) Update(dt float64, world *state.World, playerInputs ma
 
 		var updateMeta state.Meta
 
-		newPos := resolvePlayerCollisions(
-			calculatePlayerNewPosition(pos, dir, moveSpeed, input, dt),
+		newPos := ms.resolvePlayerCollisions(
+			ms.calculatePlayerNewPosition(pos, dir, moveSpeed, input, dt),
 			playerShape.Radius,
 			world,
 		)
-		newDir := calculatePlayerNewDirection(dir, rotSpeed, input, dt)
+		newDir := ms.calculatePlayerNewDirection(dir, rotSpeed, input, dt)
 
 		positionDeltas[entityID] = newPos
 
@@ -69,7 +70,7 @@ func (ms *MovementSystem) Update(dt float64, world *state.World, playerInputs ma
 // Uses screen coordinates: Y increases downward.
 // MoveVertical: Positive = down, Negative = up
 // MoveHorizontal: Positive = right, Negative = left
-func calculatePlayerNewPosition(pos state.Position, dir state.Direction, speed state.MovementSpeed, input ports.PlayerInput, dt float64) state.Position {
+func (ms *BasicMovementSystem) calculatePlayerNewPosition(pos state.Position, dir state.Direction, speed state.MovementSpeed, input ports.PlayerInput, dt float64) state.Position {
 	var moveX, moveY float64
 
 	switch input.MovementType {
@@ -104,14 +105,15 @@ func calculatePlayerNewPosition(pos state.Position, dir state.Direction, speed s
 
 // calculatePlayerNewDirection computes new direction based on rotation input.
 // LookHorizontal: Positive = clockwise (right), Negative = counter-clockwise (left).
-func calculatePlayerNewDirection(dir state.Direction, speed state.RotationSpeed, input ports.PlayerInput, dt float64) state.Direction {
+func (ms *BasicMovementSystem) calculatePlayerNewDirection(dir state.Direction, speed state.RotationSpeed, input ports.PlayerInput, dt float64) state.Direction {
 	rotationDelta := input.LookHorizontal * float64(speed) * dt
 	return state.Direction(float64(dir) + rotationDelta)
 }
 
 // resolvePlayerCollisions checks for wall collisions and adjusts position.
+// Assumes circular player hitbox.
 // Uses Circle-AABB collision detection.
-func resolvePlayerCollisions(pos state.Position, radius float64, world *state.World) state.Position {
+func (ms *BasicMovementSystem) resolvePlayerCollisions(pos state.Position, radius float64, world *state.World) state.Position {
 	result := vector.Vector2D(pos)
 
 	playerBounds := state.Bounds{
@@ -131,7 +133,7 @@ func resolvePlayerCollisions(pos state.Position, radius float64, world *state.Wo
 			if !exist {
 				continue
 			}
-			wallMin, wallMax := wallShape.BoundingBox()
+			wallMin, wallMax := wallShape.BoundingBox() // assume box aligned with axis
 			collides, pushOut := circleAABBCollision(state.Position(result), radius, wallMin, wallMax)
 			if collides {
 				result = result.Add(pushOut)
