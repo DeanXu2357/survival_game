@@ -6,13 +6,11 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log/slog"
-	"strings"
-	"sync"
 	"time"
 
 	"survival/internal/engine/ports"
 	"survival/internal/terminal"
-	"survival/internal/terminal/debug"
+	"survival/internal/terminal/composite"
 	"survival/internal/terminal/network"
 	"survival/internal/terminal/raycast"
 )
@@ -43,11 +41,9 @@ type SinglePlayerState struct {
 	playerY   float64
 	playerDir float64
 	colliders []ports.Collider
-	dataMu    sync.RWMutex
 
-	renderer      *raycast.Renderer
-	debugRenderer *debug.MapRenderer
-	errorMessage  string
+	compositeRenderer *composite.Renderer
+	errorMessage      string
 
 	currentInput ports.PlayerInput
 	inputChanged bool
@@ -80,8 +76,14 @@ func (s *SinglePlayerState) Init() {
 
 	mainViewWidth := terminal.AppDefaultConfig.Width - debugMapWidth - separatorWidth
 	mainViewHeight := terminal.AppDefaultConfig.Height - 2
-	s.renderer = raycast.NewRenderer(mainViewWidth, mainViewHeight)
-	s.debugRenderer = debug.NewMapRenderer(debugMapWidth, debugMapHeight, debugViewRadius)
+	s.compositeRenderer = composite.NewRenderer(
+		terminal.AppDefaultConfig.Width,
+		mainViewHeight,
+		mainViewWidth,
+		debugMapWidth,
+		separatorWidth,
+		debugViewRadius,
+	)
 
 	go s.connectAndJoin()
 }
@@ -165,18 +167,12 @@ func (s *SinglePlayerState) handleRoomList(roomList ports.ListRoomsResponse) {
 }
 
 func (s *SinglePlayerState) handleGameUpdate(update ports.GameUpdatePayload) {
-	s.dataMu.Lock()
-	defer s.dataMu.Unlock()
-
 	s.playerX = update.Me.X
 	s.playerY = update.Me.Y
 	s.playerDir = update.Me.Dir
 }
 
 func (s *SinglePlayerState) handleStaticData(data ports.StaticDataPayload) {
-	s.dataMu.Lock()
-	defer s.dataMu.Unlock()
-
 	s.colliders = data.Colliders
 	s.logger.Info("Received static data", "colliders", len(s.colliders))
 }
@@ -281,35 +277,19 @@ func (s *SinglePlayerState) drawErrorScreen(buf *bytes.Buffer, width, height int
 }
 
 func (s *SinglePlayerState) drawGameView(buf *bytes.Buffer, width, height int) {
-	s.dataMu.RLock()
 	playerX := s.playerX
 	playerY := s.playerY
 	playerDir := s.playerDir
 	colliders := s.colliders
-	s.dataMu.RUnlock()
 
 	mainViewWidth := width - debugMapWidth - separatorWidth
-	mainViewHeight := height - 2
-
 	numRays := mainViewWidth
 	results := raycast.CastRays(playerX, playerY, playerDir, colliders, numRays)
 
-	s.renderer = raycast.NewRenderer(mainViewWidth, mainViewHeight)
-	s.renderer.Render(results)
-
-	s.debugRenderer.Render(playerX, playerY, playerDir, colliders)
+	s.compositeRenderer.Render(results, playerX, playerY, playerDir, colliders)
 
 	buf.WriteString(setGreenFont)
-
-	separator := strings.Repeat(" ", separatorWidth)
-	for row := 0; row < mainViewHeight; row++ {
-		mainRow := s.renderer.GetRow(row)
-		debugRow := s.debugRenderer.GetRow(row)
-		buf.WriteString(mainRow)
-		buf.WriteString(separator)
-		buf.WriteString(debugRow)
-		buf.WriteString("\033[K\r\n")
-	}
+	s.compositeRenderer.WriteToBuffer(buf)
 
 	locale := terminal.AppDefaultConfig.Locale
 	statusLine := fmt.Sprintf("X:%.1f Y:%.1f Dir:%.2f | %s", playerX, playerY, playerDir, locale.SPStatusHint)
