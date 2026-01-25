@@ -41,12 +41,19 @@ func (g *Game) loadMapEntities(mapConfig *MapConfig) error {
 		if !ok {
 			return fmt.Errorf("failed to allocate entity for wall %d", i)
 		}
-		// TODO: refactor this , shouldn't set world property directly
-		g.world.Collider.Upsert(id, state2.Collider{
+
+		collider := state2.Collider{
 			Center:    state2.Position{X: wallCfg.Center.X, Y: wallCfg.Center.Y},
 			HalfSize:  wallCfg.HalfSize,
 			ShapeType: state2.ColliderBox,
-		})
+		}
+		g.world.Collider.Upsert(id, collider)
+
+		min, max := collider.BoundingBox()
+		g.world.Grid.Add(id, state2.Bounds{
+			MinX: min.X, MinY: min.Y,
+			MaxX: max.X, MaxY: max.Y,
+		}, state2.LayerStatic)
 	}
 	return nil
 }
