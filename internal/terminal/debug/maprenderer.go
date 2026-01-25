@@ -160,14 +160,15 @@ func (m *MapRenderer) getDirectionChar(dir float64) rune {
 
 	eighth := math.Pi / 4
 
+	// Backend convention: 0=up, π/2=right, π=down, 3π/2=left
 	if dir < eighth || dir >= 7*eighth {
-		return charPlayerRight
-	} else if dir < 3*eighth {
-		return charPlayerDown
-	} else if dir < 5*eighth {
-		return charPlayerLeft
-	} else {
 		return charPlayerUp
+	} else if dir < 3*eighth {
+		return charPlayerRight
+	} else if dir < 5*eighth {
+		return charPlayerDown
+	} else {
+		return charPlayerLeft
 	}
 }
 
