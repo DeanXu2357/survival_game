@@ -6,11 +6,13 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
 	"survival/internal/engine/ports"
 	"survival/internal/terminal"
+	"survival/internal/terminal/debug"
 	"survival/internal/terminal/network"
 	"survival/internal/terminal/raycast"
 )
@@ -43,8 +45,9 @@ type SinglePlayerState struct {
 	colliders []ports.Collider
 	dataMu    sync.RWMutex
 
-	renderer     *raycast.Renderer
-	errorMessage string
+	renderer      *raycast.Renderer
+	debugRenderer *debug.MapRenderer
+	errorMessage  string
 
 	currentInput ports.PlayerInput
 	inputChanged bool
@@ -64,10 +67,21 @@ func generateClientID() string {
 	return "term-" + hex.EncodeToString(b)
 }
 
+const (
+	debugMapWidth  = 27
+	debugMapHeight = 30
+	separatorWidth = 2
+	debugViewRadius = 50.0
+)
+
 func (s *SinglePlayerState) Init() {
 	s.phase = PhaseConnecting
 	s.client = network.NewClient(s.clientID)
-	s.renderer = raycast.NewRenderer(terminal.AppDefaultConfig.Width, terminal.AppDefaultConfig.Height-2)
+
+	mainViewWidth := terminal.AppDefaultConfig.Width - debugMapWidth - separatorWidth
+	mainViewHeight := terminal.AppDefaultConfig.Height - 2
+	s.renderer = raycast.NewRenderer(mainViewWidth, mainViewHeight)
+	s.debugRenderer = debug.NewMapRenderer(debugMapWidth, debugMapHeight, debugViewRadius)
 
 	go s.connectAndJoin()
 }
@@ -274,14 +288,28 @@ func (s *SinglePlayerState) drawGameView(buf *bytes.Buffer, width, height int) {
 	colliders := s.colliders
 	s.dataMu.RUnlock()
 
-	numRays := width
+	mainViewWidth := width - debugMapWidth - separatorWidth
+	mainViewHeight := height - 2
+
+	numRays := mainViewWidth
 	results := raycast.CastRays(playerX, playerY, playerDir, colliders, numRays)
 
-	s.renderer = raycast.NewRenderer(width, height-2)
+	s.renderer = raycast.NewRenderer(mainViewWidth, mainViewHeight)
 	s.renderer.Render(results)
 
+	s.debugRenderer.Render(playerX, playerY, playerDir, colliders)
+
 	buf.WriteString(setGreenFont)
-	s.renderer.WriteToBuffer(buf)
+
+	separator := strings.Repeat(" ", separatorWidth)
+	for row := 0; row < mainViewHeight; row++ {
+		mainRow := s.renderer.GetRow(row)
+		debugRow := s.debugRenderer.GetRow(row)
+		buf.WriteString(mainRow)
+		buf.WriteString(separator)
+		buf.WriteString(debugRow)
+		buf.WriteString("\033[K\r\n")
+	}
 
 	locale := terminal.AppDefaultConfig.Locale
 	statusLine := fmt.Sprintf("X:%.1f Y:%.1f Dir:%.2f | %s", playerX, playerY, playerDir, locale.SPStatusHint)
