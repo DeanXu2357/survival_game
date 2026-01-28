@@ -7,17 +7,19 @@ import (
 )
 
 const (
-	FOVAngle     = math.Pi / 2
-	MaxDistance  = 20.0
-	VisionHeight = 1.7
+	FOVAngle    = math.Pi / 2
+	MaxDistance = 20.0
 )
 
 type RaycastResult struct {
-	Distance float64
-	Hit      bool
+	Distance      float64
+	Hit           bool
+	WallHeight    float64
+	BaseElevation float64
+	EntityID      uint64
 }
 
-func CastRays(playerX, playerY, playerDir float64, colliders []ports.Collider, numRays int) []RaycastResult {
+func CastRays(playerX, playerY, playerDir, viewHeight float64, colliders []ports.Collider, numRays int) []RaycastResult {
 	results := make([]RaycastResult, numRays)
 
 	halfFOV := FOVAngle / 2
@@ -26,37 +28,46 @@ func CastRays(playerX, playerY, playerDir float64, colliders []ports.Collider, n
 
 	for i := 0; i < numRays; i++ {
 		rayAngle := startAngle + float64(i)*angleStep
-		// 0 up, 90 right, 180 down, 270 left
 		rayDirX := math.Sin(rayAngle)
 		rayDirY := -math.Cos(rayAngle)
 
-		distance, hit := castSingleRay(playerX, playerY, rayDirX, rayDirY, colliders)
+		distance, hit, hitCollider := castSingleRay(playerX, playerY, rayDirX, rayDirY, colliders)
 
 		angleDiff := rayAngle - playerDir
 		distance *= math.Cos(angleDiff)
 
-		results[i] = RaycastResult{
+		result := RaycastResult{
 			Distance: distance,
 			Hit:      hit,
 		}
+
+		if hit && hitCollider != nil {
+			result.WallHeight = hitCollider.Height
+			result.BaseElevation = hitCollider.BaseElevation
+			result.EntityID = hitCollider.ID
+		}
+
+		results[i] = result
 	}
 
 	return results
 }
 
-func castSingleRay(originX, originY, dirX, dirY float64, colliders []ports.Collider) (float64, bool) {
+func castSingleRay(originX, originY, dirX, dirY float64, colliders []ports.Collider) (float64, bool, *ports.Collider) {
 	closestDist := MaxDistance
 	hitAnything := false
+	var hitCollider *ports.Collider
 
-	for _, collider := range colliders {
-		dist, hit := rayBoxIntersect(originX, originY, dirX, dirY, collider)
+	for i := range colliders {
+		dist, hit := rayBoxIntersect(originX, originY, dirX, dirY, colliders[i])
 		if hit && dist < closestDist && dist > 0.001 {
 			closestDist = dist
 			hitAnything = true
+			hitCollider = &colliders[i]
 		}
 	}
 
-	return closestDist, hitAnything
+	return closestDist, hitAnything, hitCollider
 }
 
 func rayBoxIntersect(originX, originY, dirX, dirY float64, box ports.Collider) (float64, bool) {

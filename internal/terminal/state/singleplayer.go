@@ -9,10 +9,11 @@ import (
 	"time"
 
 	"survival/internal/engine/ports"
+	"survival/internal/engine/state"
 	"survival/internal/terminal"
-	"survival/internal/terminal/composite"
 	"survival/internal/terminal/network"
 	"survival/internal/terminal/raycast"
+	"survival/internal/terminal/ui"
 )
 
 type GamePhase int
@@ -42,8 +43,10 @@ type SinglePlayerState struct {
 	playerDir float64
 	colliders []ports.Collider
 
-	compositeRenderer *composite.Renderer
-	errorMessage      string
+	renderer25D  *raycast.Renderer25D
+	uiLayer      *ui.UILayer
+	viewHeight   float64
+	errorMessage string
 
 	currentInput ports.PlayerInput
 	inputChanged bool
@@ -63,27 +66,15 @@ func generateClientID() string {
 	return "term-" + hex.EncodeToString(b)
 }
 
-const (
-	debugMapWidth  = 27
-	debugMapHeight = 30
-	separatorWidth = 2
-	debugViewRadius = 50.0
-)
-
 func (s *SinglePlayerState) Init() {
 	s.phase = PhaseConnecting
 	s.client = network.NewClient(s.clientID)
+	s.viewHeight = state.DefaultPlayerViewHeight
 
-	mainViewWidth := terminal.AppDefaultConfig.Width - debugMapWidth - separatorWidth
-	mainViewHeight := terminal.AppDefaultConfig.Height - 2
-	s.compositeRenderer = composite.NewRenderer(
-		terminal.AppDefaultConfig.Width,
-		mainViewHeight,
-		mainViewWidth,
-		debugMapWidth,
-		separatorWidth,
-		debugViewRadius,
-	)
+	viewWidth := terminal.AppDefaultConfig.Width
+	viewHeight := terminal.AppDefaultConfig.Height - 2
+	s.renderer25D = raycast.NewRenderer25D(viewWidth, viewHeight, s.viewHeight)
+	s.uiLayer = ui.NewUILayer(viewWidth, viewHeight)
 
 	go s.connectAndJoin()
 }
@@ -282,18 +273,18 @@ func (s *SinglePlayerState) drawGameView(buf *bytes.Buffer, width, height int) {
 	playerDir := s.playerDir
 	colliders := s.colliders
 
-	mainViewWidth := width - debugMapWidth - separatorWidth
-	numRays := mainViewWidth
-	results := raycast.CastRays(playerX, playerY, playerDir, colliders, numRays)
+	numRays := width
+	results := raycast.CastRays(playerX, playerY, playerDir, s.viewHeight, colliders, numRays)
 
-	s.compositeRenderer.Render(results, playerX, playerY, playerDir, colliders)
+	s.renderer25D.Render(results)
 
-	buf.WriteString(setGreenFont)
-	s.compositeRenderer.WriteToBuffer(buf)
+	outputBuf := s.renderer25D.GetOutputBuffer()
+	colorBuf := s.renderer25D.GetColorBuffer()
+	s.uiLayer.Overlay(outputBuf, colorBuf)
+
+	s.renderer25D.WriteWithOverlay(buf)
 
 	locale := terminal.AppDefaultConfig.Locale
 	statusLine := fmt.Sprintf("X:%.1f Y:%.1f Dir:%.2f | %s", playerX, playerY, playerDir, locale.SPStatusHint)
 	drawCenteredLine(buf, width, statusLine)
-
-	buf.WriteString(resetFontColor)
 }

@@ -201,14 +201,16 @@ func (r *Room) SendStaticData(sessionIDs []string) {
 	colliders := make([]ports.Collider, len(staticData))
 	for i, entity := range staticData {
 		colliders[i] = ports.Collider{
-			ID:        uint64(entity.ID),
-			X:         entity.Collider.Center.X,
-			Y:         entity.Collider.Center.Y,
-			HalfX:     entity.Collider.HalfSize.X,
-			HalfY:     entity.Collider.HalfSize.Y,
-			Radius:    entity.Collider.Radius,
-			ShapeType: uint8(entity.Collider.ShapeType),
-			Rotation:  0,
+			ID:            uint64(entity.ID),
+			X:             entity.Collider.Center.X,
+			Y:             entity.Collider.Center.Y,
+			HalfX:         entity.Collider.HalfSize.X,
+			HalfY:         entity.Collider.HalfSize.Y,
+			Radius:        entity.Collider.Radius,
+			ShapeType:     uint8(entity.Collider.ShapeType),
+			Rotation:      0,
+			Height:        entity.VerticalBody.Height,
+			BaseElevation: entity.VerticalBody.BaseElevation,
 		}
 	}
 

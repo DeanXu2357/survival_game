@@ -132,12 +132,14 @@ type StaticDataPayload struct {
 }
 
 type Collider struct {
-	ID        uint64  `json:"id"`
-	X         float64 `json:"x"`
-	Y         float64 `json:"y"`
-	HalfX     float64 `json:"half_x"`
-	HalfY     float64 `json:"half_y"`
-	Radius    float64 `json:"radius"`
-	ShapeType uint8   `json:"shapeType"`
-	Rotation  float64 `json:"rotation"`
+	ID            uint64  `json:"id"`
+	X             float64 `json:"x"`
+	Y             float64 `json:"y"`
+	HalfX         float64 `json:"half_x"`
+	HalfY         float64 `json:"half_y"`
+	Radius        float64 `json:"radius"`
+	ShapeType     uint8   `json:"shapeType"`
+	Rotation      float64 `json:"rotation"`
+	Height        float64 `json:"height"`
+	BaseElevation float64 `json:"base_elevation"`
 }

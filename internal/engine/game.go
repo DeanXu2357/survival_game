@@ -49,6 +49,18 @@ func (g *Game) loadMapEntities(mapConfig *MapConfig) error {
 		}
 		g.world.Collider.Upsert(id, collider)
 
+		height := wallCfg.Height
+		if height == 0 {
+			height = state2.DefaultWallHeight
+		}
+		vertBody := state2.VerticalBody{
+			BaseElevation: wallCfg.BaseElevation,
+			Height:        height,
+		}
+		g.world.VerticalBody.Upsert(id, vertBody)
+
+		g.world.EntityMeta.Upsert(id, state2.WallMeta)
+
 		min, max := collider.BoundingBox()
 		g.world.Grid.Add(id, state2.Bounds{
 			MinX: min.X, MinY: min.Y,

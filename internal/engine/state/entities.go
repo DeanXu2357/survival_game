@@ -16,10 +16,19 @@ const (
 	ComponentHealth
 	ComponentCollider
 	ComponentViewIDs
+	ComponentVerticalBody
 
 	PlayerMeta = ComponentMeta | ComponentPosition | ComponentDirection | ComponentMovementSpeed |
 		ComponentRotationSpeed | ComponentPlayerHitbox | ComponentHealth |
 		ComponentViewIDs
+
+	WallMeta = ComponentMeta | ComponentPosition | ComponentVerticalBody | ComponentCollider
+)
+
+const (
+	DefaultWallHeight        = 3.0
+	DefaultWallBaseElevation = 0.0
+	DefaultPlayerViewHeight  = 1.7
 )
 
 func (m Meta) Has(mask Meta) bool {
@@ -86,3 +95,8 @@ func (w Collider) BoundingBox() (min vector.Vector2D, max vector.Vector2D) {
 }
 
 type ViewIDs []EntityID
+
+type VerticalBody struct {
+	BaseElevation float64
+	Height        float64
+}

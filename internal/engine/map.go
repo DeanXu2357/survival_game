@@ -25,10 +25,12 @@ type SpawnPoint struct {
 }
 
 type WallConfig struct {
-	ID       string          `json:"id" validate:"required,min=1"`
-	Center   vector.Vector2D `json:"center" validate:"required"`
-	HalfSize vector.Vector2D `json:"half_size" validate:"required"`
-	Rotation float64         `json:"rotation"`
+	ID            string          `json:"id" validate:"required,min=1"`
+	Center        vector.Vector2D `json:"center" validate:"required"`
+	HalfSize      vector.Vector2D `json:"half_size" validate:"required"`
+	Rotation      float64         `json:"rotation"`
+	Height        float64         `json:"height"`
+	BaseElevation float64         `json:"base_elevation"`
 }
 
 type ObjectConfig struct {

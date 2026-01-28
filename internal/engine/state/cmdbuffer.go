@@ -14,6 +14,7 @@ type WorldCommand struct {
 	PlayerShape   PlayerHitbox
 	Health        Health
 	Collider      Collider
+	VerticalBody  VerticalBody
 }
 
 type CommandBuffer struct {

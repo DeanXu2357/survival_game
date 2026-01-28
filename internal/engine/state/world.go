@@ -18,7 +18,8 @@ type World struct {
 	PlayerHitbox ComponentManager[PlayerHitbox]
 	Health       ComponentManager[Health]
 
-	Collider ComponentManager[Collider]
+	Collider     ComponentManager[Collider]
+	VerticalBody ComponentManager[VerticalBody]
 
 	Grid Grid
 
@@ -39,6 +40,7 @@ func NewWorld(gridCellSize float64, gridWidth, gridHeight int) *World {
 		PlayerHitbox:  *NewComponentManager[PlayerHitbox](),
 		Health:        *NewComponentManager[Health](),
 		Collider:      *NewComponentManager[Collider](),
+		VerticalBody:  *NewComponentManager[VerticalBody](),
 		Grid:          *NewGrid(gridCellSize, gridWidth, gridHeight),
 		buf:           NewCommandBuffer(),
 		Width:         0,
@@ -177,6 +179,11 @@ func (w *World) ApplyCommands() {
 				// TODO: log error
 			}
 		}
+		if cmd.UpdateMeta.Has(ComponentVerticalBody) {
+			if !w.VerticalBody.Upsert(entityID, cmd.VerticalBody) {
+				// TODO: log error
+			}
+		}
 	}
 }
 
@@ -221,10 +228,15 @@ func (w *World) PlayerSnapshotWithView(id EntityID) (PlayerSnapshotWithView, boo
 func (w *World) StaticEntities() []StaticEntity {
 	staticEntities := make([]StaticEntity, 0)
 	for entityID, collider := range w.Collider.All() {
-		staticEntities = append(staticEntities, StaticEntity{
+		entity := StaticEntity{
 			ID:       entityID,
 			Collider: collider,
-		})
+		}
+		if vertBody, ok := w.VerticalBody.Get(entityID); ok {
+			entity.VerticalBody = vertBody
+			entity.HasVerticalBody = true
+		}
+		staticEntities = append(staticEntities, entity)
 	}
 	return staticEntities
 }
@@ -277,8 +289,10 @@ type PlayerSnapshotWithView struct {
 }
 
 type StaticEntity struct {
-	ID       EntityID `json:"id"`
-	Collider Collider `json:"collider"`
+	ID              EntityID     `json:"id"`
+	Collider        Collider     `json:"collider"`
+	VerticalBody    VerticalBody `json:"vertical_body"`
+	HasVerticalBody bool         `json:"has_vertical_body"`
 }
 
 type MapInfo struct {
