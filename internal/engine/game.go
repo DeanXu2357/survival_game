@@ -101,13 +101,35 @@ func (g *Game) JoinPlayer() (state2.EntityID, error) {
 }
 
 func (g *Game) UpdateInLoop(dt float64, playerInputs map[state2.EntityID]ports.PlayerInput) {
-	_ = g.movementSys.Update(dt, g.world, playerInputs)
+	_ = g.movementSys.Update(dt, g.world, transformPlayerInputs(playerInputs))
 
 	// visionDelta := g.visionSys.Update(dt, g.world, g.buf, positionDelta)
 	// aliveDelta := g.combatSys.Update(dt, g.world, g.buf)
 
 	g.world.ApplyCommands()
 	// note: maybe can log here for debug ?
+}
+
+func transformPlayerInputs(inputs map[state2.EntityID]ports.PlayerInput) map[state2.EntityID]system.PlayerInput {
+	result := make(map[state2.EntityID]system.PlayerInput)
+	for id, input := range inputs {
+		var mt system.MovementType
+		if input.MovementType == ports.MovementTypeRelative {
+			mt = system.MovementTypeRelative
+		}
+		result[id] = system.PlayerInput{
+			MoveVertical:   input.MoveVertical,
+			MoveHorizontal: input.MoveHorizontal,
+			LookHorizontal: input.LookHorizontal,
+			MovementType:   mt,
+			SwitchWeapon:   input.SwitchWeapon,
+			Reload:         input.Reload,
+			FastReload:     input.FastReload,
+			Fire:           input.Fire,
+			Timestamp:      input.Timestamp,
+		}
+	}
+	return result
 }
 
 func (g *Game) Statics() []state2.StaticEntity {

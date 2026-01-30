@@ -3,7 +3,6 @@ package system
 import (
 	"math"
 
-	"survival/internal/engine/ports"
 	"survival/internal/engine/state"
 	"survival/internal/engine/vector"
 )
@@ -20,17 +19,27 @@ func NewBasicMovementSystem() *BasicMovementSystem {
 
 // Update processes player inputs and updates positions/directions.
 // Returns a map of position deltas for downstream systems (vision, etc.).
-func (ms *BasicMovementSystem) Update(dt float64, world *state.World, playerInputs map[state.EntityID]ports.PlayerInput) map[state.EntityID]state.Position {
+func (ms *BasicMovementSystem) Update(dt float64, world *state.World, playerInputs map[state.EntityID]PlayerInput) map[state.EntityID]state.Position {
 	positionDeltas := make(map[state.EntityID]state.Position)
 
-	for entityID, input := range playerInputs {
+	for entityID, meta := range world.EntityMeta.All() {
+		if !meta.Has(state.ComponentMovementSpeed) {
+			continue
+		}
+
+		input := playerInputs[entityID]
+
+		moveSpeed, moveSpeedExist := world.MovementSpeed.Get(entityID)
+		if !moveSpeedExist {
+			continue
+		}
+
 		pos, posExist := world.Position.Get(entityID)
 		dir, dirExist := world.Direction.Get(entityID)
-		moveSpeed, moveSpeedExist := world.MovementSpeed.Get(entityID)
 		rotSpeed, rotSpeedExist := world.RotationSpeed.Get(entityID)
 		playerShape, playerShapeExist := world.PlayerHitbox.Get(entityID)
 
-		if !posExist || !dirExist || !moveSpeedExist || !rotSpeedExist || !playerShapeExist {
+		if !posExist || !dirExist || !rotSpeedExist || !playerShapeExist {
 			// TODO: log error
 			continue
 		}
@@ -70,11 +79,11 @@ func (ms *BasicMovementSystem) Update(dt float64, world *state.World, playerInpu
 // Uses screen coordinates: Y increases downward.
 // MoveVertical: Positive = down, Negative = up
 // MoveHorizontal: Positive = right, Negative = left
-func (ms *BasicMovementSystem) calculatePlayerNewPosition(pos state.Position, dir state.Direction, speed state.MovementSpeed, input ports.PlayerInput, dt float64) state.Position {
+func (ms *BasicMovementSystem) calculatePlayerNewPosition(pos state.Position, dir state.Direction, speed state.MovementSpeed, input PlayerInput, dt float64) state.Position {
 	var moveX, moveY float64
 
 	switch input.MovementType {
-	case ports.MovementTypeRelative:
+	case MovementTypeRelative:
 		forward := input.MoveVertical
 		strafe := input.MoveHorizontal
 
@@ -105,7 +114,7 @@ func (ms *BasicMovementSystem) calculatePlayerNewPosition(pos state.Position, di
 
 // calculatePlayerNewDirection computes new direction based on rotation input.
 // LookHorizontal: Positive = clockwise (right), Negative = counter-clockwise (left).
-func (ms *BasicMovementSystem) calculatePlayerNewDirection(dir state.Direction, speed state.RotationSpeed, input ports.PlayerInput, dt float64) state.Direction {
+func (ms *BasicMovementSystem) calculatePlayerNewDirection(dir state.Direction, speed state.RotationSpeed, input PlayerInput, dt float64) state.Direction {
 	rotationDelta := input.LookHorizontal * float64(speed) * dt
 	return state.Direction(float64(dir) + rotationDelta)
 }
