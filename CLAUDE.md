@@ -10,177 +10,165 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Avoid**: Do not use Chinese (Traditional or Simplified) in any project files
 
 ### Technology Stack Requirements
-- **Backend**: Go with WebSocket for game logic and networking
-- **Frontend**: TypeScript + PixiJS for high-performance 2D rendering  
-- **Desktop Framework**: Wails v2 for cross-platform desktop application packaging
-- **Communication**: WebSocket for real-time multiplayer synchronization
+- **Language**: Go only (no TypeScript/JavaScript frontend)
+- **Rendering**: Terminal-based 2.5D raycasting using Unicode half-blocks
+- **Networking**: WebSocket (Gorilla WebSocket) for real-time multiplayer
+- **CLI**: Cobra for command-line interface
 
 When implementing any features, ensure adherence to these technology choices.
 
-## Development commands
+## Development Commands
 
-### Development Phase (Current)
-**Backend (Go WebSocket Server)**:
 ```bash
-cd backend
-go mod tidy          # Install dependencies
-go run main.go       # Run WebSocket server on port 3033
-go test ./...        # Run tests
-```
+# Run WebSocket server (default port 3033)
+go run main.go backend
+go run main.go backend -p 3033
 
-**Frontend (TypeScript + PixiJS Web)**:
-```bash
-cd frontend
-npm install          # Install dependencies
-npm run dev          # Development server (usually port 5173)
-npm run build        # Build for production
-npm run test         # Run tests
-```
+# Run terminal client
+go run main.go term
 
-**Current Status**:
-```bash
-# main.go is essentially empty - no server to run yet
-# Frontend only has basic Vite template
+# Run tests
+go test ./...
 
-# You can run the frontend template:
-cd frontend && npm run dev
-# But it's just a "Hello Vite + TypeScript" page
+# Build binary
+go build -o survival
 
-# No backend server exists yet to connect to
-```
-
-### Production Phase (Future)
-**Wails Desktop Application**:
-```bash
-# Initialize Wails project (when migrating)
-wails init -n survival -t vanilla-ts
-
-# Start development with hot reload
-wails dev
-
-# Build desktop application
-wails build
-
-# Check development environment
-wails doctor
+# Run specific test package
+go test ./internal/engine/...
+go test ./internal/terminal/...
 ```
 
 ## Project Architecture
 
 ### Technology Stack
-
-#### Development Phase (Current)
 - **Backend**: Go with WebSocket server for game logic and networking
-- **Frontend**: TypeScript + PixiJS web application for high-performance 2D rendering
+- **Frontend**: Terminal-based 2.5D raycasting renderer (pure Go)
 - **Communication**: WebSocket for real-time multiplayer (JSON serialization)
-- **Development**: Separate backend/frontend with independent deployment
-
-#### Production Phase (Future)
-- **Desktop Framework**: Wails v2 for cross-platform desktop application
-- **Communication**: Wails context bridge (replaces WebSocket)
-- **Serialization**: Protocol Buffers for optimized performance
-- **Distribution**: Single executable for Windows, macOS, and Linux
+- **CLI**: Cobra commands (`survival backend`, `survival term`)
 
 ### Project Structure
 
-#### Current Development Structure
 ```
 survival/
-├── main.go              # Go main entry point
-├── go.mod               # Go module dependencies
-├── go.sum               # Go dependency checksums
-├── internal/            # Internal Go packages
-│   ├── game/            # Game state and logic
-│   │   ├── state.go     # Vector2D, Projectile, State structs
-│   │   ├── logic.go     # Game mechanics and update loop
-│   │   ├── player.go    # Player entity and behaviors
-│   │   ├── room.go      # Room/game session management
-│   │   ├── object.go    # Game objects and collision
-│   │   ├── weapons.go   # Weapon systems
-│   │   └── vector_test.go # Unit tests for vector math
-│   ├── hub/             # WebSocket hub management
-│   └── server/          # WebSocket server implementation
-├── frontend/            # TypeScript + PixiJS web app (basic setup)
-│   ├── index.html       # Web app entry point
-│   ├── package.json     # npm dependencies (TypeScript, Vite, PixiJS)
-│   ├── tsconfig.json    # TypeScript configuration
-│   ├── vite.config.ts   # Vite build configuration
-│   └── src/             # TypeScript source (basic Vite template)
-│       ├── main.ts      # Basic Vite + TypeScript template
-│       ├── counter.ts   # Template counter functionality
-│       └── style.css    # Basic styling
-├── spec.md              # Game specification document
-├── CLAUDE.md            # This file - Claude Code instructions
-├── todo.md              # Development task tracking
-└── README.md            # Project overview
-```
-
-#### Future Production Structure
-```
-survival/            # Wails v2 desktop application
-├── app.go           # Wails application entry point
-├── wails.json       # Wails configuration
-├── build/           # Wails build configuration
-├── backend/         # Go backend (integrated with Wails)
-│   ├── internal/    # Same structure as development phase
-│   └── serialization/ # Protobuf serialization
-├── frontend/        # TypeScript frontend (embedded in Wails)
-│   ├── src/         # Same structure as development phase
-│   ├── wails/       # Wails-specific integration
-│   └── protobuf/    # Generated TypeScript protobuf code
-└── dist/            # Final built application
+├── main.go              # CLI entry point (calls cmd.Execute())
+├── go.mod / go.sum      # Go module dependencies
+├── cmd/                 # Cobra commands
+│   ├── root.go          # Root command definition
+│   ├── backend.go       # WebSocket server command
+│   └── term.go          # Terminal client command
+├── internal/
+│   ├── adapters/
+│   │   ├── handler/websocket/    # WebSocket server implementation
+│   │   │   ├── server.go         # HTTP server with WebSocket upgrade
+│   │   │   └── connection.go     # Connection handling
+│   │   └── repository/maploader/ # JSON map file loader
+│   │       └── json_loader.go    # Loads maps from JSON files
+│   ├── engine/
+│   │   ├── game.go       # Game logic orchestration
+│   │   ├── map.go        # Map loading and management
+│   │   ├── ports/        # Interface definitions
+│   │   │   ├── port.go       # Core interfaces
+│   │   │   ├── protocol.go   # Network protocol types
+│   │   │   └── const.go      # Game constants
+│   │   ├── state/        # ECS-style game state
+│   │   │   ├── component.go    # Component definitions
+│   │   │   ├── entities.go     # Entity types
+│   │   │   ├── entitymanager.go # Entity management
+│   │   │   ├── grid.go         # Spatial grid for collisions
+│   │   │   ├── world.go        # World state container
+│   │   │   ├── layer.go        # Rendering layers
+│   │   │   └── cmdbuffer.go    # Command buffering
+│   │   ├── system/       # Game systems
+│   │   │   └── movement_basic.go # Movement system
+│   │   ├── vector/       # Vector math utilities
+│   │   │   └── vector.go
+│   │   └── weapons/      # Weapon implementations
+│   │       ├── types.go      # Weapon interfaces
+│   │       ├── knife.go      # Melee weapon
+│   │       ├── pistol.go     # Ranged weapon
+│   │       └── projectile.go # Projectile logic
+│   ├── services/         # Game services
+│   │   ├── hub.go        # WebSocket hub management
+│   │   ├── room.go       # Game room/session
+│   │   ├── client.go     # Client representation
+│   │   └── session.go    # Session management
+│   ├── terminal/         # Terminal frontend
+│   │   ├── manager.go    # Game manager (main loop)
+│   │   ├── construct.go  # Terminal construction
+│   │   ├── locale.go     # Localization
+│   │   ├── raycast/      # 2.5D rendering
+│   │   │   ├── raycast.go      # Ray casting algorithm
+│   │   │   └── renderer25d.go  # Half-block renderer
+│   │   ├── state/        # UI state machine
+│   │   │   ├── mainmenu.go     # Main menu state
+│   │   │   ├── settings.go     # Settings state
+│   │   │   ├── singleplayer.go # Single player game state
+│   │   │   └── resize.go       # Terminal resize handling
+│   │   ├── network/      # WebSocket client
+│   │   │   └── client.go       # Network client
+│   │   ├── ui/           # UI overlays
+│   │   │   └── overlay.go      # HUD, crosshair, weapon display
+│   │   ├── composite/    # Composite rendering
+│   │   └── debug/        # Debug utilities
+│   └── utils/            # Shared utilities
+│       ├── id_generator.go   # Unique ID generation
+│       ├── json_codec.go     # JSON encoding/decoding
+│       └── time.go           # Time utilities
+├── maps/                 # JSON map files
+│   ├── office_floor_01.json  # Office floor map
+│   ├── test_simple.json      # Simple test map
+│   └── test_complex.json     # Complex test map
+└── docs/                 # Documentation
 ```
 
 ### Core Architecture
 - **Server Authoritative**: All game logic, player positions, and combat calculations in Go backend
-- **Client Rendering**: TypeScript frontend handles input, PixiJS rendering, and UI
+- **Terminal Rendering**: 2.5D raycasting with Unicode half-blocks for first-person view
 - **Real-time Sync**: 60 FPS game loop on server broadcasts state to all clients
-- **Development**: WebSocket communication with JSON for easy debugging
-- **Production**: Wails context bridge with Protobuf for optimal performance
+- **ECS-Style Engine**: Components, entities, and systems for game state management
 
 ### Key Components
 
-#### Backend (`internal/game/`)
-- `State`: Game state structure with players, walls, projectiles (state.go)
-- `Logic`: Basic collision detection and player movement (logic.go)
-- `Player`: Player struct with movement logic (player.go)
-- `Wall`: Wall collision system (object.go)
-- `Room`: Game session framework (room.go) - no networking yet
-- Various weapon interfaces (weapons.go) - no implementation yet
+#### CLI Commands (`cmd/`)
+- `survival backend -p PORT`: Start WebSocket game server
+- `survival term`: Start terminal-based game client
 
-#### Frontend (`frontend/src/`) - To Be Implemented
-- `GameRenderer`: PixiJS-based rendering system (planned)
-- `InputManager`: WASD movement and mouse input handling (planned)
-- `NetworkClient`: WebSocket client for server communication (planned)
-- `UIManager`: Game menus and interface components (planned)
+#### Engine (`internal/engine/`)
+- **state/**: ECS components (Transform, Collider, Health, etc.)
+- **system/**: Game systems (movement, collision)
+- **vector/**: Vector2D math operations
+- **weapons/**: Knife, Pistol with projectile physics
+- **ports/**: Interface definitions for dependency injection
 
-#### Wails Integration - Future Phase
-- `app.go`: Application lifecycle management (not yet implemented)
-- Frontend-backend communication bridge (planned for production phase)
-- Native desktop features (planned for production phase)
+#### Terminal Frontend (`internal/terminal/`)
+- **raycast/**: 2.5D Doom-style rendering using ray casting
+- **state/**: State machine for UI (menu, settings, game)
+- **network/**: WebSocket client for multiplayer
+- **ui/**: HUD overlays (health, ammo, crosshair)
+
+#### Services (`internal/services/`)
+- **Hub**: Manages all connected clients
+- **Room**: Game session with players
+- **Client**: Individual player connection
+- **Session**: Reconnection support
 
 ### Game Mechanics
 
-#### Vision System
-- **Close Vision**: 1 player body-length radius (20px) around player
-- **Cone Vision**: 45-degree cone extending 10 body-lengths (200px) forward
-- **Fog of War**: PixiJS shaders for efficient fog rendering
-
-#### Sound System (Planned)
-- **Three-Layer Sound Rings**: Visual representation of audio events
-- **Eight-Directional Audio**: Sound cues divided into 8 compass directions
-- **Event Types**: Footsteps, weapon fire, environmental interactions
+#### Terminal Rendering
+- **Half-Block Technique**: Uses `▀` (U+2580) to render 2 pixels per character
+- **FOV**: 90 degrees for natural perspective
+- **Distance Shading**: Walls darken with distance (ANSI 256-color)
 
 #### Player Movement
 - Server processes WASD input at 60 FPS
 - 120 pixels/second movement speed
 - Boundary checking within map limits
-- Server-side rotation smoothing (4.0 radians/second)
+- Server-side rotation smoothing
 
-#### Combat System (To be implemented)
-- Melee: 1 body-length range knife attack
-- Ranged: Small pistol with projectile physics
-- One-hit kill system initially, expandable to health system
+#### Combat System
+- Melee: Knife attack
+- Ranged: Pistol with projectile physics
+- One-hit kill system (expandable to health system)
 
 ### Network Protocol
 
@@ -201,57 +189,36 @@ type PlayerInput struct {
 ```
 
 #### Server → Client
-Server broadcasts game state updates through WebSocket using JSON protocol. Connection uses request body with game name, client ID, and session information for reconnection support.
+Server broadcasts game state updates through WebSocket using JSON protocol.
 
 ### Map System
-- 800x600 pixel game area
-- Building floor plan with walls and doors
-- Triangle-shaped players rendered with PixiJS sprites
-- Collision detection and pathfinding
+- JSON format map files in `maps/` directory
+- Walls with position, dimensions, and optional height/elevation
+- Spawn points for player placement
+- Spatial grid for efficient collision detection
 
 ## Current Development Status
 
-### Current Implementation Status
+### What Exists
+- ✅ **CLI Application**: Cobra commands (`backend`, `term`)
+- ✅ **WebSocket Server**: Full server implementation with Gorilla WebSocket
+- ✅ **Terminal Client**: 2.5D raycasting renderer with state machine
+- ✅ **Game Engine**: ECS-style with entities, components, systems
+- ✅ **Spatial Grid**: Efficient collision detection
+- ✅ **Map System**: JSON map loader with multiple test maps
+- ✅ **Weapon System**: Knife and pistol implementations
+- ✅ **Network Protocol**: JSON-based client-server communication
+- ✅ **UI System**: Main menu, settings, HUD overlays
 
-#### What Actually Exists
-- ✅ **Basic Go Project**: go.mod, go.sum, basic module setup
-- ✅ **Data Structures**: Vector2D, State, Projectile structs (state.go)
-- ✅ **Spatial Grid**: Grid system for collision detection (state.go)
-- ✅ **Player Structure**: Player struct with basic movement logic (player.go)
-- ✅ **Wall System**: Wall struct with collision detection (object.go)
-- ✅ **Game Logic Framework**: Basic collision detection and player movement (logic.go)
-- ✅ **Room Structure**: Room struct definition with game loop framework (room.go)
-- ✅ **Weapon Interfaces**: Weapon type definitions and interfaces (weapons.go)
-- ✅ **Frontend Setup**: Vite + TypeScript + PixiJS environment configured
-
-#### What Doesn't Exist Yet
-- ❌ **Main Application**: main.go is essentially empty
-- ❌ **WebSocket Server**: No server implementation
-- ❌ **Network Communication**: No client-server protocol
-- ❌ **Frontend Game Code**: Only basic Vite template exists
-- ❌ **Weapon Implementation**: Only interfaces/types, no actual weapons
-- ❌ **Game Integration**: No way to actually run or play the game
-
-#### Production Phase (Future)
-- ⏸️ **Wails Integration**: Desktop application packaging
-- ⏸️ **Protocol Buffers**: Optimized serialization
-- ⏸️ **Desktop Polish**: Native features and distribution
-
-### What Needs to Be Built Next
-1. **WebSocket Server**: main.go needs actual server implementation
-2. **Frontend Game Client**: Replace Vite template with actual game
-3. **Network Protocol**: Connect frontend and backend
-4. **Basic Gameplay**: Make the existing structures actually work together
-
-### Later Development
-- Vision system, combat system, UI system, etc.
+### Areas for Future Development
+- Vision/fog of war system
+- Sound visualization system
+- Additional weapons and items
+- AI enemies for PvE mode
+- More maps and level design
+- Client-side prediction and reconciliation
 
 ### Performance Targets
-- 60 FPS rendering with PixiJS
+- 60 FPS terminal rendering
 - Sub-50ms network latency for multiplayer
-- Smooth client-side prediction and reconciliation
-- Efficient fog of war rendering with shaders
-
-### Technical Notes
-- These are future considerations once basic functionality exists
-- Current focus should be on getting a minimal working game first
+- Efficient spatial queries for collision detection

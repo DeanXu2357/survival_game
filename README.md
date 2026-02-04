@@ -1,187 +1,156 @@
-# Tactical Survival Shooter
+# Survival
 
-A top-down 2D tactical survival shooter featuring innovative vision control and sound recognition mechanics. Players navigate through fog of war environments using limited vision and visual sound cues to complete the tactical cycle of Search → Contact → Kill → Survive.
+A 2.5D terminal-based tactical survival shooter featuring a Doom-style raycasting renderer. Navigate through environments using a first-person perspective rendered directly in your terminal.
 
 ## Core Features
 
-- **Vision System**: Circular close-range vision + directional cone vision with fog of war
-- **Sound System**: Three-layer visual sound rings with eight-directional audio cues
-- **Network Architecture**: Host-authoritative multiplayer with real-time synchronization
-- **Game Modes**: PvP (3 lives) and PvE (one-hit kill with bullet time)
-- **Desktop Application**: Cross-platform desktop app built with Wails
+- **2.5D Raycasting Renderer**: Doom-style first-person view using Unicode half-blocks for doubled vertical resolution
+- **Terminal-Based**: Runs entirely in the terminal with ANSI color support
+- **Network Architecture**: Host-authoritative multiplayer with WebSocket real-time synchronization
+- **Cobra CLI**: Simple commands to run server or client
 
 ## Technology Stack
 
-- **Backend**: Go with WebSocket for game logic and networking
-- **Frontend**: TypeScript + PixiJS for high-performance 2D rendering
-- **Desktop Framework**: Wails for cross-platform desktop application
-- **Communication**: WebSocket for real-time bidirectional data
-- **Architecture**: Server-authoritative with client-side prediction
+- **Language**: Go (pure Go, no external frontend)
+- **Rendering**: Terminal-based 2.5D raycasting using Unicode half-blocks (`▀`)
+- **Networking**: WebSocket (Gorilla WebSocket) for real-time multiplayer
+- **CLI Framework**: Cobra for command-line interface
+- **Architecture**: Server-authoritative with ECS-style game engine
 
 ## Project Structure
 
 ```
 survival/
-├── frontend/        # TypeScript + PixiJS frontend
-│   ├── src/
-│   ├── assets/
-│   └── package.json
-├── backend/         # Go backend with game logic
-│   ├── internal/
-│   ├── pkg/
-│   └── main.go
-├── shared/          # Shared types and constants
-├── build/           # Wails build configuration
-├── spec.md          # Detailed game specification
-├── CLAUDE.md        # Development instructions
-├── wails.json       # Wails configuration
-└── README.md        # This file
+├── main.go              # CLI entry point
+├── go.mod / go.sum      # Go module dependencies
+├── cmd/                 # Cobra commands
+│   ├── root.go          # Root command
+│   ├── backend.go       # WebSocket server command
+│   └── term.go          # Terminal client command
+├── internal/
+│   ├── adapters/
+│   │   ├── handler/websocket/    # WebSocket server (Gorilla)
+│   │   └── repository/maploader/ # JSON map loader
+│   ├── engine/
+│   │   ├── game.go       # Game logic
+│   │   ├── map.go        # Map loading
+│   │   ├── ports/        # Interfaces
+│   │   ├── state/        # ECS components (entities, grid, world)
+│   │   ├── system/       # Game systems (movement)
+│   │   ├── vector/       # Vector math
+│   │   └── weapons/      # Weapon types (knife, pistol)
+│   ├── services/         # Hub, Room, Client, Session management
+│   ├── terminal/         # Terminal frontend
+│   │   ├── manager.go    # Game manager
+│   │   ├── raycast/      # 2.5D raycasting renderer
+│   │   ├── state/        # UI states (menu, settings, game)
+│   │   ├── network/      # WebSocket client
+│   │   └── ui/           # HUD overlays
+│   └── utils/            # ID generator, JSON codec, time utilities
+├── maps/                 # JSON map files
+│   ├── office_floor_01.json
+│   ├── test_simple.json
+│   └── test_complex.json
+└── docs/                 # Documentation
 ```
 
 ## Quick Start
 
 ### Prerequisites
-- Go 1.19+ installed
-- Node.js 16+ and npm installed
-- Make (usually pre-installed on Linux/macOS, for Windows use WSL or install via Chocolatey)
+- Go 1.21+ installed
 
-### Development Setup
+### Running the Game
 
-1. **Check Environment**
+1. **Start the WebSocket Server**
    ```bash
-   make check
+   go run main.go backend -p 3033
    ```
 
-2. **Install Dependencies**
+2. **Start the Terminal Client** (in another terminal)
    ```bash
-   # Install both backend and frontend dependencies
-   make install
-
-   # Or install separately
-   make install-backend
-   make install-frontend
+   go run main.go term
    ```
 
-3. **Development Mode**
-   ```bash
-   # Start both backend and frontend servers (recommended)
-   make dev
-   # Backend:  http://localhost:3033 (WebSocket)
-   # Frontend: http://localhost:5173 (Vite dev server)
-
-   # Or start separately
-   make backend    # Start Go WebSocket server
-   make frontend   # Start Vite dev server
-   ```
-
-4. **Build for Production**
-   ```bash
-   # Build both backend and frontend
-   make build
-
-   # Or build separately
-   make backend-build   # Creates bin/survival
-   make frontend-build  # Creates frontend/dist/
-   ```
-
-5. **Run Tests**
-   ```bash
-   make test
-   ```
-
-### Useful Commands
+### Build and Run
 
 ```bash
-make help           # Show all available commands
-make clean          # Clean build artifacts
-make deps-update    # Update dependencies
+# Build the binary
+go build -o survival
+
+# Run server
+./survival backend -p 3033
+
+# Run terminal client
+./survival term
 ```
 
-### Game Controls
-- **Movement**: WASD keys (120 pixels/second)
-- **Aiming**: Mouse cursor controls player rotation (4.0 radians/second)
-- **Combat**: Left click for attacks
-- **UI Navigation**: Mouse for menu interactions
+### Run Tests
+
+```bash
+go test ./...
+```
+
+## Game Controls
+
+- **W/S** - Move forward/backward
+- **A/D** - Strafe left/right
+- **Q/E** - Turn left/right
+- **ESC** - Exit/Back to menu
+- **Enter** - Select menu option
 
 ## Architecture Overview
 
-### Three-Layer Game Architecture
-1. **Game State Layer**: Stores complete world snapshot (players, projectiles, walls, sound events)
-2. **Game Logic Layer**: Updates game state based on input and rules at 60 FPS
-3. **Rendering Layer**: PixiJS handles efficient 2D graphics rendering
+### Game Engine (ECS-style)
+- **Entities**: Players, walls, projectiles with component-based design
+- **Systems**: Movement, collision detection, input processing
+- **State**: World state with spatial grid for efficient collision queries
+
+### Terminal Renderer
+- **2.5D Raycasting**: Casts rays for each screen column to determine wall distances
+- **Half-Block Rendering**: Uses Unicode `▀` character to achieve 2x vertical resolution
+- **Distance-Based Shading**: Walls darken with distance using ANSI 256-color palette
 
 ### Network Model
-- **Host-Authoritative**: Host player acts as authoritative server
-- **Real-Time Sync**: WebSocket communication for multiplayer
-- **Client Prediction**: Local actions feel immediate with server reconciliation
+- **Server-Authoritative**: All game logic runs on the server
+- **WebSocket**: Real-time bidirectional communication
+- **JSON Protocol**: Simple message format for game state synchronization
 
-### Wails Integration
-- **Go Backend**: Handles game logic, AI, and network communication
-- **TypeScript Frontend**: PixiJS rendering and user interface
-- **Native Desktop**: Cross-platform deployment without browser dependencies
+## Development Commands
 
-## Development Status
-
-Current development progress and task tracking is maintained in `todo.md`. The project includes a complete WebSocket server infrastructure, game logic foundation, and PixiJS frontend client ready for game state integration.
-
-## Game Modes
-
-### PvP Mode
-- Multiplayer combat with 3 lives per player
-- Emphasis on tactical encounters and positioning
-- Real-time competition between human players
-
-### PvE Mode (Planned)
-- Single-player challenge mode
-- One-hit kill system with "bullet time" planning
-- AI enemies with varying difficulty levels
-
-## Development commands
-
-### Wails Development
 ```bash
-wails dev            # Start development with hot reload
-wails build          # Build production desktop app
-wails doctor         # Check development environment
+# Run WebSocket server (default port 3033)
+go run main.go backend
+go run main.go backend -p 8080  # Custom port
+
+# Run terminal client
+go run main.go term
+
+# Run all tests
+go test ./...
+
+# Build binary
+go build -o survival
 ```
 
-### Backend Development
-```bash
-cd backend
-go mod tidy          # Install Go dependencies
-go test ./...        # Run backend tests
+## Map Format
+
+Maps are defined in JSON format in the `maps/` directory:
+
+```json
+{
+  "name": "office_floor_01",
+  "width": 800,
+  "height": 600,
+  "walls": [
+    {"x": 0, "y": 0, "width": 800, "height": 10},
+    ...
+  ],
+  "spawn_points": [
+    {"x": 400, "y": 300}
+  ]
+}
 ```
-
-### Frontend Development
-```bash
-cd frontend
-npm install          # Install TypeScript/PixiJS dependencies
-npm run dev          # Start frontend development server
-npm run build        # Build frontend for production
-npm run test         # Run frontend tests
-```
-
-## Network Optimization Roadmap
-
-1. **Phase 1 (Current)**: JSON full state broadcasting for development
-2. **Phase 2**: Delta updates and event-driven messaging
-3. **Phase 3**: Binary protocol (Protobuf) for production optimization
-
-## PixiJS Rendering Features
-
-- **High Performance**: Hardware-accelerated 2D rendering
-- **Sprite Management**: Efficient texture atlas and sprite batching
-- **Visual Effects**: Shaders for fog of war and lighting effects
-- **UI Framework**: Rich UI components for game interface
-- **Animation System**: Smooth interpolation and particle effects
 
 ## Contributing
 
-This project follows a tactical game development approach with emphasis on:
-- Clean architecture separation (State-Logic-Rendering)
-- Server-authoritative networking for consistency
-- Modern desktop application development with Wails
-- High-performance rendering with PixiJS
-- Innovative gameplay mechanics (vision + sound systems)
-
-See `spec.md` for detailed technical specifications and `CLAUDE.md` for development guidelines.
+See `CLAUDE.md` for development guidelines and coding standards.
