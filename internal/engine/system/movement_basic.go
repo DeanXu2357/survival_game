@@ -7,27 +7,36 @@ import (
 	"survival/internal/engine/vector"
 )
 
-// todo: remove dependency on ports in system layer, system should have own communication structs
-
 type BasicMovementSystem struct {
+	world *state.World
 }
 
-// NewBasicMovementSystem creates a new BasicMovementSystem instance in 2D.
-func NewBasicMovementSystem() *BasicMovementSystem {
-	return &BasicMovementSystem{}
+func NewBasicMovementSystem(world *state.World) *BasicMovementSystem {
+	return &BasicMovementSystem{world: world}
 }
 
-// Update processes player inputs and updates positions/directions.
-// Returns a map of position deltas for downstream systems (vision, etc.).
-func (ms *BasicMovementSystem) Update(dt float64, world *state.World, playerInputs map[state.EntityID]PlayerInput) map[state.EntityID]state.Position {
-	positionDeltas := make(map[state.EntityID]state.Position)
+func (ms *BasicMovementSystem) ReadMeta() state.Meta {
+	return state.ComponentInput | state.ComponentPosition | state.ComponentDirection |
+		state.ComponentMovementSpeed | state.ComponentRotationSpeed | state.ComponentPlayerHitbox
+}
+
+func (ms *BasicMovementSystem) WriteMeta() state.Meta {
+	return state.ComponentPosition | state.ComponentDirection | state.ComponentPrePosition | state.ComponentPlayerHitbox
+}
+
+func (ms *BasicMovementSystem) Update(dt float64) {
+	world := ms.world
+	requiredMeta := ms.ReadMeta()
 
 	for entityID, meta := range world.EntityMeta.All() {
-		if !meta.Has(state.ComponentMovementSpeed) {
+		if !meta.Has(requiredMeta) {
 			continue
 		}
 
-		input := playerInputs[entityID]
+		input, inputExist := world.Input.Get(entityID)
+		if !inputExist {
+			continue
+		}
 
 		moveSpeed, moveSpeedExist := world.MovementSpeed.Get(entityID)
 		if !moveSpeedExist {
@@ -40,11 +49,12 @@ func (ms *BasicMovementSystem) Update(dt float64, world *state.World, playerInpu
 		playerShape, playerShapeExist := world.PlayerHitbox.Get(entityID)
 
 		if !posExist || !dirExist || !rotSpeedExist || !playerShapeExist {
-			// TODO: log error
 			continue
 		}
 
 		var updateMeta state.Meta
+
+		prePos := state.PrePosition(pos)
 
 		newPos := ms.resolvePlayerCollisions(
 			ms.calculatePlayerNewPosition(pos, dir, moveSpeed, input, dt),
@@ -53,7 +63,7 @@ func (ms *BasicMovementSystem) Update(dt float64, world *state.World, playerInpu
 		)
 		newDir := ms.calculatePlayerNewDirection(dir, rotSpeed, input, dt)
 
-		positionDeltas[entityID] = newPos
+		updateMeta = updateMeta.Set(state.ComponentPrePosition)
 
 		if newPos != pos {
 			updateMeta = updateMeta.Set(state.ComponentPosition)
@@ -69,21 +79,20 @@ func (ms *BasicMovementSystem) Update(dt float64, world *state.World, playerInpu
 			MovementSpeed: moveSpeed,
 			RotationSpeed: rotSpeed,
 			PlayerHitbox:  state.PlayerHitbox{Center: newPos, Radius: playerShape.Radius},
+			PrePosition:   prePos,
 		})
 	}
-
-	return positionDeltas
 }
 
 // calculatePlayerNewPosition computes new position based on analog input.
 // Uses screen coordinates: Y increases downward.
 // MoveVertical: Positive = down, Negative = up
 // MoveHorizontal: Positive = right, Negative = left
-func (ms *BasicMovementSystem) calculatePlayerNewPosition(pos state.Position, dir state.Direction, speed state.MovementSpeed, input PlayerInput, dt float64) state.Position {
+func (ms *BasicMovementSystem) calculatePlayerNewPosition(pos state.Position, dir state.Direction, speed state.MovementSpeed, input state.Input, dt float64) state.Position {
 	var moveX, moveY float64
 
 	switch input.MovementType {
-	case MovementTypeRelative:
+	case state.MovementTypeRelative:
 		forward := input.MoveVertical
 		strafe := input.MoveHorizontal
 
@@ -114,7 +123,7 @@ func (ms *BasicMovementSystem) calculatePlayerNewPosition(pos state.Position, di
 
 // calculatePlayerNewDirection computes new direction based on rotation input.
 // LookHorizontal: Positive = clockwise (right), Negative = counter-clockwise (left).
-func (ms *BasicMovementSystem) calculatePlayerNewDirection(dir state.Direction, speed state.RotationSpeed, input PlayerInput, dt float64) state.Direction {
+func (ms *BasicMovementSystem) calculatePlayerNewDirection(dir state.Direction, speed state.RotationSpeed, input state.Input, dt float64) state.Direction {
 	rotationDelta := input.LookHorizontal * float64(speed) * dt
 	return state.Direction(float64(dir) + rotationDelta)
 }

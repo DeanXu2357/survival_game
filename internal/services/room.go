@@ -9,7 +9,6 @@ import (
 
 	"survival/internal/engine"
 	"survival/internal/engine/ports"
-	"survival/internal/engine/state"
 	"survival/internal/utils"
 )
 
@@ -120,9 +119,6 @@ func (r *Room) Run() {
 	ticker := time.NewTicker(time.Second / ports.TargetTickRate)
 	defer ticker.Stop()
 
-	// should room depends on state package ?
-	currentInputs := make(map[state.EntityID]ports.PlayerInput)
-
 	log.Printf("[Room %s] started", r.ID)
 
 	for {
@@ -137,10 +133,9 @@ func (r *Room) Run() {
 				log.Printf("Warning: No entity ID found for session %s", cmd.SessionID)
 				continue
 			}
-			currentInputs[entityID] = cmd.Input
+			r.game.SetPlayerInput(entityID, cmd.Input)
 		case <-ticker.C:
-			r.game.UpdateInLoop(ports.DeltaTime, currentInputs)
-			currentInputs = make(map[state.EntityID]ports.PlayerInput) // Reset inputs after processing
+			r.game.Update(ports.DeltaTime)
 			r.broadcastGameUpdate()
 		case <-r.ctx.Done():
 			return

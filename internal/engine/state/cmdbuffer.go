@@ -15,8 +15,12 @@ type WorldCommand struct {
 	Health        Health
 	Collider      Collider
 	VerticalBody  VerticalBody
+	Input         Input
+	PrePosition   PrePosition
 }
 
+// CommandBuffer is a thread-safe buffer for WorldCommands.
+// It allows multiple goroutines to push and pop commands concurrently.
 type CommandBuffer struct {
 	mu       sync.RWMutex
 	commands []WorldCommand

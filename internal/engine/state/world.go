@@ -3,6 +3,7 @@ package state
 import (
 	"fmt"
 	"log"
+	"sync"
 )
 
 type World struct {
@@ -10,16 +11,22 @@ type World struct {
 
 	EntityMeta    ComponentManager[Meta]
 	Position      ComponentManager[Position]
+	PrePosition   ComponentManager[PrePosition]
 	Direction     ComponentManager[Direction]
 	MovementSpeed ComponentManager[MovementSpeed]
 	RotationSpeed ComponentManager[RotationSpeed]
-	ViewIDs       ComponentManager[ViewIDs]
 
+	ViewIDs      ComponentManager[ViewIDs]
 	PlayerHitbox ComponentManager[PlayerHitbox]
-	Health       ComponentManager[Health]
 
-	Collider     ComponentManager[Collider]
+	Health   ComponentManager[Health]
+	Collider ComponentManager[Collider]
+
 	VerticalBody ComponentManager[VerticalBody]
+
+	Input          ComponentManager[Input]
+	inputMapBuffer map[EntityID]Input
+	inputMutex     *sync.Mutex
 
 	Grid Grid
 
@@ -30,21 +37,25 @@ type World struct {
 
 func NewWorld(gridCellSize float64, gridWidth, gridHeight int) *World {
 	return &World{
-		Entity:        NewEntityManager(),
-		EntityMeta:    *NewComponentManager[Meta](), // TODO: refactor this, use pointer or not
-		Position:      *NewComponentManager[Position](),
-		Direction:     *NewComponentManager[Direction](),
-		MovementSpeed: *NewComponentManager[MovementSpeed](),
-		RotationSpeed: *NewComponentManager[RotationSpeed](),
-		ViewIDs:       *NewComponentManager[ViewIDs](),
-		PlayerHitbox:  *NewComponentManager[PlayerHitbox](),
-		Health:        *NewComponentManager[Health](),
-		Collider:      *NewComponentManager[Collider](),
-		VerticalBody:  *NewComponentManager[VerticalBody](),
-		Grid:          *NewGrid(gridCellSize, gridWidth, gridHeight),
-		buf:           NewCommandBuffer(),
-		Width:         0,
-		Height:        0,
+		Entity:         NewEntityManager(),
+		EntityMeta:     *NewComponentManager[Meta](), // TODO: refactor this, use pointer or not
+		Position:       *NewComponentManager[Position](),
+		PrePosition:    *NewComponentManager[PrePosition](),
+		Direction:      *NewComponentManager[Direction](),
+		MovementSpeed:  *NewComponentManager[MovementSpeed](),
+		RotationSpeed:  *NewComponentManager[RotationSpeed](),
+		ViewIDs:        *NewComponentManager[ViewIDs](),
+		PlayerHitbox:   *NewComponentManager[PlayerHitbox](),
+		Health:         *NewComponentManager[Health](),
+		Collider:       *NewComponentManager[Collider](),
+		VerticalBody:   *NewComponentManager[VerticalBody](),
+		Input:          *NewComponentManager[Input](),
+		inputMapBuffer: make(map[EntityID]Input),
+		inputMutex:     &sync.Mutex{},
+		Grid:           *NewGrid(gridCellSize, gridWidth, gridHeight),
+		buf:            NewCommandBuffer(),
+		Width:          0,
+		Height:         0,
 	}
 }
 
@@ -109,6 +120,7 @@ func (w *World) UpdatePlayer(id EntityID, player UpdatePlayer) {
 		MovementSpeed: player.MovementSpeed,
 		PlayerShape:   player.PlayerHitbox,
 		Health:        player.Health,
+		PrePosition:   player.PrePosition,
 	})
 }
 
@@ -121,6 +133,7 @@ type UpdatePlayer struct {
 	Meta
 	PlayerHitbox
 	Health
+	PrePosition
 }
 
 func (w *World) ApplyCommands() {
@@ -181,6 +194,16 @@ func (w *World) ApplyCommands() {
 		}
 		if cmd.UpdateMeta.Has(ComponentVerticalBody) {
 			if !w.VerticalBody.Upsert(entityID, cmd.VerticalBody) {
+				// TODO: log error
+			}
+		}
+		if cmd.UpdateMeta.Has(ComponentInput) {
+			if !w.Input.Upsert(entityID, cmd.Input) {
+				// TODO: log error
+			}
+		}
+		if cmd.UpdateMeta.Has(ComponentPrePosition) {
+			if !w.PrePosition.Upsert(entityID, cmd.PrePosition) {
 				// TODO: log error
 			}
 		}
@@ -298,4 +321,39 @@ type StaticEntity struct {
 type MapInfo struct {
 	Width  float64
 	Height float64
+}
+
+// SetInput buffers the input for an entity.
+// Inputs are merged if multiple inputs are set before SyncInputBuffer is called.
+// This method is thread-safe.
+func (w *World) SetInput(entityID EntityID, input Input) {
+	w.inputMutex.Lock()
+	defer w.inputMutex.Unlock()
+
+	old := w.inputMapBuffer[entityID]
+	w.inputMapBuffer[entityID] = Input{
+		MoveVertical:   input.MoveVertical,
+		MoveHorizontal: input.MoveHorizontal,
+		LookHorizontal: input.LookHorizontal,
+		MovementType:   input.MovementType,
+		Fire:           old.Fire || input.Fire,
+		SwitchWeapon:   old.SwitchWeapon || input.SwitchWeapon,
+		Reload:         old.Reload || input.Reload,
+		FastReload:     old.FastReload || input.FastReload,
+		Timestamp:      input.Timestamp,
+	}
+}
+
+// SyncInputBuffer flushes the input buffer into the main Input component manager.
+// Should be called at the start of each simulation tick.
+func (w *World) SyncInputBuffer() {
+	w.inputMutex.Lock()
+	defer w.inputMutex.Unlock()
+
+	for entityID, input := range w.inputMapBuffer {
+		w.Input.Upsert(entityID, input)
+
+		// Clear the buffer after syncing
+		delete(w.inputMapBuffer, entityID)
+	}
 }

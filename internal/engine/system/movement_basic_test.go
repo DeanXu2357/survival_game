@@ -60,13 +60,11 @@ func floatEquals(a, b, epsilon float64) bool {
 
 func TestNoInput_PlayerStaysStill(t *testing.T) {
 	world, playerID := setupTestWorld(state.Position{X: 50, Y: 50}, 0)
-	ms := NewBasicMovementSystem()
+	ms := NewBasicMovementSystem(world)
 
-	inputs := map[state.EntityID]PlayerInput{
-		playerID: {},
-	}
+	world.SetInput(playerID, state.Input{})
 
-	ms.Update(1.0/60.0, world, inputs)
+	ms.Update(1.0 / 60.0)
 	world.ApplyCommands()
 
 	pos, _ := world.Position.Get(playerID)
@@ -78,14 +76,12 @@ func TestNoInput_PlayerStaysStill(t *testing.T) {
 func TestVerticalMovement_BlockedByWall(t *testing.T) {
 	world, playerID := setupTestWorld(state.Position{X: 50, Y: 50}, 0)
 	addWall(world, 50, 45, 2, 1)
-	ms := NewBasicMovementSystem()
+	ms := NewBasicMovementSystem(world)
 
-	inputs := map[state.EntityID]PlayerInput{
-		playerID: {MoveVertical: -1, MovementType: MovementTypeAbsolute},
-	}
+	world.SetInput(playerID, state.Input{MoveVertical: -1, MovementType: state.MovementTypeAbsolute})
 
 	for i := 0; i < 60; i++ {
-		ms.Update(1.0/60.0, world, inputs)
+		ms.Update(1.0 / 60.0)
 		world.ApplyCommands()
 	}
 
@@ -102,14 +98,12 @@ func TestVerticalMovement_BlockedByWall(t *testing.T) {
 func TestHorizontalMovement_BlockedByWall(t *testing.T) {
 	world, playerID := setupTestWorld(state.Position{X: 50, Y: 50}, 0)
 	addWall(world, 55, 50, 1, 2)
-	ms := NewBasicMovementSystem()
+	ms := NewBasicMovementSystem(world)
 
-	inputs := map[state.EntityID]PlayerInput{
-		playerID: {MoveHorizontal: 1, MovementType: MovementTypeAbsolute},
-	}
+	world.SetInput(playerID, state.Input{MoveHorizontal: 1, MovementType: state.MovementTypeAbsolute})
 
 	for i := 0; i < 60; i++ {
-		ms.Update(1.0/60.0, world, inputs)
+		ms.Update(1.0 / 60.0)
 		world.ApplyCommands()
 	}
 
@@ -125,17 +119,15 @@ func TestHorizontalMovement_BlockedByWall(t *testing.T) {
 
 func TestFreeMovement_NoWalls(t *testing.T) {
 	world, playerID := setupTestWorld(state.Position{X: 50, Y: 50}, 0)
-	ms := NewBasicMovementSystem()
+	ms := NewBasicMovementSystem(world)
 
 	dt := 1.0 / 60.0
 	speed := 5.0
 	expectedDelta := speed * dt
 
-	inputs := map[state.EntityID]PlayerInput{
-		playerID: {MoveHorizontal: 1, MovementType: MovementTypeAbsolute},
-	}
+	world.SetInput(playerID, state.Input{MoveHorizontal: 1, MovementType: state.MovementTypeAbsolute})
 
-	ms.Update(dt, world, inputs)
+	ms.Update(dt)
 	world.ApplyCommands()
 
 	pos, _ := world.Position.Get(playerID)
@@ -150,14 +142,12 @@ func TestFreeMovement_NoWalls(t *testing.T) {
 func TestDiagonalMovement_PartialBlock(t *testing.T) {
 	world, playerID := setupTestWorld(state.Position{X: 50, Y: 50}, 0)
 	addWall(world, 55, 50, 1, 5)
-	ms := NewBasicMovementSystem()
+	ms := NewBasicMovementSystem(world)
 
-	inputs := map[state.EntityID]PlayerInput{
-		playerID: {MoveHorizontal: 1, MoveVertical: 1, MovementType: MovementTypeAbsolute},
-	}
+	world.SetInput(playerID, state.Input{MoveHorizontal: 1, MoveVertical: 1, MovementType: state.MovementTypeAbsolute})
 
 	for i := 0; i < 60; i++ {
-		ms.Update(1.0/60.0, world, inputs)
+		ms.Update(1.0 / 60.0)
 		world.ApplyCommands()
 	}
 
@@ -176,17 +166,15 @@ func TestDiagonalMovement_PartialBlock(t *testing.T) {
 
 func TestRotation_NoMovement(t *testing.T) {
 	world, playerID := setupTestWorld(state.Position{X: 50, Y: 50}, 0)
-	ms := NewBasicMovementSystem()
+	ms := NewBasicMovementSystem(world)
 
 	dt := 1.0 / 60.0
 	rotSpeed := 2.0
 	expectedRotation := rotSpeed * dt
 
-	inputs := map[state.EntityID]PlayerInput{
-		playerID: {LookHorizontal: 1},
-	}
+	world.SetInput(playerID, state.Input{LookHorizontal: 1})
 
-	ms.Update(dt, world, inputs)
+	ms.Update(dt)
 	world.ApplyCommands()
 
 	pos, _ := world.Position.Get(playerID)
@@ -203,17 +191,15 @@ func TestRotation_NoMovement(t *testing.T) {
 func TestRelativeMovement_ForwardMeansPlayerDirection(t *testing.T) {
 	direction := math.Pi / 2
 	world, playerID := setupTestWorld(state.Position{X: 50, Y: 50}, state.Direction(direction))
-	ms := NewBasicMovementSystem()
+	ms := NewBasicMovementSystem(world)
 
 	dt := 1.0 / 60.0
 	speed := 5.0
 	expectedDelta := speed * dt
 
-	inputs := map[state.EntityID]PlayerInput{
-		playerID: {MoveVertical: 1, MovementType: MovementTypeRelative},
-	}
+	world.SetInput(playerID, state.Input{MoveVertical: 1, MovementType: state.MovementTypeRelative})
 
-	ms.Update(dt, world, inputs)
+	ms.Update(dt)
 	world.ApplyCommands()
 
 	pos, _ := world.Position.Get(playerID)
@@ -258,15 +244,13 @@ func TestMovementSpeed_AffectsDistance(t *testing.T) {
 	})
 	world.ApplyCommands()
 
-	ms := NewBasicMovementSystem()
+	ms := NewBasicMovementSystem(world)
 	dt := 1.0 / 60.0
 
-	inputs := map[state.EntityID]PlayerInput{
-		slowPlayerID: {MoveHorizontal: 1, MovementType: MovementTypeAbsolute},
-		fastPlayerID: {MoveHorizontal: 1, MovementType: MovementTypeAbsolute},
-	}
+	world.SetInput(slowPlayerID, state.Input{MoveHorizontal: 1, MovementType: state.MovementTypeAbsolute})
+	world.SetInput(fastPlayerID, state.Input{MoveHorizontal: 1, MovementType: state.MovementTypeAbsolute})
 
-	ms.Update(dt, world, inputs)
+	ms.Update(dt)
 	world.ApplyCommands()
 
 	slowPos, _ := world.Position.Get(slowPlayerID)
@@ -292,13 +276,11 @@ func TestMovementSpeed_AffectsDistance(t *testing.T) {
 func TestPlayerInsideWall_PushedOut(t *testing.T) {
 	world, playerID := setupTestWorld(state.Position{X: 50, Y: 50}, 0)
 	addWall(world, 50, 50, 2, 2)
-	ms := NewBasicMovementSystem()
+	ms := NewBasicMovementSystem(world)
 
-	inputs := map[state.EntityID]PlayerInput{
-		playerID: {},
-	}
+	world.SetInput(playerID, state.Input{})
 
-	ms.Update(1.0/60.0, world, inputs)
+	ms.Update(1.0 / 60.0)
 	world.ApplyCommands()
 
 	pos, _ := world.Position.Get(playerID)
@@ -320,14 +302,12 @@ func TestPlayerInsideWall_PushedOut(t *testing.T) {
 func TestCornerCollision_CircleAABB(t *testing.T) {
 	world, playerID := setupTestWorld(state.Position{X: 53.5, Y: 53.5}, 0)
 	addWall(world, 50, 50, 2, 2)
-	ms := NewBasicMovementSystem()
+	ms := NewBasicMovementSystem(world)
 
-	inputs := map[state.EntityID]PlayerInput{
-		playerID: {MoveHorizontal: -1, MoveVertical: -1, MovementType: MovementTypeAbsolute},
-	}
+	world.SetInput(playerID, state.Input{MoveHorizontal: -1, MoveVertical: -1, MovementType: state.MovementTypeAbsolute})
 
 	for i := 0; i < 30; i++ {
-		ms.Update(1.0/60.0, world, inputs)
+		ms.Update(1.0 / 60.0)
 		world.ApplyCommands()
 	}
 
@@ -345,5 +325,28 @@ func TestCornerCollision_CircleAABB(t *testing.T) {
 	if distToCorner < playerRadius-1e-6 {
 		t.Errorf("Player too close to corner: dist=%f, radius=%f, pos=(%f,%f)",
 			distToCorner, playerRadius, pos.X, pos.Y)
+	}
+}
+
+func TestPrePositionUpdated(t *testing.T) {
+	world, playerID := setupTestWorld(state.Position{X: 50, Y: 50}, 0)
+	ms := NewBasicMovementSystem(world)
+
+	world.SetInput(playerID, state.Input{MoveHorizontal: 1, MovementType: state.MovementTypeAbsolute})
+
+	ms.Update(1.0 / 60.0)
+	world.ApplyCommands()
+
+	prePos, exists := world.PrePosition.Get(playerID)
+	if !exists {
+		t.Error("PrePosition should exist after movement update")
+	}
+	if !floatEquals(prePos.X, 50, 1e-6) || !floatEquals(prePos.Y, 50, 1e-6) {
+		t.Errorf("PrePosition should be original position (50, 50), got (%f, %f)", prePos.X, prePos.Y)
+	}
+
+	pos, _ := world.Position.Get(playerID)
+	if floatEquals(pos.X, 50, 1e-6) {
+		t.Error("Position should have changed after movement")
 	}
 }

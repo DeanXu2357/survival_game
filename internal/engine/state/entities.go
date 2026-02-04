@@ -17,10 +17,12 @@ const (
 	ComponentCollider
 	ComponentViewIDs
 	ComponentVerticalBody
+	ComponentInput
+	ComponentPrePosition
 
 	PlayerMeta = ComponentMeta | ComponentPosition | ComponentDirection | ComponentMovementSpeed |
 		ComponentRotationSpeed | ComponentPlayerHitbox | ComponentHealth |
-		ComponentViewIDs
+		ComponentViewIDs | ComponentInput | ComponentPrePosition
 
 	WallMeta = ComponentMeta | ComponentPosition | ComponentVerticalBody | ComponentCollider
 )
@@ -99,4 +101,27 @@ type ViewIDs []EntityID
 type VerticalBody struct {
 	BaseElevation float64
 	Height        float64
+}
+
+type PrePosition Position
+
+type MovementType uint8
+
+const (
+	MovementTypeAbsolute MovementType = 0
+	MovementTypeRelative MovementType = 1
+)
+
+type Input struct {
+	MoveVertical   float64
+	MoveHorizontal float64
+	LookHorizontal float64
+	MovementType   MovementType
+
+	Fire         bool
+	SwitchWeapon bool
+	Reload       bool
+	FastReload   bool
+
+	Timestamp int64
 }
