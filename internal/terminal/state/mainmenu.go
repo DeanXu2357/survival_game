@@ -7,7 +7,12 @@ import (
 	"strings"
 	"time"
 
+	"survival/internal/adapters/repository/maploader"
+	"survival/internal/engine"
+	"survival/internal/engine/ports"
+	"survival/internal/engine/state"
 	"survival/internal/terminal"
+	"survival/internal/terminal/session"
 )
 
 type MainMenuState struct {
@@ -47,9 +52,9 @@ func (s *MainMenuState) Update(input terminal.InputEvent, dt time.Duration) term
 	case terminal.InputAction:
 		switch s.selectedIndex {
 		case 0:
-			return terminal.Command{Type: terminal.CmdPush, NextState: NewSinglePlayerState(s.fd, s.logger)}
+			return s.startSinglePlayer()
 		case 1:
-			return terminal.Command{Type: terminal.CmdNone}
+			return terminal.Command{Type: terminal.CmdPush, NextState: NewMultiplayerState(s.fd, s.logger)}
 		case 2:
 			return terminal.Command{Type: terminal.CmdPush, NextState: NewSettingState(s.fd, s.logger)}
 		case 3:
@@ -61,6 +66,59 @@ func (s *MainMenuState) Update(input terminal.InputEvent, dt time.Duration) term
 	}
 
 	return terminal.Command{Type: terminal.CmdNone}
+}
+
+func (s *MainMenuState) startSinglePlayer() terminal.Command {
+	mapConfig := loadMapOrDefault(s.logger)
+
+	game, err := engine.NewGame(mapConfig)
+	if err != nil {
+		s.logger.Error("Failed to create game", "error", err)
+		return terminal.Command{Type: terminal.CmdNone}
+	}
+
+	entityID, err := game.JoinPlayer()
+	if err != nil {
+		s.logger.Error("Failed to join player", "error", err)
+		return terminal.Command{Type: terminal.CmdNone}
+	}
+
+	sess := session.NewGameSession(game, entityID)
+	colliders := staticEntitiesToColliders(game.Statics())
+
+	return terminal.Command{
+		Type:      terminal.CmdPush,
+		NextState: NewSinglePlayerState(s.fd, s.logger, sess, colliders),
+	}
+}
+
+func loadMapOrDefault(logger *slog.Logger) *engine.MapConfig {
+	loader := maploader.NewJSONMapLoader("./maps")
+	mapConfig, err := loader.LoadMap("office_floor_01")
+	if err != nil {
+		logger.Warn("Failed to load map, using default", "error", err)
+		return engine.DefaultMapConfig()
+	}
+	return mapConfig
+}
+
+func staticEntitiesToColliders(statics []state.StaticEntity) []ports.Collider {
+	colliders := make([]ports.Collider, len(statics))
+	for i, entity := range statics {
+		colliders[i] = ports.Collider{
+			ID:            uint64(entity.ID),
+			X:             entity.Collider.Center.X,
+			Y:             entity.Collider.Center.Y,
+			HalfX:         entity.Collider.HalfSize.X,
+			HalfY:         entity.Collider.HalfSize.Y,
+			Radius:        entity.Collider.Radius,
+			ShapeType:     uint8(entity.Collider.ShapeType),
+			Rotation:      0,
+			Height:        entity.VerticalBody.Height,
+			BaseElevation: entity.VerticalBody.BaseElevation,
+		}
+	}
+	return colliders
 }
 
 func (s *MainMenuState) Draw(buf *bytes.Buffer, width, height int) {
