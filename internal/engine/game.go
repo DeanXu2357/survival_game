@@ -9,15 +9,6 @@ import (
 	"survival/internal/engine/system"
 )
 
-const (
-	// TickRate is the target number of game ticks per second (60 FPS)
-	TickRate = 60.0
-
-	// MaxFrameTime caps the delta time to prevent physics explosions
-	// on lag spikes or after pause/resume. Set to 5 frames worth of time.
-	MaxFrameTime = 5.0 / TickRate // ~0.0833 seconds (83ms, 5 frames at 60 FPS)
-)
-
 type Game struct {
 	world     *state.World
 	mapConfig *MapConfig
@@ -39,13 +30,16 @@ func NewGame(mapConfig *MapConfig) (*Game, error) {
 	world.Height = mapConfig.Dimensions.Y
 
 	systems := state.NewSystemManager(world)
-	systems.Register(system.NewBasicMovementSystem(world))
 
 	g := &Game{
 		world:     world,
 		mapConfig: mapConfig,
 		systems:   systems,
 	}
+
+	systems.Register(system.NewBasicMovementSystem(world))
+	systems.Register(system.NewProjectileSystem(world, &g.currentTick))
+	systems.Register(system.NewWeaponFireSystem(world, &g.currentTick))
 
 	if err := g.loadMapEntities(mapConfig); err != nil {
 		return nil, err
@@ -90,10 +84,10 @@ func (g *Game) loadMapEntities(mapConfig *MapConfig) error {
 
 		g.world.EntityMeta.Upsert(id, state.WallMeta)
 
-		min, max := collider.BoundingBox()
+		minP, maxP := collider.BoundingBox()
 		g.world.Grid.Add(id, state.Bounds{
-			MinX: min.X, MinY: min.Y,
-			MaxX: max.X, MaxY: max.Y,
+			MinX: minP.X, MinY: minP.Y,
+			MaxX: maxP.X, MaxY: maxP.Y,
 		}, state.LayerStatic)
 	}
 	return nil
@@ -136,8 +130,8 @@ func (g *Game) Update(dt float64) {
 	}
 
 	// Clamp dt to prevent physics instability from lag spikes
-	if dt > MaxFrameTime {
-		dt = MaxFrameTime
+	if dt > ports.MaxFrameTime {
+		dt = ports.MaxFrameTime
 	}
 
 	// Increment tick counter (deterministic, always +1 per update)
@@ -190,7 +184,7 @@ func (g *Game) CurrentTick() uint64 {
 // ElapsedSeconds returns the total simulated game time in seconds.
 // Calculated from tick count: seconds = ticks / TickRate
 func (g *Game) ElapsedSeconds() float64 {
-	return float64(g.currentTick) / TickRate
+	return float64(g.currentTick) / ports.TargetTickRate
 }
 
 // StartTime returns the wall-clock time when the game loop was started.

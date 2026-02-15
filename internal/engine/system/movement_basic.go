@@ -97,16 +97,11 @@ func (ms *BasicMovementSystem) calculatePlayerNewPosition(pos state.Position, di
 		strafe := input.MoveHorizontal
 
 		dirRad := float64(dir)
-		cosDir := math.Cos(dirRad)
-		sinDir := math.Sin(dirRad)
+		fwd := vector.Forward(dirRad)
+		right := vector.Right(dirRad)
 
-		fwdX := sinDir
-		fwdY := -cosDir
-		rightX := cosDir
-		rightY := sinDir
-
-		moveX = (forward * fwdX) + (strafe * rightX)
-		moveY = (forward * fwdY) + (strafe * rightY)
+		moveX = (forward * fwd.X) + (strafe * right.X)
+		moveY = (forward * fwd.Y) + (strafe * right.Y)
 
 	default:
 		moveX = input.MoveHorizontal

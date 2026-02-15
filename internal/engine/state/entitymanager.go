@@ -63,12 +63,11 @@ func (em *EntityManager) Free(e EntityID) bool {
 	em.rwLock.Lock()
 	defer em.rwLock.Unlock()
 
-	index := e.Index()
-
-	if !em.IsAlive(e) {
+	if !em.isAlive(e) {
 		return false
 	}
 
+	index := e.Index()
 	em.versions[index]++
 	em.freeList = append(em.freeList, index)
 	em.count--
@@ -79,6 +78,11 @@ func (em *EntityManager) IsAlive(e EntityID) bool {
 	em.rwLock.RLock()
 	defer em.rwLock.RUnlock()
 
+	return em.isAlive(e)
+}
+
+// isAlive checks entity liveness without locking. Caller must hold at least a read lock.
+func (em *EntityManager) isAlive(e EntityID) bool {
 	index := e.Index()
 	version := e.Version()
 	return index >= 0 && index < len(em.versions) && em.versions[index] == version

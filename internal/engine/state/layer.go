@@ -3,10 +3,11 @@ package state
 type LayerMask uint16
 
 const (
-	LayerNone   LayerMask = 0
-	LayerPlayer LayerMask = 1 << 0
-	LayerStatic LayerMask = 1 << 1
-	LayerLight  LayerMask = 1 << 2
+	LayerNone       LayerMask = 0
+	LayerPlayer     LayerMask = 1 << 0
+	LayerStatic     LayerMask = 1 << 1
+	LayerLight      LayerMask = 1 << 2
+	LayerProjectile LayerMask = 1 << 3
 )
 
 /*

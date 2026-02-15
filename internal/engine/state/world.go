@@ -24,6 +24,8 @@ type World struct {
 
 	VerticalBody ComponentManager[VerticalBody]
 
+	Projectile ComponentManager[ProjectileData]
+
 	Input          ComponentManager[Input]
 	inputMapBuffer map[EntityID]Input
 	inputMutex     *sync.Mutex
@@ -49,6 +51,7 @@ func NewWorld(gridCellSize float64, gridWidth, gridHeight int) *World {
 		Health:         *NewComponentManager[Health](),
 		Collider:       *NewComponentManager[Collider](),
 		VerticalBody:   *NewComponentManager[VerticalBody](),
+		Projectile:     *NewComponentManager[ProjectileData](),
 		Input:          *NewComponentManager[Input](),
 		inputMapBuffer: make(map[EntityID]Input),
 		inputMutex:     &sync.Mutex{},
@@ -136,6 +139,39 @@ type UpdatePlayer struct {
 	PrePosition
 }
 
+type CreateProjectile struct {
+	Position  Position
+	Direction Direction
+	ProjectileData
+}
+
+// CreateProjectileEntity allocates a projectile entity and queues its components via command buffer.
+func (w *World) CreateProjectileEntity(cfg CreateProjectile) (EntityID, bool) {
+	id, ok := w.Entity.Alloc()
+	if !ok {
+		return 0, false
+	}
+
+	w.buf.Push(WorldCommand{
+		EntityID:       id,
+		UpdateMeta:     ProjectileMeta,
+		Position:       cfg.Position,
+		Direction:      cfg.Direction,
+		Meta:           ProjectileMeta,
+		ProjectileData: cfg.ProjectileData,
+	})
+
+	return id, true
+}
+
+// QueueDestroyEntity queues an entity for destruction in the next ApplyCommands call.
+func (w *World) QueueDestroyEntity(id EntityID) {
+	w.buf.Push(WorldCommand{
+		EntityID: id,
+		Destroy:  true,
+	})
+}
+
 func (w *World) ApplyCommands() {
 	for !w.buf.IsEmpty() {
 		cmd, ok := w.buf.Pop()
@@ -147,6 +183,11 @@ func (w *World) ApplyCommands() {
 		entityID := cmd.EntityID
 		if !w.Entity.IsAlive(entityID) {
 			log.Printf("ApplyCommands: EntityID %d is not alive, skipping command", entityID)
+			continue
+		}
+
+		if cmd.Destroy {
+			w.destroyEntity(entityID)
 			continue
 		}
 
@@ -207,7 +248,31 @@ func (w *World) ApplyCommands() {
 				// TODO: log error
 			}
 		}
+		if cmd.UpdateMeta.Has(ComponentProjectile) {
+			if !w.Projectile.Upsert(entityID, cmd.ProjectileData) {
+				// TODO: log error
+			}
+		}
 	}
+}
+
+// destroyEntity removes all components for an entity and frees its EntityID.
+func (w *World) destroyEntity(id EntityID) {
+	// TODO: optimize this by keeping track of which components an entity has in its Meta
+	w.EntityMeta.Remove(id)
+	w.Position.Remove(id)
+	w.PrePosition.Remove(id)
+	w.Direction.Remove(id)
+	w.MovementSpeed.Remove(id)
+	w.RotationSpeed.Remove(id)
+	w.ViewIDs.Remove(id)
+	w.PlayerHitbox.Remove(id)
+	w.Health.Remove(id)
+	w.Collider.Remove(id)
+	w.VerticalBody.Remove(id)
+	w.Projectile.Remove(id)
+	w.Input.Remove(id)
+	w.Entity.Free(id)
 }
 
 func (w *World) PlayerSnapshot(id EntityID) (PlayerSnapshot, bool) {
