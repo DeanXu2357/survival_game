@@ -45,6 +45,9 @@ func NewRoomWithMap(ctx context.Context, id string, mapConfig *engine.MapConfig)
 		return nil, fmt.Errorf("failed to create game: %w", err)
 	}
 
+	// Initialize game loop timer
+	game.StartGameLoop()
+
 	return &Room{
 		ID:         id,
 		mapConfig:  mapConfig,

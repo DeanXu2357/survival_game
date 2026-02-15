@@ -2,16 +2,32 @@ package engine
 
 import (
 	"fmt"
+	"time"
 
 	"survival/internal/engine/ports"
 	"survival/internal/engine/state"
 	"survival/internal/engine/system"
 )
 
+const (
+	// TickRate is the target number of game ticks per second (60 FPS)
+	TickRate = 60.0
+
+	// MaxFrameTime caps the delta time to prevent physics explosions
+	// on lag spikes or after pause/resume. Set to 5 frames worth of time.
+	MaxFrameTime = 5.0 / TickRate // ~0.0833 seconds (83ms, 5 frames at 60 FPS)
+)
+
 type Game struct {
 	world     *state.World
 	mapConfig *MapConfig
 	systems   *state.SystemManager
+
+	// Tick-based time tracking
+	currentTick   uint64    // Current game tick (increments each Update call)
+	startTime     time.Time // Wall-clock time when game loop started
+	lastUpdate    time.Time // Wall-clock time of last Update() call
+	isInitialized bool      // Whether StartGameLoop() has been called
 }
 
 func NewGame(mapConfig *MapConfig) (*Game, error) {
@@ -35,6 +51,17 @@ func NewGame(mapConfig *MapConfig) (*Game, error) {
 		return nil, err
 	}
 	return g, nil
+}
+
+// StartGameLoop initializes the internal tick counter and game clock.
+// This must be called before the first Update() call.
+// Calling it multiple times will reset the tick counter and game time.
+func (g *Game) StartGameLoop() {
+	now := time.Now()
+	g.startTime = now
+	g.lastUpdate = now
+	g.currentTick = 0
+	g.isInitialized = true
 }
 
 func (g *Game) loadMapEntities(mapConfig *MapConfig) error {
@@ -103,6 +130,21 @@ func (g *Game) JoinPlayer() (state.EntityID, error) {
 }
 
 func (g *Game) Update(dt float64) {
+	// Auto-initialize if StartGameLoop wasn't called
+	if !g.isInitialized {
+		g.StartGameLoop()
+	}
+
+	// Clamp dt to prevent physics instability from lag spikes
+	if dt > MaxFrameTime {
+		dt = MaxFrameTime
+	}
+
+	// Increment tick counter (deterministic, always +1 per update)
+	g.currentTick++
+	g.lastUpdate = time.Now()
+
+	// Run game systems with clamped dt
 	g.world.SyncInputBuffer()
 	g.systems.Update(dt)
 	g.world.ApplyCommands()
@@ -137,4 +179,31 @@ func (g *Game) PlayerSnapshotWithLocation(playerID state.EntityID) (state.Player
 
 func (g *Game) MapInfo() state.MapInfo {
 	return g.world.MapInfo()
+}
+
+// CurrentTick returns the current game tick count.
+// Each tick represents one Update() call at the target tick rate (60 FPS).
+func (g *Game) CurrentTick() uint64 {
+	return g.currentTick
+}
+
+// ElapsedSeconds returns the total simulated game time in seconds.
+// Calculated from tick count: seconds = ticks / TickRate
+func (g *Game) ElapsedSeconds() float64 {
+	return float64(g.currentTick) / TickRate
+}
+
+// StartTime returns the wall-clock time when the game loop was started.
+func (g *Game) StartTime() time.Time {
+	return g.startTime
+}
+
+// LastUpdateTime returns the wall-clock time of the most recent Update() call.
+func (g *Game) LastUpdateTime() time.Time {
+	return g.lastUpdate
+}
+
+// IsInitialized returns whether StartGameLoop() has been called.
+func (g *Game) IsInitialized() bool {
+	return g.isInitialized
 }
