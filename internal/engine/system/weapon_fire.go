@@ -7,9 +7,6 @@ import (
 )
 
 const (
-	defaultProjectileSpeed  = 20.0
-	defaultProjectileRange  = 50.0
-	defaultProjectileDamage = 25
 	defaultProjectileHeight = 1.5
 )
 
@@ -25,20 +22,25 @@ func NewWeaponFireSystem(world *state.World, currentTick *uint64) *WeaponFireSys
 }
 
 func (wf *WeaponFireSystem) ReadMeta() state.Meta {
-	return state.ComponentInput | state.ComponentPosition | state.ComponentDirection
+	return state.ComponentInput | state.ComponentPosition | state.ComponentDirection | state.ComponentWeaponState
 }
 
 func (wf *WeaponFireSystem) WriteMeta() state.Meta {
-	return state.ComponentProjectile | state.ComponentPosition | state.ComponentDirection | state.ComponentMeta
+	return state.ComponentProjectile | state.ComponentPosition | state.ComponentDirection |
+		state.ComponentMeta | state.ComponentWeaponState
 }
 
 func (wf *WeaponFireSystem) Update(dt float64) {
 	world := wf.world
+	tick := *wf.currentTick
 
 	for entityID, input := range world.Input.All() {
 		if !input.Fire {
-			// TODO: lack of fire rate control, will cause projectile spam if player holds down fire button
-			// must implement fire rate control in the future
+			continue
+		}
+
+		ws, wsOk := world.WeaponState.Get(entityID)
+		if !wsOk {
 			continue
 		}
 
@@ -48,21 +50,41 @@ func (wf *WeaponFireSystem) Update(dt float64) {
 			continue
 		}
 
-		spawnPos := state.Position(vector.Vector2D(pos).Add(vector.Forward(float64(dir)).Scale(0.5)))
+		weapon := ws.Weapons[ws.CurrentWeaponIndex]
 
-		expiredAt := *wf.currentTick + uint64(defaultProjectileRange/defaultProjectileSpeed*ports.TargetTickRate)
+		// Fire rate limiting (LastFireTick == 0 means never fired, always allow)
+		fireInterval := uint64(ports.TargetTickRate / weapon.FireRate)
+		if ws.LastFireTick > 0 && tick-ws.LastFireTick < fireInterval {
+			continue
+		}
 
-		world.CreateProjectileEntity(state.CreateProjectile{
-			Position:  spawnPos,
-			Direction: dir,
-			ProjectileData: state.ProjectileData{
-				Speed:     defaultProjectileSpeed,
-				Range:     defaultProjectileRange,
-				Damage:    defaultProjectileDamage,
-				OwnerID:   entityID,
-				Height:    defaultProjectileHeight,
-				ExpiredAt: expiredAt,
-			},
+		wf.fireProjectile(world, entityID, pos, dir, weapon, tick)
+
+		// Update LastFireTick
+		ws.LastFireTick = tick
+		world.UpdatePlayer(entityID, state.UpdatePlayer{
+			UpdateMeta:  state.ComponentWeaponState,
+			WeaponState: ws,
 		})
 	}
+}
+
+func (wf *WeaponFireSystem) fireProjectile(world *state.World, ownerID state.EntityID, pos state.Position, dir state.Direction, weapon state.WeaponSpec, tick uint64) {
+	spawnPos := state.Position(vector.Vector2D(pos).Add(vector.Forward(float64(dir)).Scale(0.5)))
+
+	speed := weapon.Speed
+	expiredAt := tick + uint64(weapon.Range/speed*ports.TargetTickRate)
+
+	world.CreateProjectileEntity(state.CreateProjectile{
+		Position:  spawnPos,
+		Direction: dir,
+		ProjectileData: state.ProjectileData{
+			Speed:     speed,
+			Range:     weapon.Range,
+			Damage:    weapon.Damage,
+			OwnerID:   ownerID,
+			Height:    defaultProjectileHeight,
+			ExpiredAt: expiredAt,
+		},
+	})
 }

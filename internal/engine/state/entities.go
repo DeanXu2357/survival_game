@@ -20,10 +20,11 @@ const (
 	ComponentInput
 	ComponentPrePosition
 	ComponentProjectile
+	ComponentWeaponState
 
 	PlayerMeta = ComponentMeta | ComponentPosition | ComponentDirection | ComponentMovementSpeed |
 		ComponentRotationSpeed | ComponentPlayerHitbox | ComponentHealth |
-		ComponentViewIDs | ComponentInput | ComponentPrePosition
+		ComponentViewIDs | ComponentInput | ComponentPrePosition | ComponentWeaponState
 
 	WallMeta = ComponentMeta | ComponentPosition | ComponentVerticalBody | ComponentCollider
 
@@ -136,4 +137,31 @@ type ProjectileData struct {
 	OwnerID   EntityID
 	Height    float64 // fixed at 1.5 for now
 	ExpiredAt uint64  // game tick at which projectile expires
+}
+
+type WeaponType uint8
+
+const (
+	WeaponTypeFist WeaponType = iota
+	WeaponTypeKnife
+	WeaponTypeGun
+)
+
+// WeaponSpec defines the immutable stats for a weapon type.
+// Future: refactor to Flyweight pattern to share specs via pointers.
+type WeaponSpec struct {
+	Type     WeaponType
+	Range    float64 // max range in world units
+	FireRate float64 // shots per second
+	Damage   int
+	Speed    float64 // projectile speed in units per second
+}
+
+// WeaponState tracks the player's weapon loadout and firing state.
+// Future: refactor to Flyweight pattern to separate mutable/immutable data.
+type WeaponState struct {
+	Weapons            [3]WeaponSpec
+	CurrentWeaponIndex int
+	LastFireTick       uint64
+	LastSwitchTick     uint64
 }

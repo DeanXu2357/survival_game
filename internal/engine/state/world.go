@@ -24,7 +24,8 @@ type World struct {
 
 	VerticalBody ComponentManager[VerticalBody]
 
-	Projectile ComponentManager[ProjectileData]
+	Projectile  ComponentManager[ProjectileData]
+	WeaponState ComponentManager[WeaponState]
 
 	Input          ComponentManager[Input]
 	inputMapBuffer map[EntityID]Input
@@ -52,6 +53,7 @@ func NewWorld(gridCellSize float64, gridWidth, gridHeight int) *World {
 		Collider:       *NewComponentManager[Collider](),
 		VerticalBody:   *NewComponentManager[VerticalBody](),
 		Projectile:     *NewComponentManager[ProjectileData](),
+		WeaponState:    *NewComponentManager[WeaponState](),
 		Input:          *NewComponentManager[Input](),
 		inputMapBuffer: make(map[EntityID]Input),
 		inputMutex:     &sync.Mutex{},
@@ -96,6 +98,7 @@ func (w *World) CreatePlayer(cfg CreatePlayer) (EntityID, bool) {
 			Meta:          PlayerMeta,
 			PlayerHitbox:  PlayerHitbox{cfg.Position, cfg.Radius},
 			Health:        cfg.Health,
+			WeaponState:   DefaultWeaponState(),
 		},
 	)
 
@@ -124,6 +127,7 @@ func (w *World) UpdatePlayer(id EntityID, player UpdatePlayer) {
 		PlayerShape:   player.PlayerHitbox,
 		Health:        player.Health,
 		PrePosition:   player.PrePosition,
+		WeaponState:   player.WeaponState,
 	})
 }
 
@@ -137,6 +141,7 @@ type UpdatePlayer struct {
 	PlayerHitbox
 	Health
 	PrePosition
+	WeaponState
 }
 
 type CreateProjectile struct {
@@ -253,6 +258,11 @@ func (w *World) ApplyCommands() {
 				// TODO: log error
 			}
 		}
+		if cmd.UpdateMeta.Has(ComponentWeaponState) {
+			if !w.WeaponState.Upsert(entityID, cmd.WeaponState) {
+				// TODO: log error
+			}
+		}
 	}
 }
 
@@ -271,6 +281,7 @@ func (w *World) destroyEntity(id EntityID) {
 	w.Collider.Remove(id)
 	w.VerticalBody.Remove(id)
 	w.Projectile.Remove(id)
+	w.WeaponState.Remove(id)
 	w.Input.Remove(id)
 	w.Entity.Free(id)
 }
@@ -386,6 +397,20 @@ type StaticEntity struct {
 type MapInfo struct {
 	Width  float64
 	Height float64
+}
+
+// DefaultWeaponState returns the initial weapon loadout for a new player.
+func DefaultWeaponState() WeaponState {
+	return WeaponState{
+		Weapons: [3]WeaponSpec{
+			{Type: WeaponTypeFist, Range: 5, FireRate: 3, Damage: 5, Speed: 50},
+			{Type: WeaponTypeKnife, Range: 1, FireRate: 7, Damage: 15, Speed: 30},
+			{Type: WeaponTypeGun, Range: 20, FireRate: 2, Damage: 30, Speed: 30},
+		},
+		// assume melee attack as a short distance burst projectile for easier implementation, can be refactored later to separate melee/ranged logic
+		// such implementation makes a bad attack experience when player step back and attack, player will feel like the attack range is apart from the character
+		CurrentWeaponIndex: 2, // default to Gun
+	}
 }
 
 // SetInput buffers the input for an entity.

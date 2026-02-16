@@ -37,6 +37,7 @@ func NewGame(mapConfig *MapConfig) (*Game, error) {
 		systems:   systems,
 	}
 
+	systems.Register(system.NewWeaponSwitchSystem(world, &g.currentTick))
 	systems.Register(system.NewBasicMovementSystem(world))
 	systems.Register(system.NewProjectileSystem(world, &g.currentTick))
 	systems.Register(system.NewWeaponFireSystem(world, &g.currentTick))
