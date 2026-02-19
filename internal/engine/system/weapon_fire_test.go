@@ -12,10 +12,10 @@ func createPlayerWithWeapons(t *testing.T, world *state.World) (playerID state.E
 	t.Helper()
 
 	fistDefID = createFistDef(t, world)
-	knifeDef = createWeaponItemDef(t, world, "Knife", state.WeaponSpec{
+	knifeDef = createWeaponItemDef(t, world, "Knife", state.WeaponConfig{
 		Type: state.WeaponTypeKnife, Range: 1, FireRate: 7, Damage: 15, Speed: 30,
 	})
-	gunDef = createWeaponItemDef(t, world, "Pistol", state.WeaponSpec{
+	gunDef = createWeaponItemDef(t, world, "Pistol", state.WeaponConfig{
 		Type: state.WeaponTypeGun, Range: 20, FireRate: 2, Damage: 30, Speed: 30,
 	})
 
@@ -51,10 +51,10 @@ func createPlayerAtPosDir(t *testing.T, world *state.World, pos state.Position, 
 	t.Helper()
 
 	fistDefID = createFistDef(t, world)
-	knifeDef = createWeaponItemDef(t, world, "Knife", state.WeaponSpec{
+	knifeDef = createWeaponItemDef(t, world, "Knife", state.WeaponConfig{
 		Type: state.WeaponTypeKnife, Range: 1, FireRate: 7, Damage: 15, Speed: 30,
 	})
-	gunDef = createWeaponItemDef(t, world, "Pistol", state.WeaponSpec{
+	gunDef = createWeaponItemDef(t, world, "Pistol", state.WeaponConfig{
 		Type: state.WeaponTypeGun, Range: 20, FireRate: 2, Damage: 30, Speed: 30,
 	})
 

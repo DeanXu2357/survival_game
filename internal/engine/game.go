@@ -49,11 +49,11 @@ func NewGame(mapConfig *MapConfig) (*Game, error) {
 	world.Entity.Alloc()
 
 	// Create the Fist weapon definition entity
-	fistDefID, ok := world.CreateItemDefEntity(state.ItemDef{
-		Name:       "Fist",
-		Type:       state.ItemTypeWeapon,
-		MaxStack:   1,
-		WeaponSpec: state.FistSpec,
+	fistDefID, ok := world.CreateItemDefEntity(state.ItemConfig{
+		Name:         "Fist",
+		Type:         state.ItemTypeWeapon,
+		MaxStack:     1,
+		WeaponConfig: state.FistSpec,
 	})
 	if !ok {
 		return nil, fmt.Errorf("failed to create fist item definition")

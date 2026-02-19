@@ -81,14 +81,14 @@ func (is *InventorySystem) handlePickup(playerID state.EntityID, playerPos state
 	}
 
 	// Look up the item definition to check if it's a weapon
-	itemDef, defOk := is.world.ItemDef.Get(gi.ItemDefID)
+	itemDef, defOk := is.world.ItemConfig.Get(gi.ItemDefID)
 	if !defOk {
 		return
 	}
 
 	if itemDef.Type == state.ItemTypeWeapon {
-		// Route weapon to the correct weapon slot based on WeaponSpec.Type
-		slotIdx := weaponSlotIndex(itemDef.WeaponSpec.Type)
+		// Route weapon to the correct weapon slot based on WeaponConfig.Type
+		slotIdx := weaponSlotIndex(itemDef.WeaponConfig.Type)
 		if slotIdx < 0 {
 			return
 		}

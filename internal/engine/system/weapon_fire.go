@@ -73,28 +73,28 @@ func (wf *WeaponFireSystem) Update(dt float64) {
 	}
 }
 
-// resolveActiveWeapon looks up the WeaponSpec for the currently equipped weapon.
-// Falls back to FistSpec if the active slot is empty or the ItemDef is missing.
-func (wf *WeaponFireSystem) resolveActiveWeapon(inv state.Inventory) state.WeaponSpec {
+// resolveActiveWeapon looks up the WeaponConfig for the currently equipped weapon.
+// Falls back to FistSpec if the active slot is empty or the ItemConfig is missing.
+func (wf *WeaponFireSystem) resolveActiveWeapon(inv state.Inventory) state.WeaponConfig {
 	slot := inv.Weapons[inv.CurrentWeaponIndex]
 	if slot.IsEmpty() {
 		return state.FistSpec
 	}
 
-	itemDef, ok := wf.world.ItemDef.Get(slot.ItemDefID)
+	itemDef, ok := wf.world.ItemConfig.Get(slot.ItemDefID)
 	if !ok {
 		return state.FistSpec
 	}
 
-	// If the WeaponSpec is zero-valued, fall back to FistSpec
-	if itemDef.WeaponSpec == (state.WeaponSpec{}) {
+	// If the WeaponConfig is zero-valued, fall back to FistSpec
+	if itemDef.WeaponConfig == (state.WeaponConfig{}) {
 		return state.FistSpec
 	}
 
-	return itemDef.WeaponSpec
+	return itemDef.WeaponConfig
 }
 
-func (wf *WeaponFireSystem) fireProjectile(world *state.World, ownerID state.EntityID, pos state.Position, dir state.Direction, weapon state.WeaponSpec, tick uint64) {
+func (wf *WeaponFireSystem) fireProjectile(world *state.World, ownerID state.EntityID, pos state.Position, dir state.Direction, weapon state.WeaponConfig, tick uint64) {
 	spawnPos := state.Position(vector.Vector2D(pos).Add(vector.Forward(float64(dir)).Scale(0.5)))
 
 	speed := weapon.Speed

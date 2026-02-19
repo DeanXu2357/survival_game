@@ -28,7 +28,7 @@ type World struct {
 
 	Projectile ComponentManager[ProjectileData]
 	Inventory  ComponentManager[Inventory]
-	ItemDef    ComponentManager[ItemDef]
+	ItemConfig ComponentManager[ItemConfig]
 	GroundItem ComponentManager[GroundItem]
 
 	Input          ComponentManager[Input]
@@ -58,7 +58,7 @@ func NewWorld(gridCellSize float64, gridWidth, gridHeight int) *World {
 		VerticalBody:   *NewComponentManager[VerticalBody](),
 		Projectile:     *NewComponentManager[ProjectileData](),
 		Inventory:      *NewComponentManager[Inventory](),
-		ItemDef:        *NewComponentManager[ItemDef](),
+		ItemConfig:     *NewComponentManager[ItemConfig](),
 		GroundItem:     *NewComponentManager[GroundItem](),
 		Input:          *NewComponentManager[Input](),
 		inputMapBuffer: make(map[EntityID]Input),
@@ -294,7 +294,7 @@ func (w *World) destroyEntity(id EntityID) {
 	w.VerticalBody.Remove(id)
 	w.Projectile.Remove(id)
 	w.Inventory.Remove(id)
-	w.ItemDef.Remove(id)
+	w.ItemConfig.Remove(id)
 	w.GroundItem.Remove(id)
 	w.Input.Remove(id)
 	w.Entity.Free(id)
@@ -390,29 +390,6 @@ func (w *World) playerLocation(id EntityID) (PlayerSnapshot, bool) {
 	return snapshot, true
 }
 
-type PlayerSnapshot struct {
-	ID        EntityID  `json:"id"`
-	Direction Direction `json:"direction"`
-	Position  Position  `json:"position"`
-}
-
-type PlayerSnapshotWithView struct {
-	Player PlayerSnapshot   `json:"player"`
-	Views  []PlayerSnapshot `json:"views"`
-}
-
-type StaticEntity struct {
-	ID              EntityID     `json:"id"`
-	Collider        Collider     `json:"collider"`
-	VerticalBody    VerticalBody `json:"vertical_body"`
-	HasVerticalBody bool         `json:"has_vertical_body"`
-}
-
-type MapInfo struct {
-	Width  float64
-	Height float64
-}
-
 // DefaultInventory returns the initial inventory for a new player.
 // fistDefID is the EntityID of the Fist item definition (always occupies slot 0).
 func DefaultInventory(fistDefID EntityID, maxItemCapacity int) Inventory {
@@ -453,14 +430,14 @@ func (w *World) CreateGroundItemEntity(cfg CreateGroundItem) (EntityID, bool) {
 
 // CreateItemDefEntity allocates an item definition config entity (persists forever).
 // ItemDefs are immutable config data, so they are written directly (no command buffer).
-func (w *World) CreateItemDefEntity(def ItemDef) (EntityID, bool) {
+func (w *World) CreateItemDefEntity(def ItemConfig) (EntityID, bool) {
 	id, ok := w.Entity.Alloc()
 	if !ok {
 		return 0, false
 	}
 
 	w.EntityMeta.Upsert(id, ItemDefMeta)
-	w.ItemDef.Upsert(id, def)
+	w.ItemConfig.Upsert(id, def)
 
 	return id, true
 }

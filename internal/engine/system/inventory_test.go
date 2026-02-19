@@ -18,11 +18,11 @@ func setupInventoryWorld() *state.World {
 
 func createFistDef(t *testing.T, world *state.World) state.EntityID {
 	t.Helper()
-	id, ok := world.CreateItemDefEntity(state.ItemDef{
-		Name:       "Fist",
-		Type:       state.ItemTypeWeapon,
-		MaxStack:   1,
-		WeaponSpec: state.FistSpec,
+	id, ok := world.CreateItemDefEntity(state.ItemConfig{
+		Name:         "Fist",
+		Type:         state.ItemTypeWeapon,
+		MaxStack:     1,
+		WeaponConfig: state.FistSpec,
 	})
 	if !ok {
 		t.Fatal("failed to create fist def entity")
@@ -32,7 +32,7 @@ func createFistDef(t *testing.T, world *state.World) state.EntityID {
 
 func createItemDef(t *testing.T, world *state.World, name string, itemType state.ItemType, maxStack int) state.EntityID {
 	t.Helper()
-	id, ok := world.CreateItemDefEntity(state.ItemDef{
+	id, ok := world.CreateItemDefEntity(state.ItemConfig{
 		Name:     name,
 		Type:     itemType,
 		MaxStack: maxStack,
@@ -43,13 +43,13 @@ func createItemDef(t *testing.T, world *state.World, name string, itemType state
 	return id
 }
 
-func createWeaponItemDef(t *testing.T, world *state.World, name string, spec state.WeaponSpec) state.EntityID {
+func createWeaponItemDef(t *testing.T, world *state.World, name string, spec state.WeaponConfig) state.EntityID {
 	t.Helper()
-	id, ok := world.CreateItemDefEntity(state.ItemDef{
-		Name:       name,
-		Type:       state.ItemTypeWeapon,
-		MaxStack:   1,
-		WeaponSpec: spec,
+	id, ok := world.CreateItemDefEntity(state.ItemConfig{
+		Name:         name,
+		Type:         state.ItemTypeWeapon,
+		MaxStack:     1,
+		WeaponConfig: spec,
 	})
 	if !ok {
 		t.Fatal("failed to create weapon item def entity")
@@ -136,7 +136,7 @@ func TestPickup_WeaponRouting_KnifeToSlot1(t *testing.T) {
 	playerPos := state.Position{X: 10, Y: 10}
 	playerID := createPlayerForInventory(t, world, playerPos, 0, fistDef)
 
-	knifeDef := createWeaponItemDef(t, world, "Knife", state.WeaponSpec{
+	knifeDef := createWeaponItemDef(t, world, "Knife", state.WeaponConfig{
 		Type: state.WeaponTypeKnife, Range: 1, FireRate: 7, Damage: 15, Speed: 30,
 	})
 	knifeItemID := createGroundItem(t, world, state.Position{X: 10.3, Y: 10}, knifeDef, 1)
@@ -162,7 +162,7 @@ func TestPickup_WeaponRouting_GunToSlot2(t *testing.T) {
 	playerPos := state.Position{X: 10, Y: 10}
 	playerID := createPlayerForInventory(t, world, playerPos, 0, fistDef)
 
-	gunDef := createWeaponItemDef(t, world, "Pistol", state.WeaponSpec{
+	gunDef := createWeaponItemDef(t, world, "Pistol", state.WeaponConfig{
 		Type: state.WeaponTypeGun, Range: 20, FireRate: 2, Damage: 30, Speed: 30,
 	})
 	gunItemID := createGroundItem(t, world, state.Position{X: 10.3, Y: 10}, gunDef, 1)
@@ -399,7 +399,7 @@ func TestDrop_WeaponSlot(t *testing.T) {
 	playerPos := state.Position{X: 10, Y: 10}
 	playerID := createPlayerForInventory(t, world, playerPos, 0, fistDef)
 
-	knifeDef := createWeaponItemDef(t, world, "Knife", state.WeaponSpec{
+	knifeDef := createWeaponItemDef(t, world, "Knife", state.WeaponConfig{
 		Type: state.WeaponTypeKnife, Range: 1, FireRate: 7, Damage: 15, Speed: 30,
 	})
 
@@ -513,7 +513,7 @@ func TestWeaponSwitch_CyclesOccupiedSlots(t *testing.T) {
 	playerID := createPlayerForInventory(t, world, playerPos, 0, fistDef)
 
 	// Add knife to slot 1
-	knifeDef := createWeaponItemDef(t, world, "Knife", state.WeaponSpec{
+	knifeDef := createWeaponItemDef(t, world, "Knife", state.WeaponConfig{
 		Type: state.WeaponTypeKnife, Range: 1, FireRate: 7, Damage: 15, Speed: 30,
 	})
 	inv, _ := world.Inventory.Get(playerID)
@@ -558,7 +558,7 @@ func TestWeaponSwitch_CooldownEnforced(t *testing.T) {
 	playerID := createPlayerForInventory(t, world, playerPos, 0, fistDef)
 
 	// Add knife
-	knifeDef := createWeaponItemDef(t, world, "Knife", state.WeaponSpec{
+	knifeDef := createWeaponItemDef(t, world, "Knife", state.WeaponConfig{
 		Type: state.WeaponTypeKnife, Range: 1, FireRate: 7, Damage: 15, Speed: 30,
 	})
 	inv, _ := world.Inventory.Get(playerID)
@@ -603,7 +603,7 @@ func TestWeaponSwitch_SkipsEmptySlots(t *testing.T) {
 	playerID := createPlayerForInventory(t, world, playerPos, 0, fistDef)
 
 	// Add gun to slot 2 (slot 1 remains empty)
-	gunDef := createWeaponItemDef(t, world, "Pistol", state.WeaponSpec{
+	gunDef := createWeaponItemDef(t, world, "Pistol", state.WeaponConfig{
 		Type: state.WeaponTypeGun, Range: 20, FireRate: 2, Damage: 30, Speed: 30,
 	})
 	inv, _ := world.Inventory.Get(playerID)
