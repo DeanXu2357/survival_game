@@ -22,7 +22,7 @@ func NewInventorySystem(world *state.World, currentTick *uint64) *InventorySyste
 }
 
 func (is *InventorySystem) ReadMeta() state.Meta {
-	return state.ComponentInput | state.ComponentPosition | state.ComponentInventory
+	return state.ComponentInput | state.ComponentPosition | state.ComponentInventory | state.ComponentDirection
 }
 
 func (is *InventorySystem) WriteMeta() state.Meta {
@@ -33,30 +33,41 @@ func (is *InventorySystem) Update(dt float64) {
 	world := is.world
 
 	for entityID, input := range world.Input.All() {
-		if input.PickupEntityID == state.NoPickup && input.DropSlotIndex == state.NoDrop && !input.SwitchWeapon {
+		inv, invOk := world.Inventory.Get(entityID)
+		if !invOk {
 			continue
 		}
 
-		inv, invOk := world.Inventory.Get(entityID)
-		pos, posOk := world.Position.Get(entityID)
-		if !invOk || !posOk {
-			continue
-		}
+		updated := false
 
 		if input.PickupEntityID != state.NoPickup {
-			is.handlePickup(entityID, pos, &inv, state.EntityID(input.PickupEntityID))
+			pos, posOk := world.Position.Get(entityID)
+			if posOk {
+				is.handlePickup(entityID, pos, &inv, state.EntityID(input.PickupEntityID))
+				updated = true
+			}
 		}
 		if input.DropSlotIndex != state.NoDrop {
-			is.handleDrop(entityID, pos, &inv, input.DropSlotIndex)
+			pos, posOk := world.Position.Get(entityID)
+			if posOk {
+				is.handleDrop(entityID, pos, &inv, input.DropSlotIndex)
+				updated = true
+			}
 		}
 		if input.SwitchWeapon {
 			is.handleWeaponSwitch(entityID, &inv)
+			updated = true
+		}
+		if is.handleReload(entityID, &inv, input) {
+			updated = true
 		}
 
-		world.UpdatePlayer(entityID, state.UpdatePlayer{
-			UpdateMeta: state.ComponentInventory,
-			Inventory:  inv,
-		})
+		if updated {
+			world.UpdatePlayer(entityID, state.UpdatePlayer{
+				UpdateMeta: state.ComponentInventory,
+				Inventory:  inv,
+			})
+		}
 	}
 }
 
@@ -95,7 +106,7 @@ func (is *InventorySystem) handlePickup(playerID state.EntityID, playerPos state
 		if !inv.Weapons[slotIdx].IsEmpty() {
 			return // slot already occupied
 		}
-		inv.Weapons[slotIdx] = state.WeaponSlot{ItemDefID: gi.ItemDefID}
+		inv.Weapons[slotIdx] = state.WeaponSlot{ItemID: gi.ItemDefID}
 	} else {
 		// Non-weapon item goes to item slots
 		slotIdx := findFreeItemSlot(*inv)
@@ -105,6 +116,7 @@ func (is *InventorySystem) handlePickup(playerID state.EntityID, playerPos state
 		inv.Items[slotIdx] = state.ItemSlot{
 			ItemDefID: gi.ItemDefID,
 			Quantity:  gi.Quantity,
+			Ammo:      gi.Ammo,
 		}
 	}
 
@@ -136,6 +148,7 @@ func (is *InventorySystem) handleDrop(playerID state.EntityID, playerPos state.P
 
 	var itemDefID state.EntityID
 	var quantity int
+	var ammo int
 
 	if slotIndex < 3 {
 		// Weapon slot drop
@@ -146,7 +159,7 @@ func (is *InventorySystem) handleDrop(playerID state.EntityID, playerPos state.P
 		if ws.IsEmpty() {
 			return
 		}
-		itemDefID = ws.ItemDefID
+		itemDefID = ws.ItemID
 		quantity = 1
 		inv.Weapons[slotIndex] = state.WeaponSlot{}
 	} else {
@@ -161,6 +174,7 @@ func (is *InventorySystem) handleDrop(playerID state.EntityID, playerPos state.P
 		}
 		itemDefID = slot.ItemDefID
 		quantity = slot.Quantity
+		ammo = slot.Ammo
 		inv.Items[itemIdx] = state.ItemSlot{}
 	}
 
@@ -171,6 +185,7 @@ func (is *InventorySystem) handleDrop(playerID state.EntityID, playerPos state.P
 		Position:  state.Position(dropPos),
 		ItemDefID: itemDefID,
 		Quantity:  quantity,
+		Ammo:      ammo,
 	})
 }
 
@@ -179,6 +194,13 @@ func (is *InventorySystem) handleWeaponSwitch(entityID state.EntityID, inv *stat
 
 	if tick-inv.LastSwitchTick < weaponSwitchCooldownTicks {
 		return
+	}
+
+	// Cancel any in-progress reload on current weapon
+	activeSlot := &inv.Weapons[inv.CurrentWeaponIndex]
+	if activeSlot.ReloadStartTick > 0 {
+		activeSlot.ReloadStartTick = 0
+		activeSlot.ReloadType = state.ReloadTypeNone
 	}
 
 	occupied := inv.OccupiedWeaponSlots()
@@ -197,6 +219,162 @@ func (is *InventorySystem) handleWeaponSwitch(entityID state.EntityID, inv *stat
 	nextIdx := (currentIdx + 1) % len(occupied)
 	inv.CurrentWeaponIndex = occupied[nextIdx]
 	inv.LastSwitchTick = tick
+}
+
+func (is *InventorySystem) handleReload(entityID state.EntityID, inv *state.Inventory, input state.Input) bool {
+	tick := *is.currentTick
+	activeSlot := &inv.Weapons[inv.CurrentWeaponIndex]
+	weaponConfig := is.resolveWeaponConfig(*inv)
+
+	// Complete in-progress reload
+	if activeSlot.ReloadStartTick > 0 {
+		duration := reloadDuration(activeSlot.ReloadType)
+		if tick-activeSlot.ReloadStartTick >= duration {
+			is.completeReload(entityID, inv, weaponConfig)
+			return true
+		}
+		return false
+	}
+
+	// Start new reload
+	if !input.Reload && !input.FastReload {
+		return false
+	}
+	if weaponConfig.AmmoCategory == state.AmmoCategoryNone {
+		return false // melee cannot reload
+	}
+	if activeSlot.MagCapacity > 0 && activeSlot.LoadedMagAmmo >= activeSlot.MagCapacity {
+		return false // magazine already full
+	}
+	magIdx := findFullestCompatibleMag(*inv, weaponConfig.AmmoCategory, is.world)
+	if magIdx < 0 {
+		return false // no spare magazine
+	}
+
+	reloadType := state.ReloadTypeNormal
+	if input.FastReload {
+		reloadType = state.ReloadTypeFast
+	}
+
+	activeSlot.ReloadStartTick = tick
+	activeSlot.ReloadType = reloadType
+	return true
+}
+
+func (is *InventorySystem) completeReload(entityID state.EntityID, inv *state.Inventory, weaponConfig state.WeaponConfig) {
+	world := is.world
+	activeSlot := &inv.Weapons[inv.CurrentWeaponIndex]
+
+	// Handle old magazine
+	if activeSlot.LoadedMagID != 0 {
+		if activeSlot.ReloadType == state.ReloadTypeFast {
+			// Fast reload: drop magazine on ground (with remaining ammo)
+			if activeSlot.LoadedMagAmmo > 0 {
+				pos, posOk := world.Position.Get(entityID)
+				dir, dirOk := world.Direction.Get(entityID)
+				if posOk && dirOk {
+					fwd := vector.Forward(float64(dir)).Scale(1.5)
+					dropPos := vector.Vector2D(pos).Add(fwd)
+					world.CreateGroundItemEntity(state.CreateGroundItem{
+						Position:  state.Position(dropPos),
+						ItemDefID: activeSlot.LoadedMagID,
+						Quantity:  1,
+						Ammo:      activeSlot.LoadedMagAmmo,
+					})
+				}
+			}
+			// Empty mag is discarded
+		} else {
+			// Normal reload: put magazine back in inventory
+			freeIdx := findFreeItemSlot(*inv)
+			if freeIdx >= 0 {
+				inv.Items[freeIdx] = state.ItemSlot{
+					ItemDefID: activeSlot.LoadedMagID,
+					Quantity:  1,
+					Ammo:      activeSlot.LoadedMagAmmo,
+				}
+			}
+		}
+	}
+
+	// Load new magazine from inventory (fullest first)
+	magIdx := findFullestCompatibleMag(*inv, weaponConfig.AmmoCategory, world)
+	if magIdx >= 0 {
+		magSlot := inv.Items[magIdx]
+		magDef, ok := world.ItemConfig.Get(magSlot.ItemDefID)
+		if ok {
+			activeSlot.LoadedMagID = magSlot.ItemDefID
+			activeSlot.LoadedMagAmmo = magSlot.Ammo
+			activeSlot.MagCapacity = magDef.MagCapacity
+			inv.Items[magIdx] = state.ItemSlot{} // remove from inventory
+		}
+	} else {
+		// No magazine available
+		activeSlot.LoadedMagID = 0
+		activeSlot.LoadedMagAmmo = 0
+		activeSlot.MagCapacity = 0
+	}
+
+	// Clear reload state
+	activeSlot.ReloadStartTick = 0
+	activeSlot.ReloadType = state.ReloadTypeNone
+}
+
+func (is *InventorySystem) resolveWeaponConfig(inv state.Inventory) state.WeaponConfig {
+	slot := inv.Weapons[inv.CurrentWeaponIndex]
+	if slot.IsEmpty() {
+		return state.FistSpec
+	}
+
+	itemDef, ok := is.world.ItemConfig.Get(slot.ItemID)
+	if !ok {
+		return state.FistSpec
+	}
+
+	if itemDef.WeaponConfig == (state.WeaponConfig{}) {
+		return state.FistSpec
+	}
+
+	return itemDef.WeaponConfig
+}
+
+// findFullestCompatibleMag returns the index of the fullest compatible magazine in the inventory.
+// Returns -1 if no compatible magazine is found.
+func findFullestCompatibleMag(inv state.Inventory, ammoCategory state.AmmoCategory, world *state.World) int {
+	bestIdx := -1
+	bestAmmo := -1
+	for i, slot := range inv.Items {
+		if slot.IsEmpty() {
+			continue
+		}
+		itemDef, ok := world.ItemConfig.Get(slot.ItemDefID)
+		if !ok {
+			continue
+		}
+		if itemDef.Type != state.ItemTypeMagazine {
+			continue
+		}
+		if itemDef.AmmoCategory != ammoCategory {
+			continue
+		}
+		if slot.Ammo > bestAmmo {
+			bestAmmo = slot.Ammo
+			bestIdx = i
+		}
+	}
+	return bestIdx
+}
+
+// reloadDuration returns the number of ticks for a given reload type.
+func reloadDuration(rt state.ReloadType) uint64 {
+	switch rt {
+	case state.ReloadTypeNormal:
+		return ports.NormalReloadTicks
+	case state.ReloadTypeFast:
+		return ports.FastReloadTicks
+	default:
+		return 0
+	}
 }
 
 func findFreeItemSlot(inv state.Inventory) int {

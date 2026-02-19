@@ -53,19 +53,37 @@ func (wf *WeaponFireSystem) Update(dt float64) {
 		weapon := wf.resolveActiveWeapon(inv)
 		activeSlot := inv.Weapons[inv.CurrentWeaponIndex]
 
+		// Block firing while reloading.
+		// Note: on the tick reload completes, InventorySystem clears ReloadStartTick
+		// via command buffer, which isn't applied until after all systems run.
+		// This means firing is delayed by one extra tick (~16ms), which is
+		// imperceptible. Accepting this avoids coupling WeaponFireSystem to
+		// reload duration logic.
+		if activeSlot.ReloadStartTick > 0 {
+			continue
+		}
+
 		// Fire rate limiting (LastFireTick == 0 means never fired, always allow)
 		fireInterval := uint64(ports.TargetTickRate / weapon.FireRate)
 		if activeSlot.LastFireTick > 0 && tick-activeSlot.LastFireTick < fireInterval {
 			continue
 		}
 
+		// Check ammo for ranged weapons
+		if weapon.AmmoCategory != state.AmmoCategoryNone {
+			if activeSlot.LoadedMagAmmo <= 0 {
+				continue // no ammo
+			}
+		}
+
 		wf.fireProjectile(world, entityID, pos, dir, weapon, tick)
 
-		// Update per-weapon LastFireTick
-		inv.Weapons[inv.CurrentWeaponIndex] = state.WeaponSlot{
-			ItemDefID:    activeSlot.ItemDefID,
-			LastFireTick: tick,
+		// Update per-weapon LastFireTick and deduct ammo
+		activeSlot.LastFireTick = tick
+		if weapon.AmmoCategory != state.AmmoCategoryNone {
+			activeSlot.LoadedMagAmmo--
 		}
+		inv.Weapons[inv.CurrentWeaponIndex] = activeSlot
 		world.UpdatePlayer(entityID, state.UpdatePlayer{
 			UpdateMeta: state.ComponentInventory,
 			Inventory:  inv,
@@ -81,7 +99,7 @@ func (wf *WeaponFireSystem) resolveActiveWeapon(inv state.Inventory) state.Weapo
 		return state.FistSpec
 	}
 
-	itemDef, ok := wf.world.ItemConfig.Get(slot.ItemDefID)
+	itemDef, ok := wf.world.ItemConfig.Get(slot.ItemID)
 	if !ok {
 		return state.FistSpec
 	}

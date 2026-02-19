@@ -148,8 +148,8 @@ func TestPickup_WeaponRouting_KnifeToSlot1(t *testing.T) {
 	world.ApplyCommands()
 
 	inv, _ := world.Inventory.Get(playerID)
-	if inv.Weapons[1].ItemDefID != knifeDef {
-		t.Errorf("Expected knife in weapon slot 1, got ItemDefID %d", inv.Weapons[1].ItemDefID)
+	if inv.Weapons[1].ItemID != knifeDef {
+		t.Errorf("Expected knife in weapon slot 1, got ItemID %d", inv.Weapons[1].ItemID)
 	}
 }
 
@@ -174,8 +174,8 @@ func TestPickup_WeaponRouting_GunToSlot2(t *testing.T) {
 	world.ApplyCommands()
 
 	inv, _ := world.Inventory.Get(playerID)
-	if inv.Weapons[2].ItemDefID != gunDef {
-		t.Errorf("Expected gun in weapon slot 2, got ItemDefID %d", inv.Weapons[2].ItemDefID)
+	if inv.Weapons[2].ItemID != gunDef {
+		t.Errorf("Expected gun in weapon slot 2, got ItemID %d", inv.Weapons[2].ItemID)
 	}
 }
 
@@ -404,7 +404,7 @@ func TestDrop_WeaponSlot(t *testing.T) {
 	})
 
 	inv, _ := world.Inventory.Get(playerID)
-	inv.Weapons[1] = state.WeaponSlot{ItemDefID: knifeDef}
+	inv.Weapons[1] = state.WeaponSlot{ItemID: knifeDef}
 	world.UpdatePlayer(playerID, state.UpdatePlayer{
 		UpdateMeta: state.ComponentInventory,
 		Inventory:  inv,
@@ -517,7 +517,7 @@ func TestWeaponSwitch_CyclesOccupiedSlots(t *testing.T) {
 		Type: state.WeaponTypeKnife, Range: 1, FireRate: 7, Damage: 15, Speed: 30,
 	})
 	inv, _ := world.Inventory.Get(playerID)
-	inv.Weapons[1] = state.WeaponSlot{ItemDefID: knifeDef}
+	inv.Weapons[1] = state.WeaponSlot{ItemID: knifeDef}
 	world.UpdatePlayer(playerID, state.UpdatePlayer{
 		UpdateMeta: state.ComponentInventory,
 		Inventory:  inv,
@@ -562,7 +562,7 @@ func TestWeaponSwitch_CooldownEnforced(t *testing.T) {
 		Type: state.WeaponTypeKnife, Range: 1, FireRate: 7, Damage: 15, Speed: 30,
 	})
 	inv, _ := world.Inventory.Get(playerID)
-	inv.Weapons[1] = state.WeaponSlot{ItemDefID: knifeDef}
+	inv.Weapons[1] = state.WeaponSlot{ItemID: knifeDef}
 	world.UpdatePlayer(playerID, state.UpdatePlayer{
 		UpdateMeta: state.ComponentInventory,
 		Inventory:  inv,
@@ -607,7 +607,7 @@ func TestWeaponSwitch_SkipsEmptySlots(t *testing.T) {
 		Type: state.WeaponTypeGun, Range: 20, FireRate: 2, Damage: 30, Speed: 30,
 	})
 	inv, _ := world.Inventory.Get(playerID)
-	inv.Weapons[2] = state.WeaponSlot{ItemDefID: gunDef}
+	inv.Weapons[2] = state.WeaponSlot{ItemID: gunDef}
 	world.UpdatePlayer(playerID, state.UpdatePlayer{
 		UpdateMeta: state.ComponentInventory,
 		Inventory:  inv,

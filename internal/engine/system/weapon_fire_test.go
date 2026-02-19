@@ -35,8 +35,8 @@ func createPlayerWithWeapons(t *testing.T, world *state.World) (playerID state.E
 
 	// Equip knife and gun
 	inv, _ := world.Inventory.Get(playerID)
-	inv.Weapons[1] = state.WeaponSlot{ItemDefID: knifeDef}
-	inv.Weapons[2] = state.WeaponSlot{ItemDefID: gunDef}
+	inv.Weapons[1] = state.WeaponSlot{ItemID: knifeDef}
+	inv.Weapons[2] = state.WeaponSlot{ItemID: gunDef}
 	inv.CurrentWeaponIndex = 2 // default to Gun
 	world.UpdatePlayer(playerID, state.UpdatePlayer{
 		UpdateMeta: state.ComponentInventory,
@@ -73,8 +73,8 @@ func createPlayerAtPosDir(t *testing.T, world *state.World, pos state.Position, 
 	world.ApplyCommands()
 
 	inv, _ := world.Inventory.Get(playerID)
-	inv.Weapons[1] = state.WeaponSlot{ItemDefID: knifeDef}
-	inv.Weapons[2] = state.WeaponSlot{ItemDefID: gunDef}
+	inv.Weapons[1] = state.WeaponSlot{ItemID: knifeDef}
+	inv.Weapons[2] = state.WeaponSlot{ItemID: gunDef}
 	inv.CurrentWeaponIndex = 2
 	world.UpdatePlayer(playerID, state.UpdatePlayer{
 		UpdateMeta: state.ComponentInventory,

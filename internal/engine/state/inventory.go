@@ -5,7 +5,8 @@ import "survival/internal/engine/ports"
 // ItemSlot represents a non-weapon item in the player's inventory.
 type ItemSlot struct {
 	ItemDefID EntityID
-	Quantity  int
+	Quantity  int // stack count (e.g., 3 magazines, 5 wood)
+	Ammo      int // remaining ammo inside (only for ItemTypeMagazine)
 }
 
 func (s ItemSlot) IsEmpty() bool { return s.ItemDefID == 0 }
@@ -54,6 +55,8 @@ const (
 	ItemTypeConsumable
 	ItemTypeMaterial
 	ItemTypeEquipment
+	ItemTypeMagazine // discrete magazine (Ammo = current ammo)
+	ItemTypeAmmo     // loose bullets (stackable)
 )
 
 type ItemConfig struct {
@@ -61,9 +64,12 @@ type ItemConfig struct {
 	Type         ItemType
 	MaxStack     int
 	WeaponConfig WeaponConfig // zero-valued for non-weapons
+	MagCapacity  int          // for ItemTypeMagazine: max bullets per magazine
+	AmmoCategory AmmoCategory // for magazines/ammo: which weapon type this is compatible with
 }
 
 type GroundItem struct {
 	ItemDefID EntityID
-	Quantity  int
+	Quantity  int // stack count
+	Ammo      int // remaining ammo inside (only for ItemTypeMagazine)
 }

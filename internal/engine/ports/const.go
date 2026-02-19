@@ -11,4 +11,7 @@ const (
 
 	ItemSlotCount = 6
 	PickupRange   = 2.0
+
+	NormalReloadTicks = 90 // 1.5s at 60 FPS
+	FastReloadTicks   = 60 // 1.0s at 60 FPS
 )

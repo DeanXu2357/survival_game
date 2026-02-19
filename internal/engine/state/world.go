@@ -395,9 +395,9 @@ func (w *World) playerLocation(id EntityID) (PlayerSnapshot, bool) {
 func DefaultInventory(fistDefID EntityID, maxItemCapacity int) Inventory {
 	return Inventory{
 		Weapons: [3]WeaponSlot{
-			{ItemDefID: fistDefID}, // Slot 0: Fist (always occupied)
-			{},                     // Slot 1: Knife (empty)
-			{},                     // Slot 2: Gun (empty)
+			{ItemID: fistDefID}, // Slot 0: Fist (always occupied)
+			{},                  // Slot 1: Knife (empty)
+			{},                  // Slot 2: Gun (empty)
 		},
 		CurrentWeaponIndex: 0, // default to Fist
 		MaxItemCapacity:    maxItemCapacity,
@@ -408,6 +408,7 @@ type CreateGroundItem struct {
 	Position  Position
 	ItemDefID EntityID
 	Quantity  int
+	Ammo      int
 }
 
 // CreateGroundItemEntity allocates a ground item entity referencing an item definition config entity.
@@ -422,7 +423,7 @@ func (w *World) CreateGroundItemEntity(cfg CreateGroundItem) (EntityID, bool) {
 		UpdateMeta: GroundItemMeta,
 		Position:   cfg.Position,
 		Meta:       GroundItemMeta,
-		GroundItem: GroundItem{ItemDefID: cfg.ItemDefID, Quantity: cfg.Quantity},
+		GroundItem: GroundItem{ItemDefID: cfg.ItemDefID, Quantity: cfg.Quantity, Ammo: cfg.Ammo},
 	})
 
 	return id, true
