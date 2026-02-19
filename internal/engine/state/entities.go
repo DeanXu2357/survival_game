@@ -1,6 +1,7 @@
 package state
 
 import (
+	"survival/internal/engine/ports"
 	"survival/internal/engine/vector"
 )
 
@@ -20,15 +21,20 @@ const (
 	ComponentInput
 	ComponentPrePosition
 	ComponentProjectile
-	ComponentWeaponState
+	ComponentInventory
+	ComponentItemDef
+	ComponentGroundItem
 
 	PlayerMeta = ComponentMeta | ComponentPosition | ComponentDirection | ComponentMovementSpeed |
 		ComponentRotationSpeed | ComponentPlayerHitbox | ComponentHealth |
-		ComponentViewIDs | ComponentInput | ComponentPrePosition | ComponentWeaponState
+		ComponentViewIDs | ComponentInput | ComponentPrePosition | ComponentInventory
 
 	WallMeta = ComponentMeta | ComponentPosition | ComponentVerticalBody | ComponentCollider
 
 	ProjectileMeta = ComponentMeta | ComponentPosition | ComponentDirection | ComponentProjectile
+
+	GroundItemMeta = ComponentMeta | ComponentPosition | ComponentGroundItem
+	ItemDefMeta    = ComponentMeta | ComponentItemDef
 )
 
 const (
@@ -116,6 +122,11 @@ const (
 	MovementTypeRelative MovementType = 1
 )
 
+const (
+	NoPickup = -1 // sentinel: no pickup action
+	NoDrop   = -1 // sentinel: no drop action
+)
+
 type Input struct {
 	MoveVertical   float64
 	MoveHorizontal float64
@@ -126,6 +137,9 @@ type Input struct {
 	SwitchWeapon bool
 	Reload       bool
 	FastReload   bool
+
+	PickupEntityID int64 // NoPickup (-1) = no pickup; >= 0 = target ground item entity
+	DropSlotIndex  int   // NoDrop (-1) = no drop; 0-2 = weapon slot, 3+ = item slot
 
 	Timestamp int64
 }
@@ -157,11 +171,79 @@ type WeaponSpec struct {
 	Speed    float64 // projectile speed in units per second
 }
 
-// WeaponState tracks the player's weapon loadout and firing state.
-// Future: refactor to Flyweight pattern to separate mutable/immutable data.
-type WeaponState struct {
-	Weapons            [3]WeaponSpec
+// WeaponSlot represents a weapon equipped in the player's weapon loadout.
+type WeaponSlot struct {
+	ItemDefID    EntityID // 0 = empty (slot 0 always has FistDefID)
+	LastFireTick uint64   // per-weapon fire cooldown
+}
+
+func (s WeaponSlot) IsEmpty() bool { return s.ItemDefID == 0 }
+
+// ItemSlot represents a non-weapon item in the player's inventory.
+type ItemSlot struct {
+	ItemDefID EntityID
+	Quantity  int
+}
+
+func (s ItemSlot) IsEmpty() bool { return s.ItemDefID == 0 }
+
+// Inventory is the unified component replacing Backpack + WeaponState.
+// Weapons[0]=Fist (always), Weapons[1]=Knife slot, Weapons[2]=Gun slot.
+type Inventory struct {
+	Weapons            [3]WeaponSlot
+	Items              [ports.ItemSlotCount]ItemSlot
 	CurrentWeaponIndex int
-	LastFireTick       uint64
 	LastSwitchTick     uint64
+	MaxItemCapacity    int
+}
+
+// ItemCount returns the number of occupied item slots.
+func (inv Inventory) ItemCount() int {
+	n := 0
+	for _, s := range inv.Items {
+		if !s.IsEmpty() {
+			n++
+		}
+	}
+	return n
+}
+
+// IsItemsFull returns true if all item slots up to MaxItemCapacity are occupied.
+func (inv Inventory) IsItemsFull() bool {
+	return inv.ItemCount() >= inv.MaxItemCapacity
+}
+
+// OccupiedWeaponSlots returns indices of non-empty weapon slots.
+func (inv Inventory) OccupiedWeaponSlots() []int {
+	var slots []int
+	for i, ws := range inv.Weapons {
+		if !ws.IsEmpty() {
+			slots = append(slots, i)
+		}
+	}
+	return slots
+}
+
+// FistSpec defines the default fist weapon stats.
+var FistSpec = WeaponSpec{Type: WeaponTypeFist, Range: 5, FireRate: 3, Damage: 5, Speed: 50}
+
+type ItemType uint8
+
+const (
+	ItemTypeWeapon ItemType = iota
+	ItemTypeConsumable
+	ItemTypeMaterial
+	ItemTypeEquipment
+)
+
+type ItemDef struct {
+	Name       string
+	Type       ItemType
+	MaxStack   int
+	WeaponSpec WeaponSpec // zero-valued for non-weapons
+}
+
+type GroundItem struct {
+	ItemDefID EntityID
+	Quantity  int
 }

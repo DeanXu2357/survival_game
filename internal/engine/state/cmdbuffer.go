@@ -19,7 +19,8 @@ type WorldCommand struct {
 	Input          Input
 	PrePosition    PrePosition
 	ProjectileData ProjectileData
-	WeaponState    WeaponState
+	Inventory      Inventory
+	GroundItem     GroundItem
 }
 
 // CommandBuffer is a thread-safe buffer for WorldCommands.

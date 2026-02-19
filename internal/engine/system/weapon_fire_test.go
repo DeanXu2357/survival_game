@@ -8,8 +8,56 @@ import (
 	"survival/internal/engine/vector"
 )
 
-func createPlayerWithWeapons(t *testing.T, world *state.World, pos state.Position, dir state.Direction) state.EntityID {
+func createPlayerWithWeapons(t *testing.T, world *state.World) (playerID state.EntityID, fistDefID state.EntityID, knifeDef state.EntityID, gunDef state.EntityID) {
 	t.Helper()
+
+	fistDefID = createFistDef(t, world)
+	knifeDef = createWeaponItemDef(t, world, "Knife", state.WeaponSpec{
+		Type: state.WeaponTypeKnife, Range: 1, FireRate: 7, Damage: 15, Speed: 30,
+	})
+	gunDef = createWeaponItemDef(t, world, "Pistol", state.WeaponSpec{
+		Type: state.WeaponTypeGun, Range: 20, FireRate: 2, Damage: 30, Speed: 30,
+	})
+
+	playerID, ok := world.CreatePlayer(state.CreatePlayer{
+		Position:      state.Position{X: 50, Y: 50},
+		Direction:     0,
+		MovementSpeed: 5.0,
+		RotationSpeed: 2.0,
+		Radius:        0.5,
+		Health:        100,
+		FistDefID:     fistDefID,
+	})
+	if !ok {
+		t.Fatal("failed to create player")
+	}
+	world.ApplyCommands()
+
+	// Equip knife and gun
+	inv, _ := world.Inventory.Get(playerID)
+	inv.Weapons[1] = state.WeaponSlot{ItemDefID: knifeDef}
+	inv.Weapons[2] = state.WeaponSlot{ItemDefID: gunDef}
+	inv.CurrentWeaponIndex = 2 // default to Gun
+	world.UpdatePlayer(playerID, state.UpdatePlayer{
+		UpdateMeta: state.ComponentInventory,
+		Inventory:  inv,
+	})
+	world.ApplyCommands()
+
+	return playerID, fistDefID, knifeDef, gunDef
+}
+
+func createPlayerAtPosDir(t *testing.T, world *state.World, pos state.Position, dir state.Direction) (playerID state.EntityID, fistDefID state.EntityID, knifeDef state.EntityID, gunDef state.EntityID) {
+	t.Helper()
+
+	fistDefID = createFistDef(t, world)
+	knifeDef = createWeaponItemDef(t, world, "Knife", state.WeaponSpec{
+		Type: state.WeaponTypeKnife, Range: 1, FireRate: 7, Damage: 15, Speed: 30,
+	})
+	gunDef = createWeaponItemDef(t, world, "Pistol", state.WeaponSpec{
+		Type: state.WeaponTypeGun, Range: 20, FireRate: 2, Damage: 30, Speed: 30,
+	})
+
 	playerID, ok := world.CreatePlayer(state.CreatePlayer{
 		Position:      pos,
 		Direction:     dir,
@@ -17,25 +65,36 @@ func createPlayerWithWeapons(t *testing.T, world *state.World, pos state.Positio
 		RotationSpeed: 2.0,
 		Radius:        0.5,
 		Health:        100,
+		FistDefID:     fistDefID,
 	})
 	if !ok {
 		t.Fatal("failed to create player")
 	}
 	world.ApplyCommands()
-	return playerID
+
+	inv, _ := world.Inventory.Get(playerID)
+	inv.Weapons[1] = state.WeaponSlot{ItemDefID: knifeDef}
+	inv.Weapons[2] = state.WeaponSlot{ItemDefID: gunDef}
+	inv.CurrentWeaponIndex = 2
+	world.UpdatePlayer(playerID, state.UpdatePlayer{
+		UpdateMeta: state.ComponentInventory,
+		Inventory:  inv,
+	})
+	world.ApplyCommands()
+
+	return playerID, fistDefID, knifeDef, gunDef
 }
 
-// switchWeapon switches the player's weapon to the given index and applies commands.
 func switchWeapon(t *testing.T, world *state.World, playerID state.EntityID, weaponIndex int) {
 	t.Helper()
-	ws, ok := world.WeaponState.Get(playerID)
+	inv, ok := world.Inventory.Get(playerID)
 	if !ok {
-		t.Fatal("WeaponState not found")
+		t.Fatal("Inventory not found")
 	}
-	ws.CurrentWeaponIndex = weaponIndex
+	inv.CurrentWeaponIndex = weaponIndex
 	world.UpdatePlayer(playerID, state.UpdatePlayer{
-		UpdateMeta:  state.ComponentWeaponState,
-		WeaponState: ws,
+		UpdateMeta: state.ComponentInventory,
+		Inventory:  inv,
 	})
 	world.ApplyCommands()
 }
@@ -44,17 +103,16 @@ func TestWeaponFire_SpawnsProjectileOnFire(t *testing.T) {
 	world := setupProjectileWorld()
 	var tick uint64 = 5
 
-	playerID := createPlayerWithWeapons(t, world, state.Position{X: 50, Y: 50}, 0)
+	playerID, _, _, _ := createPlayerWithWeapons(t, world)
 
 	wf := NewWeaponFireSystem(world, &tick)
 
-	world.SetInput(playerID, state.Input{Fire: true})
+	world.SetInput(playerID, state.Input{PickupEntityID: state.NoPickup, DropSlotIndex: state.NoDrop, Fire: true})
 	world.SyncInputBuffer()
 
 	wf.Update(1.0 / 60.0)
 	world.ApplyCommands()
 
-	// Check that a projectile was created
 	projectileCount := 0
 	var foundProj state.ProjectileData
 	for _, proj := range world.Projectile.All() {
@@ -92,11 +150,11 @@ func TestWeaponFire_NoProjectileWithoutFireInput(t *testing.T) {
 	world := setupProjectileWorld()
 	var tick uint64 = 5
 
-	playerID := createPlayerWithWeapons(t, world, state.Position{X: 50, Y: 50}, 0)
+	playerID, _, _, _ := createPlayerWithWeapons(t, world)
 
 	wf := NewWeaponFireSystem(world, &tick)
 
-	world.SetInput(playerID, state.Input{Fire: false, MoveHorizontal: 1})
+	world.SetInput(playerID, state.Input{PickupEntityID: state.NoPickup, DropSlotIndex: state.NoDrop, Fire: false, MoveHorizontal: 1})
 	world.SyncInputBuffer()
 
 	wf.Update(1.0 / 60.0)
@@ -119,17 +177,16 @@ func TestWeaponFire_ProjectileSpawnsAtPlayerPosition(t *testing.T) {
 	playerPos := state.Position{X: 30, Y: 40}
 	playerDir := state.Direction(1.5)
 
-	playerID := createPlayerWithWeapons(t, world, playerPos, playerDir)
+	playerID, _, _, _ := createPlayerAtPosDir(t, world, playerPos, playerDir)
 
 	wf := NewWeaponFireSystem(world, &tick)
 
-	world.SetInput(playerID, state.Input{Fire: true})
+	world.SetInput(playerID, state.Input{PickupEntityID: state.NoPickup, DropSlotIndex: state.NoDrop, Fire: true})
 	world.SyncInputBuffer()
 
 	wf.Update(1.0 / 60.0)
 	world.ApplyCommands()
 
-	// Find the projectile entity
 	for entityID, proj := range world.Projectile.All() {
 		if proj.OwnerID != playerID {
 			continue
@@ -161,12 +218,12 @@ func TestWeaponFire_FireRateLimiting(t *testing.T) {
 	world := setupProjectileWorld()
 	var tick uint64 = 100
 
-	playerID := createPlayerWithWeapons(t, world, state.Position{X: 50, Y: 50}, 0)
+	playerID, _, _, _ := createPlayerWithWeapons(t, world)
 
 	wf := NewWeaponFireSystem(world, &tick)
 
 	// First fire should succeed
-	world.SetInput(playerID, state.Input{Fire: true})
+	world.SetInput(playerID, state.Input{PickupEntityID: state.NoPickup, DropSlotIndex: state.NoDrop, Fire: true})
 	world.SyncInputBuffer()
 	wf.Update(1.0 / 60.0)
 	world.ApplyCommands()
@@ -181,7 +238,7 @@ func TestWeaponFire_FireRateLimiting(t *testing.T) {
 
 	// Second fire on next tick should be blocked by fire rate (Gun fireRate=2, interval=30 ticks)
 	tick++
-	world.SetInput(playerID, state.Input{Fire: true})
+	world.SetInput(playerID, state.Input{PickupEntityID: state.NoPickup, DropSlotIndex: state.NoDrop, Fire: true})
 	world.SyncInputBuffer()
 	wf.Update(1.0 / 60.0)
 	world.ApplyCommands()
@@ -195,16 +252,57 @@ func TestWeaponFire_FireRateLimiting(t *testing.T) {
 	}
 }
 
+func TestWeaponFire_PerWeaponLastFireTick(t *testing.T) {
+	world := setupProjectileWorld()
+	var tick uint64 = 100
+
+	playerID, _, _, _ := createPlayerWithWeapons(t, world)
+
+	wf := NewWeaponFireSystem(world, &tick)
+
+	// Fire gun at tick 100
+	world.SetInput(playerID, state.Input{PickupEntityID: state.NoPickup, DropSlotIndex: state.NoDrop, Fire: true})
+	world.SyncInputBuffer()
+	wf.Update(1.0 / 60.0)
+	world.ApplyCommands()
+
+	inv, _ := world.Inventory.Get(playerID)
+	if inv.Weapons[2].LastFireTick != 100 {
+		t.Errorf("Expected Gun LastFireTick=100, got %d", inv.Weapons[2].LastFireTick)
+	}
+
+	// Switch to knife and fire - should work immediately since knife has its own LastFireTick
+	switchWeapon(t, world, playerID, 1)
+	tick++
+	world.SetInput(playerID, state.Input{PickupEntityID: state.NoPickup, DropSlotIndex: state.NoDrop, Fire: true})
+	world.SyncInputBuffer()
+	wf.Update(1.0 / 60.0)
+	world.ApplyCommands()
+
+	projectileCount := 0
+	for range world.Projectile.All() {
+		projectileCount++
+	}
+	if projectileCount != 2 {
+		t.Errorf("Expected 2 projectiles (gun + knife), got %d", projectileCount)
+	}
+
+	inv, _ = world.Inventory.Get(playerID)
+	if inv.Weapons[1].LastFireTick != 101 {
+		t.Errorf("Expected Knife LastFireTick=101, got %d", inv.Weapons[1].LastFireTick)
+	}
+}
+
 func TestWeaponFire_KnifeSpawnsProjectile(t *testing.T) {
 	world := setupProjectileWorld()
 	var tick uint64 = 5
 
-	playerID := createPlayerWithWeapons(t, world, state.Position{X: 50, Y: 50}, 0)
+	playerID, _, _, _ := createPlayerWithWeapons(t, world)
 	switchWeapon(t, world, playerID, 1) // Knife
 
 	wf := NewWeaponFireSystem(world, &tick)
 
-	world.SetInput(playerID, state.Input{Fire: true})
+	world.SetInput(playerID, state.Input{PickupEntityID: state.NoPickup, DropSlotIndex: state.NoDrop, Fire: true})
 	world.SyncInputBuffer()
 	wf.Update(1.0 / 60.0)
 	world.ApplyCommands()
@@ -235,12 +333,12 @@ func TestWeaponFire_FistSpawnsProjectile(t *testing.T) {
 	world := setupProjectileWorld()
 	var tick uint64 = 5
 
-	playerID := createPlayerWithWeapons(t, world, state.Position{X: 50, Y: 50}, 0)
+	playerID, _, _, _ := createPlayerWithWeapons(t, world)
 	switchWeapon(t, world, playerID, 0) // Fist
 
 	wf := NewWeaponFireSystem(world, &tick)
 
-	world.SetInput(playerID, state.Input{Fire: true})
+	world.SetInput(playerID, state.Input{PickupEntityID: state.NoPickup, DropSlotIndex: state.NoDrop, Fire: true})
 	world.SyncInputBuffer()
 	wf.Update(1.0 / 60.0)
 	world.ApplyCommands()
@@ -266,9 +364,55 @@ func TestWeaponFire_FistSpawnsProjectile(t *testing.T) {
 		t.Errorf("Expected fist projectile Range=5, got %f", foundProj.Range)
 	}
 
-	// Fist: range=5, speed=50 -> TTL = 5/50 * 60 = 6 ticks
 	expectedExpiredAt := tick + uint64(5.0/50.0*ports.TargetTickRate)
 	if foundProj.ExpiredAt != expectedExpiredAt {
 		t.Errorf("Expected fist ExpiredAt=%d, got %d", expectedExpiredAt, foundProj.ExpiredAt)
+	}
+}
+
+func TestWeaponFire_FistFallback(t *testing.T) {
+	world := setupProjectileWorld()
+	var tick uint64 = 5
+
+	// Create player with only fist (no other weapons)
+	fistDefID := createFistDef(t, world)
+	playerID, ok := world.CreatePlayer(state.CreatePlayer{
+		Position:      state.Position{X: 50, Y: 50},
+		Direction:     0,
+		MovementSpeed: 5.0,
+		RotationSpeed: 2.0,
+		Radius:        0.5,
+		Health:        100,
+		FistDefID:     fistDefID,
+	})
+	if !ok {
+		t.Fatal("failed to create player")
+	}
+	world.ApplyCommands()
+
+	wf := NewWeaponFireSystem(world, &tick)
+
+	world.SetInput(playerID, state.Input{PickupEntityID: state.NoPickup, DropSlotIndex: state.NoDrop, Fire: true})
+	world.SyncInputBuffer()
+	wf.Update(1.0 / 60.0)
+	world.ApplyCommands()
+
+	projectileCount := 0
+	var foundProj state.ProjectileData
+	for _, proj := range world.Projectile.All() {
+		projectileCount++
+		foundProj = proj
+	}
+
+	if projectileCount != 1 {
+		t.Fatalf("Expected 1 projectile for fist fallback, got %d", projectileCount)
+	}
+
+	// Should use FistSpec stats
+	if foundProj.Speed != state.FistSpec.Speed {
+		t.Errorf("Expected fist Speed=%f, got %f", state.FistSpec.Speed, foundProj.Speed)
+	}
+	if foundProj.Damage != state.FistSpec.Damage {
+		t.Errorf("Expected fist Damage=%d, got %d", state.FistSpec.Damage, foundProj.Damage)
 	}
 }

@@ -22,12 +22,12 @@ func NewWeaponFireSystem(world *state.World, currentTick *uint64) *WeaponFireSys
 }
 
 func (wf *WeaponFireSystem) ReadMeta() state.Meta {
-	return state.ComponentInput | state.ComponentPosition | state.ComponentDirection | state.ComponentWeaponState
+	return state.ComponentInput | state.ComponentPosition | state.ComponentDirection | state.ComponentInventory
 }
 
 func (wf *WeaponFireSystem) WriteMeta() state.Meta {
 	return state.ComponentProjectile | state.ComponentPosition | state.ComponentDirection |
-		state.ComponentMeta | state.ComponentWeaponState
+		state.ComponentMeta | state.ComponentInventory
 }
 
 func (wf *WeaponFireSystem) Update(dt float64) {
@@ -39,8 +39,8 @@ func (wf *WeaponFireSystem) Update(dt float64) {
 			continue
 		}
 
-		ws, wsOk := world.WeaponState.Get(entityID)
-		if !wsOk {
+		inv, invOk := world.Inventory.Get(entityID)
+		if !invOk {
 			continue
 		}
 
@@ -50,23 +50,48 @@ func (wf *WeaponFireSystem) Update(dt float64) {
 			continue
 		}
 
-		weapon := ws.Weapons[ws.CurrentWeaponIndex]
+		weapon := wf.resolveActiveWeapon(inv)
+		activeSlot := inv.Weapons[inv.CurrentWeaponIndex]
 
 		// Fire rate limiting (LastFireTick == 0 means never fired, always allow)
 		fireInterval := uint64(ports.TargetTickRate / weapon.FireRate)
-		if ws.LastFireTick > 0 && tick-ws.LastFireTick < fireInterval {
+		if activeSlot.LastFireTick > 0 && tick-activeSlot.LastFireTick < fireInterval {
 			continue
 		}
 
 		wf.fireProjectile(world, entityID, pos, dir, weapon, tick)
 
-		// Update LastFireTick
-		ws.LastFireTick = tick
+		// Update per-weapon LastFireTick
+		inv.Weapons[inv.CurrentWeaponIndex] = state.WeaponSlot{
+			ItemDefID:    activeSlot.ItemDefID,
+			LastFireTick: tick,
+		}
 		world.UpdatePlayer(entityID, state.UpdatePlayer{
-			UpdateMeta:  state.ComponentWeaponState,
-			WeaponState: ws,
+			UpdateMeta: state.ComponentInventory,
+			Inventory:  inv,
 		})
 	}
+}
+
+// resolveActiveWeapon looks up the WeaponSpec for the currently equipped weapon.
+// Falls back to FistSpec if the active slot is empty or the ItemDef is missing.
+func (wf *WeaponFireSystem) resolveActiveWeapon(inv state.Inventory) state.WeaponSpec {
+	slot := inv.Weapons[inv.CurrentWeaponIndex]
+	if slot.IsEmpty() {
+		return state.FistSpec
+	}
+
+	itemDef, ok := wf.world.ItemDef.Get(slot.ItemDefID)
+	if !ok {
+		return state.FistSpec
+	}
+
+	// If the WeaponSpec is zero-valued, fall back to FistSpec
+	if itemDef.WeaponSpec == (state.WeaponSpec{}) {
+		return state.FistSpec
+	}
+
+	return itemDef.WeaponSpec
 }
 
 func (wf *WeaponFireSystem) fireProjectile(world *state.World, ownerID state.EntityID, pos state.Position, dir state.Direction, weapon state.WeaponSpec, tick uint64) {

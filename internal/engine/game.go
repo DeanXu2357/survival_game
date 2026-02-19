@@ -14,6 +14,8 @@ type Game struct {
 	mapConfig *MapConfig
 	systems   *state.SystemManager
 
+	fistDefID state.EntityID // EntityID for the Fist weapon definition
+
 	// Tick-based time tracking
 	currentTick   uint64    // Current game tick (increments each Update call)
 	startTime     time.Time // Wall-clock time when game loop started
@@ -37,10 +39,26 @@ func NewGame(mapConfig *MapConfig) (*Game, error) {
 		systems:   systems,
 	}
 
-	systems.Register(system.NewWeaponSwitchSystem(world, &g.currentTick))
+	systems.Register(system.NewInventorySystem(world, &g.currentTick))
 	systems.Register(system.NewBasicMovementSystem(world))
 	systems.Register(system.NewProjectileSystem(world, &g.currentTick))
 	systems.Register(system.NewWeaponFireSystem(world, &g.currentTick))
+
+	// Reserve entity 0 so no real entity gets EntityID(0),
+	// which is used as the zero-value sentinel in IsEmpty() checks.
+	world.Entity.Alloc()
+
+	// Create the Fist weapon definition entity
+	fistDefID, ok := world.CreateItemDefEntity(state.ItemDef{
+		Name:       "Fist",
+		Type:       state.ItemTypeWeapon,
+		MaxStack:   1,
+		WeaponSpec: state.FistSpec,
+	})
+	if !ok {
+		return nil, fmt.Errorf("failed to create fist item definition")
+	}
+	g.fistDefID = fistDefID
 
 	if err := g.loadMapEntities(mapConfig); err != nil {
 		return nil, err
@@ -114,6 +132,7 @@ func (g *Game) JoinPlayer() (state.EntityID, error) {
 		RotationSpeed: state.RotationSpeed(defaultPlayerRotationSpeed),
 		Radius:        defaultPlayerRadius,
 		Health:        state.Health(defaultPlayerHealth),
+		FistDefID:     g.fistDefID,
 	})
 	if !ok {
 		return 0, fmt.Errorf("failed to create player entity")
@@ -160,6 +179,8 @@ func (g *Game) SetPlayerInput(entityID state.EntityID, input ports.PlayerInput) 
 		SwitchWeapon:   input.SwitchWeapon,
 		Reload:         input.Reload,
 		FastReload:     input.FastReload,
+		PickupEntityID: input.PickupEntityID,
+		DropSlotIndex:  input.DropSlotIndex,
 		Timestamp:      input.Timestamp,
 	})
 }

@@ -62,7 +62,7 @@ func TestNoInput_PlayerStaysStill(t *testing.T) {
 	world, playerID := setupTestWorld(state.Position{X: 50, Y: 50}, 0)
 	ms := NewBasicMovementSystem(world)
 
-	world.SetInput(playerID, state.Input{})
+	world.SetInput(playerID, state.Input{PickupEntityID: state.NoPickup, DropSlotIndex: state.NoDrop})
 	world.SyncInputBuffer()
 
 	ms.Update(1.0 / 60.0)
@@ -79,7 +79,7 @@ func TestVerticalMovement_BlockedByWall(t *testing.T) {
 	addWall(world, 50, 45, 2, 1)
 	ms := NewBasicMovementSystem(world)
 
-	world.SetInput(playerID, state.Input{MoveVertical: -1, MovementType: state.MovementTypeAbsolute})
+	world.SetInput(playerID, state.Input{PickupEntityID: state.NoPickup, DropSlotIndex: state.NoDrop, MoveVertical: -1, MovementType: state.MovementTypeAbsolute})
 	world.SyncInputBuffer()
 
 	for i := 0; i < 60; i++ {
@@ -102,7 +102,7 @@ func TestHorizontalMovement_BlockedByWall(t *testing.T) {
 	addWall(world, 55, 50, 1, 2)
 	ms := NewBasicMovementSystem(world)
 
-	world.SetInput(playerID, state.Input{MoveHorizontal: 1, MovementType: state.MovementTypeAbsolute})
+	world.SetInput(playerID, state.Input{PickupEntityID: state.NoPickup, DropSlotIndex: state.NoDrop, MoveHorizontal: 1, MovementType: state.MovementTypeAbsolute})
 	world.SyncInputBuffer()
 
 	for i := 0; i < 60; i++ {
@@ -128,7 +128,7 @@ func TestFreeMovement_NoWalls(t *testing.T) {
 	speed := 5.0
 	expectedDelta := speed * dt
 
-	world.SetInput(playerID, state.Input{MoveHorizontal: 1, MovementType: state.MovementTypeAbsolute})
+	world.SetInput(playerID, state.Input{PickupEntityID: state.NoPickup, DropSlotIndex: state.NoDrop, MoveHorizontal: 1, MovementType: state.MovementTypeAbsolute})
 	world.SyncInputBuffer()
 
 	ms.Update(dt)
@@ -148,7 +148,7 @@ func TestDiagonalMovement_PartialBlock(t *testing.T) {
 	addWall(world, 55, 50, 1, 5)
 	ms := NewBasicMovementSystem(world)
 
-	world.SetInput(playerID, state.Input{MoveHorizontal: 1, MoveVertical: 1, MovementType: state.MovementTypeAbsolute})
+	world.SetInput(playerID, state.Input{PickupEntityID: state.NoPickup, DropSlotIndex: state.NoDrop, MoveHorizontal: 1, MoveVertical: 1, MovementType: state.MovementTypeAbsolute})
 	world.SyncInputBuffer()
 
 	for i := 0; i < 60; i++ {
@@ -177,7 +177,7 @@ func TestRotation_NoMovement(t *testing.T) {
 	rotSpeed := 2.0
 	expectedRotation := rotSpeed * dt
 
-	world.SetInput(playerID, state.Input{LookHorizontal: 1})
+	world.SetInput(playerID, state.Input{PickupEntityID: state.NoPickup, DropSlotIndex: state.NoDrop, LookHorizontal: 1})
 	world.SyncInputBuffer()
 
 	ms.Update(dt)
@@ -203,7 +203,7 @@ func TestRelativeMovement_ForwardMeansPlayerDirection(t *testing.T) {
 	speed := 5.0
 	expectedDelta := speed * dt
 
-	world.SetInput(playerID, state.Input{MoveVertical: 1, MovementType: state.MovementTypeRelative})
+	world.SetInput(playerID, state.Input{PickupEntityID: state.NoPickup, DropSlotIndex: state.NoDrop, MoveVertical: 1, MovementType: state.MovementTypeRelative})
 	world.SyncInputBuffer()
 
 	ms.Update(dt)
@@ -254,8 +254,8 @@ func TestMovementSpeed_AffectsDistance(t *testing.T) {
 	ms := NewBasicMovementSystem(world)
 	dt := 1.0 / 60.0
 
-	world.SetInput(slowPlayerID, state.Input{MoveHorizontal: 1, MovementType: state.MovementTypeAbsolute})
-	world.SetInput(fastPlayerID, state.Input{MoveHorizontal: 1, MovementType: state.MovementTypeAbsolute})
+	world.SetInput(slowPlayerID, state.Input{PickupEntityID: state.NoPickup, DropSlotIndex: state.NoDrop, MoveHorizontal: 1, MovementType: state.MovementTypeAbsolute})
+	world.SetInput(fastPlayerID, state.Input{PickupEntityID: state.NoPickup, DropSlotIndex: state.NoDrop, MoveHorizontal: 1, MovementType: state.MovementTypeAbsolute})
 	world.SyncInputBuffer()
 
 	ms.Update(dt)
@@ -286,7 +286,7 @@ func TestPlayerInsideWall_PushedOut(t *testing.T) {
 	addWall(world, 50, 50, 2, 2)
 	ms := NewBasicMovementSystem(world)
 
-	world.SetInput(playerID, state.Input{})
+	world.SetInput(playerID, state.Input{PickupEntityID: state.NoPickup, DropSlotIndex: state.NoDrop})
 	world.SyncInputBuffer()
 
 	ms.Update(1.0 / 60.0)
@@ -313,7 +313,7 @@ func TestCornerCollision_CircleAABB(t *testing.T) {
 	addWall(world, 50, 50, 2, 2)
 	ms := NewBasicMovementSystem(world)
 
-	world.SetInput(playerID, state.Input{MoveHorizontal: -1, MoveVertical: -1, MovementType: state.MovementTypeAbsolute})
+	world.SetInput(playerID, state.Input{PickupEntityID: state.NoPickup, DropSlotIndex: state.NoDrop, MoveHorizontal: -1, MoveVertical: -1, MovementType: state.MovementTypeAbsolute})
 	world.SyncInputBuffer()
 
 	for i := 0; i < 30; i++ {
@@ -342,7 +342,7 @@ func TestPrePositionUpdated(t *testing.T) {
 	world, playerID := setupTestWorld(state.Position{X: 50, Y: 50}, 0)
 	ms := NewBasicMovementSystem(world)
 
-	world.SetInput(playerID, state.Input{MoveHorizontal: 1, MovementType: state.MovementTypeAbsolute})
+	world.SetInput(playerID, state.Input{PickupEntityID: state.NoPickup, DropSlotIndex: state.NoDrop, MoveHorizontal: 1, MovementType: state.MovementTypeAbsolute})
 	world.SyncInputBuffer()
 
 	ms.Update(1.0 / 60.0)

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"sync"
+
+	"survival/internal/engine/ports"
 )
 
 type World struct {
@@ -24,8 +26,10 @@ type World struct {
 
 	VerticalBody ComponentManager[VerticalBody]
 
-	Projectile  ComponentManager[ProjectileData]
-	WeaponState ComponentManager[WeaponState]
+	Projectile ComponentManager[ProjectileData]
+	Inventory  ComponentManager[Inventory]
+	ItemDef    ComponentManager[ItemDef]
+	GroundItem ComponentManager[GroundItem]
 
 	Input          ComponentManager[Input]
 	inputMapBuffer map[EntityID]Input
@@ -53,7 +57,9 @@ func NewWorld(gridCellSize float64, gridWidth, gridHeight int) *World {
 		Collider:       *NewComponentManager[Collider](),
 		VerticalBody:   *NewComponentManager[VerticalBody](),
 		Projectile:     *NewComponentManager[ProjectileData](),
-		WeaponState:    *NewComponentManager[WeaponState](),
+		Inventory:      *NewComponentManager[Inventory](),
+		ItemDef:        *NewComponentManager[ItemDef](),
+		GroundItem:     *NewComponentManager[GroundItem](),
 		Input:          *NewComponentManager[Input](),
 		inputMapBuffer: make(map[EntityID]Input),
 		inputMutex:     &sync.Mutex{},
@@ -98,7 +104,7 @@ func (w *World) CreatePlayer(cfg CreatePlayer) (EntityID, bool) {
 			Meta:          PlayerMeta,
 			PlayerHitbox:  PlayerHitbox{cfg.Position, cfg.Radius},
 			Health:        cfg.Health,
-			WeaponState:   DefaultWeaponState(),
+			Inventory:     DefaultInventory(cfg.FistDefID, ports.ItemSlotCount),
 		},
 	)
 
@@ -112,6 +118,7 @@ type CreatePlayer struct {
 	RotationSpeed RotationSpeed
 	Radius        float64
 	Health        Health
+	FistDefID     EntityID
 }
 
 func (w *World) UpdatePlayer(id EntityID, player UpdatePlayer) {
@@ -127,7 +134,7 @@ func (w *World) UpdatePlayer(id EntityID, player UpdatePlayer) {
 		PlayerShape:   player.PlayerHitbox,
 		Health:        player.Health,
 		PrePosition:   player.PrePosition,
-		WeaponState:   player.WeaponState,
+		Inventory:     player.Inventory,
 	})
 }
 
@@ -141,7 +148,7 @@ type UpdatePlayer struct {
 	PlayerHitbox
 	Health
 	PrePosition
-	WeaponState
+	Inventory
 }
 
 type CreateProjectile struct {
@@ -258,8 +265,13 @@ func (w *World) ApplyCommands() {
 				// TODO: log error
 			}
 		}
-		if cmd.UpdateMeta.Has(ComponentWeaponState) {
-			if !w.WeaponState.Upsert(entityID, cmd.WeaponState) {
+		if cmd.UpdateMeta.Has(ComponentInventory) {
+			if !w.Inventory.Upsert(entityID, cmd.Inventory) {
+				// TODO: log error
+			}
+		}
+		if cmd.UpdateMeta.Has(ComponentGroundItem) {
+			if !w.GroundItem.Upsert(entityID, cmd.GroundItem) {
 				// TODO: log error
 			}
 		}
@@ -281,7 +293,9 @@ func (w *World) destroyEntity(id EntityID) {
 	w.Collider.Remove(id)
 	w.VerticalBody.Remove(id)
 	w.Projectile.Remove(id)
-	w.WeaponState.Remove(id)
+	w.Inventory.Remove(id)
+	w.ItemDef.Remove(id)
+	w.GroundItem.Remove(id)
 	w.Input.Remove(id)
 	w.Entity.Free(id)
 }
@@ -399,18 +413,56 @@ type MapInfo struct {
 	Height float64
 }
 
-// DefaultWeaponState returns the initial weapon loadout for a new player.
-func DefaultWeaponState() WeaponState {
-	return WeaponState{
-		Weapons: [3]WeaponSpec{
-			{Type: WeaponTypeFist, Range: 5, FireRate: 3, Damage: 5, Speed: 50},
-			{Type: WeaponTypeKnife, Range: 1, FireRate: 7, Damage: 15, Speed: 30},
-			{Type: WeaponTypeGun, Range: 20, FireRate: 2, Damage: 30, Speed: 30},
+// DefaultInventory returns the initial inventory for a new player.
+// fistDefID is the EntityID of the Fist item definition (always occupies slot 0).
+func DefaultInventory(fistDefID EntityID, maxItemCapacity int) Inventory {
+	return Inventory{
+		Weapons: [3]WeaponSlot{
+			{ItemDefID: fistDefID}, // Slot 0: Fist (always occupied)
+			{},                     // Slot 1: Knife (empty)
+			{},                     // Slot 2: Gun (empty)
 		},
-		// assume melee attack as a short distance burst projectile for easier implementation, can be refactored later to separate melee/ranged logic
-		// such implementation makes a bad attack experience when player step back and attack, player will feel like the attack range is apart from the character
-		CurrentWeaponIndex: 2, // default to Gun
+		CurrentWeaponIndex: 0, // default to Fist
+		MaxItemCapacity:    maxItemCapacity,
 	}
+}
+
+type CreateGroundItem struct {
+	Position  Position
+	ItemDefID EntityID
+	Quantity  int
+}
+
+// CreateGroundItemEntity allocates a ground item entity referencing an item definition config entity.
+func (w *World) CreateGroundItemEntity(cfg CreateGroundItem) (EntityID, bool) {
+	id, ok := w.Entity.Alloc()
+	if !ok {
+		return 0, false
+	}
+
+	w.buf.Push(WorldCommand{
+		EntityID:   id,
+		UpdateMeta: GroundItemMeta,
+		Position:   cfg.Position,
+		Meta:       GroundItemMeta,
+		GroundItem: GroundItem{ItemDefID: cfg.ItemDefID, Quantity: cfg.Quantity},
+	})
+
+	return id, true
+}
+
+// CreateItemDefEntity allocates an item definition config entity (persists forever).
+// ItemDefs are immutable config data, so they are written directly (no command buffer).
+func (w *World) CreateItemDefEntity(def ItemDef) (EntityID, bool) {
+	id, ok := w.Entity.Alloc()
+	if !ok {
+		return 0, false
+	}
+
+	w.EntityMeta.Upsert(id, ItemDefMeta)
+	w.ItemDef.Upsert(id, def)
+
+	return id, true
 }
 
 // SetInput buffers the input for an entity.
@@ -421,6 +473,17 @@ func (w *World) SetInput(entityID EntityID, input Input) {
 	defer w.inputMutex.Unlock()
 
 	old := w.inputMapBuffer[entityID]
+
+	dropSlotIndex := old.DropSlotIndex
+	if input.DropSlotIndex != NoDrop {
+		dropSlotIndex = input.DropSlotIndex
+	}
+
+	pickupEntityID := old.PickupEntityID
+	if input.PickupEntityID != NoPickup {
+		pickupEntityID = input.PickupEntityID
+	}
+
 	w.inputMapBuffer[entityID] = Input{
 		MoveVertical:   input.MoveVertical,
 		MoveHorizontal: input.MoveHorizontal,
@@ -430,6 +493,8 @@ func (w *World) SetInput(entityID EntityID, input Input) {
 		SwitchWeapon:   old.SwitchWeapon || input.SwitchWeapon,
 		Reload:         old.Reload || input.Reload,
 		FastReload:     old.FastReload || input.FastReload,
+		PickupEntityID: pickupEntityID,
+		DropSlotIndex:  dropSlotIndex,
 		Timestamp:      input.Timestamp,
 	}
 }

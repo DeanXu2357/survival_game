@@ -15,6 +15,9 @@ func setupProjectileWorld() *state.World {
 	world := state.NewWorld(gridCellSize, gridWidth, gridHeight)
 	world.Width = 100
 	world.Height = 100
+	// Reserve entity 0 so no real entity gets EntityID(0),
+	// which would be confused with "empty" in IsEmpty() checks.
+	world.Entity.Alloc()
 	return world
 }
 
