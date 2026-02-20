@@ -223,3 +223,76 @@ func (g *Game) LastUpdateTime() time.Time {
 func (g *Game) IsInitialized() bool {
 	return g.isInitialized
 }
+
+// PlayerHealth returns the health of the given player.
+func (g *Game) PlayerHealth(playerID state.EntityID) (state.Health, bool) {
+	return g.world.Health.Get(playerID)
+}
+
+// PlayerInventory returns the inventory of the given player.
+func (g *Game) PlayerInventory(playerID state.EntityID) (state.Inventory, bool) {
+	return g.world.Inventory.Get(playerID)
+}
+
+// ProjectileCount returns the number of active projectile entities.
+func (g *Game) ProjectileCount() int {
+	n := 0
+	for range g.world.Projectile.All() {
+		n++
+	}
+	return n
+}
+
+// GroundItemSnapshots returns snapshots of all ground item entities.
+func (g *Game) GroundItemSnapshots() []state.GroundItemSnapshot {
+	var items []state.GroundItemSnapshot
+	for entityID, gi := range g.world.GroundItem.All() {
+		pos, ok := g.world.Position.Get(entityID)
+		if !ok {
+			continue
+		}
+		items = append(items, state.GroundItemSnapshot{
+			ID:         entityID,
+			Position:   pos,
+			GroundItem: gi,
+		})
+	}
+	return items
+}
+
+// RegisterItemDef creates a new item definition entity.
+func (g *Game) RegisterItemDef(config state.ItemConfig) (state.EntityID, error) {
+	id, ok := g.world.CreateItemDefEntity(config)
+	if !ok {
+		return 0, fmt.Errorf("failed to create item definition")
+	}
+	return id, nil
+}
+
+// SpawnGroundItem creates a ground item entity at the given position.
+func (g *Game) SpawnGroundItem(pos state.Position, itemDefID state.EntityID, quantity, ammo int) (state.EntityID, error) {
+	id, ok := g.world.CreateGroundItemEntity(state.CreateGroundItem{
+		Position:  pos,
+		ItemDefID: itemDefID,
+		Quantity:  quantity,
+		Ammo:      ammo,
+	})
+	if !ok {
+		return 0, fmt.Errorf("failed to create ground item")
+	}
+	g.world.ApplyCommands()
+	return id, nil
+}
+
+// SetPlayerInventory overwrites the inventory of the given player.
+func (g *Game) SetPlayerInventory(playerID state.EntityID, inv state.Inventory) error {
+	if !g.world.Entity.IsAlive(playerID) {
+		return fmt.Errorf("player %d not alive", playerID)
+	}
+	g.world.UpdatePlayer(playerID, state.UpdatePlayer{
+		UpdateMeta: state.ComponentInventory,
+		Inventory:  inv,
+	})
+	g.world.ApplyCommands()
+	return nil
+}

@@ -18,6 +18,12 @@ type StaticEntity struct {
 	HasVerticalBody bool         `json:"has_vertical_body"`
 }
 
+type GroundItemSnapshot struct {
+	ID         EntityID
+	Position   Position
+	GroundItem GroundItem
+}
+
 type MapInfo struct {
 	Width  float64
 	Height float64
