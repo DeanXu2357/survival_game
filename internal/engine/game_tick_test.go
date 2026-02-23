@@ -3,6 +3,8 @@ package engine
 import (
 	"math"
 	"testing"
+
+	"survival/internal/engine/ports"
 )
 
 // TestGameTickTracking verifies that the tick counter increments correctly
@@ -21,7 +23,7 @@ func TestGameTickTracking(t *testing.T) {
 	}
 
 	// Should have exactly 60 ticks
-	if game.CurrentTick() != 60 {
+	if game.CurrentTick() != ports.Tick(60) {
 		t.Errorf("Expected 60 ticks, got %d", game.CurrentTick())
 	}
 
@@ -49,7 +51,7 @@ func TestTickDeterminism(t *testing.T) {
 	game.Update(1.0 / 60.0) // Normal frame
 
 	// Tick counter should be exactly 3, regardless of dt values
-	if game.CurrentTick() != 3 {
+	if game.CurrentTick() != ports.Tick(3) {
 		t.Errorf("Expected exactly 3 ticks, got %d", game.CurrentTick())
 	}
 
@@ -80,7 +82,7 @@ func TestAutoInitialization(t *testing.T) {
 		t.Error("Game should be auto-initialized after first Update()")
 	}
 
-	if game.CurrentTick() != 1 {
+	if game.CurrentTick() != ports.Tick(1) {
 		t.Errorf("Expected 1 tick after first Update, got %d", game.CurrentTick())
 	}
 }
@@ -98,7 +100,7 @@ func TestDtClamping(t *testing.T) {
 	game.Update(100.0) // 100 seconds (would cause physics to explode)
 
 	// Only 1 tick should have passed
-	if game.CurrentTick() != 1 {
+	if game.CurrentTick() != ports.Tick(1) {
 		t.Errorf("Expected 1 tick, got %d", game.CurrentTick())
 	}
 

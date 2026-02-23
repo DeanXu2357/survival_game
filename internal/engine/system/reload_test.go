@@ -80,7 +80,7 @@ func setupReloadPlayer(t *testing.T) (world *state.World, playerID state.EntityI
 
 func TestReload_NormalReloadCompletesAfter90Ticks(t *testing.T) {
 	world, playerID, _, magDef := setupReloadPlayer(t)
-	var tick uint64 = 100
+	var tick ports.Tick = 100
 
 	rs := NewInventorySystem(world, &tick)
 
@@ -152,7 +152,7 @@ func TestReload_NormalReloadCompletesAfter90Ticks(t *testing.T) {
 
 func TestReload_FastReloadCompletesAfter60Ticks(t *testing.T) {
 	world, playerID, _, magDef := setupReloadPlayer(t)
-	var tick uint64 = 100
+	var tick ports.Tick = 100
 
 	rs := NewInventorySystem(world, &tick)
 
@@ -217,7 +217,7 @@ func TestReload_FastReloadCompletesAfter60Ticks(t *testing.T) {
 
 func TestReload_CannotFireDuringReload(t *testing.T) {
 	world, playerID, _, _ := setupReloadPlayer(t)
-	var tick uint64 = 100
+	var tick ports.Tick = 100
 
 	is := NewInventorySystem(world, &tick)
 	wf := NewWeaponFireSystem(world, &tick)
@@ -247,7 +247,7 @@ func TestReload_CannotFireDuringReload(t *testing.T) {
 
 func TestReload_WeaponSwitchCancelsReload(t *testing.T) {
 	world, playerID, _, _ := setupReloadPlayer(t)
-	var tick uint64 = 100
+	var tick ports.Tick = 100
 
 	is := NewInventorySystem(world, &tick)
 
@@ -292,7 +292,7 @@ func TestReload_WeaponSwitchCancelsReload(t *testing.T) {
 
 func TestReload_CannotReloadWithoutSpareMagazine(t *testing.T) {
 	world := setupInventoryWorld()
-	var tick uint64 = 100
+	var tick ports.Tick = 100
 
 	fistDef := createFistDef(t, world)
 	gunDef := createGunDefWithAmmo(t, world)
@@ -330,7 +330,7 @@ func TestReload_CannotReloadWithoutSpareMagazine(t *testing.T) {
 
 func TestReload_CannotReloadWhenMagazineFull(t *testing.T) {
 	world, playerID, _, magDef := setupReloadPlayer(t)
-	var tick uint64 = 100
+	var tick ports.Tick = 100
 
 	// Set loaded mag to full (12/12)
 	inv, _ := world.Inventory.Get(playerID)
@@ -358,7 +358,7 @@ func TestReload_CannotReloadWhenMagazineFull(t *testing.T) {
 
 func TestReload_FullestMagazineSelectedFirst(t *testing.T) {
 	world := setupInventoryWorld()
-	var tick uint64 = 100
+	var tick ports.Tick = 100
 
 	fistDef := createFistDef(t, world)
 	gunDef := createGunDefWithAmmo(t, world)
@@ -414,7 +414,7 @@ func TestReload_FullestMagazineSelectedFirst(t *testing.T) {
 
 func TestReload_FireDeductsAmmoAndBlocksAtZero(t *testing.T) {
 	world, playerID, _, _ := setupReloadPlayer(t)
-	var tick uint64 = 100
+	var tick ports.Tick = 100
 
 	// Set loaded mag to 2 rounds
 	inv, _ := world.Inventory.Get(playerID)
@@ -476,7 +476,7 @@ func TestReload_FireDeductsAmmoAndBlocksAtZero(t *testing.T) {
 
 func TestReload_MeleeWeaponCannotReload(t *testing.T) {
 	world := setupInventoryWorld()
-	var tick uint64 = 100
+	var tick ports.Tick = 100
 
 	fistDef := createFistDef(t, world)
 	playerID := createPlayerForInventory(t, world, state.Position{X: 50, Y: 50}, 0, fistDef)
@@ -497,7 +497,7 @@ func TestReload_MeleeWeaponCannotReload(t *testing.T) {
 
 func TestReload_MeleeFiresWithoutAmmo(t *testing.T) {
 	world := setupInventoryWorld()
-	var tick uint64 = 100
+	var tick ports.Tick = 100
 
 	fistDef := createFistDef(t, world)
 	playerID := createPlayerForInventory(t, world, state.Position{X: 50, Y: 50}, 0, fistDef)

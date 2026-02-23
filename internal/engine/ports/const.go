@@ -1,5 +1,15 @@
 package ports
 
+type Tick uint64
+
+func TicksFromSeconds(s float64) Tick {
+	return Tick(s * TargetTickRate)
+}
+
+func (t Tick) Seconds() float64 {
+	return float64(t) / TargetTickRate
+}
+
 // FIXME: put const here temporarily, for avoiding circular imports
 const (
 	TargetTickRate = 60.0
@@ -11,7 +21,9 @@ const (
 
 	ItemSlotCount = 6
 	PickupRange   = 2.0
+)
 
-	NormalReloadTicks = 90 // 1.5s at 60 FPS
-	FastReloadTicks   = 60 // 1.0s at 60 FPS
+var (
+	NormalReloadTicks = TicksFromSeconds(1.5)
+	FastReloadTicks   = TicksFromSeconds(1.0)
 )

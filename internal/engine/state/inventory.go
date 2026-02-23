@@ -17,7 +17,7 @@ type Inventory struct {
 	Weapons            [3]WeaponSlot
 	Items              [ports.ItemSlotCount]ItemSlot
 	CurrentWeaponIndex int
-	LastSwitchTick     uint64
+	LastSwitchTick     ports.Tick
 	MaxItemCapacity    int
 }
 

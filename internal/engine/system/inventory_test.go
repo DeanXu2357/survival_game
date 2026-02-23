@@ -93,7 +93,7 @@ func createPlayerForInventory(t *testing.T, world *state.World, pos state.Positi
 
 func TestPickup_BasicItem(t *testing.T) {
 	world := setupInventoryWorld()
-	var tick uint64 = 1
+	var tick ports.Tick = 1
 	fistDef := createFistDef(t, world)
 	is := NewInventorySystem(world, &tick)
 
@@ -129,7 +129,7 @@ func TestPickup_BasicItem(t *testing.T) {
 
 func TestPickup_WeaponRouting_KnifeToSlot1(t *testing.T) {
 	world := setupInventoryWorld()
-	var tick uint64 = 1
+	var tick ports.Tick = 1
 	fistDef := createFistDef(t, world)
 	is := NewInventorySystem(world, &tick)
 
@@ -155,7 +155,7 @@ func TestPickup_WeaponRouting_KnifeToSlot1(t *testing.T) {
 
 func TestPickup_WeaponRouting_GunToSlot2(t *testing.T) {
 	world := setupInventoryWorld()
-	var tick uint64 = 1
+	var tick ports.Tick = 1
 	fistDef := createFistDef(t, world)
 	is := NewInventorySystem(world, &tick)
 
@@ -181,7 +181,7 @@ func TestPickup_WeaponRouting_GunToSlot2(t *testing.T) {
 
 func TestPickup_OutOfRange(t *testing.T) {
 	world := setupInventoryWorld()
-	var tick uint64 = 1
+	var tick ports.Tick = 1
 	fistDef := createFistDef(t, world)
 	is := NewInventorySystem(world, &tick)
 
@@ -210,7 +210,7 @@ func TestPickup_OutOfRange(t *testing.T) {
 
 func TestPickup_FullItems(t *testing.T) {
 	world := setupInventoryWorld()
-	var tick uint64 = 1
+	var tick ports.Tick = 1
 	fistDef := createFistDef(t, world)
 	is := NewInventorySystem(world, &tick)
 
@@ -246,7 +246,7 @@ func TestPickup_FullItems(t *testing.T) {
 
 func TestPickup_ExplicitTargeting(t *testing.T) {
 	world := setupInventoryWorld()
-	var tick uint64 = 1
+	var tick ports.Tick = 1
 	fistDef := createFistDef(t, world)
 	is := NewInventorySystem(world, &tick)
 
@@ -274,7 +274,7 @@ func TestPickup_ExplicitTargeting(t *testing.T) {
 
 func TestPickup_InvalidEntityID(t *testing.T) {
 	world := setupInventoryWorld()
-	var tick uint64 = 1
+	var tick ports.Tick = 1
 	fistDef := createFistDef(t, world)
 	is := NewInventorySystem(world, &tick)
 
@@ -298,7 +298,7 @@ func TestPickup_InvalidEntityID(t *testing.T) {
 
 func TestPickup_NotGroundItem(t *testing.T) {
 	world := setupInventoryWorld()
-	var tick uint64 = 1
+	var tick ports.Tick = 1
 	fistDef := createFistDef(t, world)
 	is := NewInventorySystem(world, &tick)
 
@@ -332,7 +332,7 @@ func TestPickup_NotGroundItem(t *testing.T) {
 
 func TestDrop_ItemSlot(t *testing.T) {
 	world := setupInventoryWorld()
-	var tick uint64 = 1
+	var tick ports.Tick = 1
 	fistDef := createFistDef(t, world)
 	is := NewInventorySystem(world, &tick)
 
@@ -392,7 +392,7 @@ func TestDrop_ItemSlot(t *testing.T) {
 
 func TestDrop_WeaponSlot(t *testing.T) {
 	world := setupInventoryWorld()
-	var tick uint64 = 1
+	var tick ports.Tick = 1
 	fistDef := createFistDef(t, world)
 	is := NewInventorySystem(world, &tick)
 
@@ -437,7 +437,7 @@ func TestDrop_WeaponSlot(t *testing.T) {
 
 func TestDrop_CannotDropFist(t *testing.T) {
 	world := setupInventoryWorld()
-	var tick uint64 = 1
+	var tick ports.Tick = 1
 	fistDef := createFistDef(t, world)
 	is := NewInventorySystem(world, &tick)
 
@@ -459,7 +459,7 @@ func TestDrop_CannotDropFist(t *testing.T) {
 
 func TestDrop_EmptySlot(t *testing.T) {
 	world := setupInventoryWorld()
-	var tick uint64 = 1
+	var tick ports.Tick = 1
 	fistDef := createFistDef(t, world)
 	is := NewInventorySystem(world, &tick)
 
@@ -481,7 +481,7 @@ func TestDrop_EmptySlot(t *testing.T) {
 
 func TestDrop_InvalidSlotIndex(t *testing.T) {
 	world := setupInventoryWorld()
-	var tick uint64 = 1
+	var tick ports.Tick = 1
 	fistDef := createFistDef(t, world)
 	is := NewInventorySystem(world, &tick)
 
@@ -505,7 +505,7 @@ func TestDrop_InvalidSlotIndex(t *testing.T) {
 
 func TestWeaponSwitch_CyclesOccupiedSlots(t *testing.T) {
 	world := setupInventoryWorld()
-	var tick uint64 = 100
+	var tick ports.Tick = 100
 	fistDef := createFistDef(t, world)
 	is := NewInventorySystem(world, &tick)
 
@@ -550,7 +550,7 @@ func TestWeaponSwitch_CyclesOccupiedSlots(t *testing.T) {
 
 func TestWeaponSwitch_CooldownEnforced(t *testing.T) {
 	world := setupInventoryWorld()
-	var tick uint64 = 100
+	var tick ports.Tick = 100
 	fistDef := createFistDef(t, world)
 	is := NewInventorySystem(world, &tick)
 
@@ -595,7 +595,7 @@ func TestWeaponSwitch_CooldownEnforced(t *testing.T) {
 
 func TestWeaponSwitch_SkipsEmptySlots(t *testing.T) {
 	world := setupInventoryWorld()
-	var tick uint64 = 100
+	var tick ports.Tick = 100
 	fistDef := createFistDef(t, world)
 	is := NewInventorySystem(world, &tick)
 

@@ -14,10 +14,10 @@ var _ state.System = (*WeaponFireSystem)(nil)
 
 type WeaponFireSystem struct {
 	world       *state.World
-	currentTick *uint64
+	currentTick *ports.Tick
 }
 
-func NewWeaponFireSystem(world *state.World, currentTick *uint64) *WeaponFireSystem {
+func NewWeaponFireSystem(world *state.World, currentTick *ports.Tick) *WeaponFireSystem {
 	return &WeaponFireSystem{world: world, currentTick: currentTick}
 }
 
@@ -64,7 +64,7 @@ func (wf *WeaponFireSystem) Update(dt float64) {
 		}
 
 		// Fire rate limiting (LastFireTick == 0 means never fired, always allow)
-		fireInterval := uint64(ports.TargetTickRate / weapon.FireRate)
+		fireInterval := ports.Tick(ports.TargetTickRate / weapon.FireRate)
 		if activeSlot.LastFireTick > 0 && tick-activeSlot.LastFireTick < fireInterval {
 			continue
 		}
@@ -112,11 +112,11 @@ func (wf *WeaponFireSystem) resolveActiveWeapon(inv state.Inventory) state.Weapo
 	return itemDef.WeaponConfig
 }
 
-func (wf *WeaponFireSystem) fireProjectile(world *state.World, ownerID state.EntityID, pos state.Position, dir state.Direction, weapon state.WeaponConfig, tick uint64) {
+func (wf *WeaponFireSystem) fireProjectile(world *state.World, ownerID state.EntityID, pos state.Position, dir state.Direction, weapon state.WeaponConfig, tick ports.Tick) {
 	spawnPos := state.Position(vector.Vector2D(pos).Add(vector.Forward(float64(dir)).Scale(0.5)))
 
 	speed := weapon.Speed
-	expiredAt := tick + uint64(weapon.Range/speed*ports.TargetTickRate)
+	expiredAt := tick + ports.Tick(weapon.Range/speed*ports.TargetTickRate)
 
 	world.CreateProjectileEntity(state.CreateProjectile{
 		Position:  spawnPos,

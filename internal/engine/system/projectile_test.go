@@ -4,6 +4,7 @@ import (
 	"math"
 	"testing"
 
+	"survival/internal/engine/ports"
 	"survival/internal/engine/state"
 	"survival/internal/engine/vector"
 )
@@ -37,7 +38,7 @@ func spawnProjectile(t *testing.T, world *state.World, pos state.Position, dir s
 
 func TestProjectile_MovesCorrectly(t *testing.T) {
 	world := setupProjectileWorld()
-	var tick uint64 = 1
+	var tick ports.Tick = 1
 	ps := NewProjectileSystem(world, &tick)
 
 	// Direction 0 means facing "north" (sin(0)=0, -cos(0)=-1), so Y decreases
@@ -70,7 +71,7 @@ func TestProjectile_MovesCorrectly(t *testing.T) {
 
 func TestProjectile_MovesMultipleTicks(t *testing.T) {
 	world := setupProjectileWorld()
-	var tick uint64 = 1
+	var tick ports.Tick = 1
 	ps := NewProjectileSystem(world, &tick)
 
 	projID := spawnProjectile(t, world, state.Position{X: 50, Y: 50}, 0, state.ProjectileData{
@@ -102,7 +103,7 @@ func TestProjectile_MovesMultipleTicks(t *testing.T) {
 
 func TestProjectile_DestroyedOnTTLExpiry(t *testing.T) {
 	world := setupProjectileWorld()
-	var tick uint64 = 10
+	var tick ports.Tick = 10
 	ps := NewProjectileSystem(world, &tick)
 
 	projID := spawnProjectile(t, world, state.Position{X: 50, Y: 50}, 0, state.ProjectileData{
@@ -129,7 +130,7 @@ func TestProjectile_DestroyedOnTTLExpiry(t *testing.T) {
 
 func TestProjectile_DestroyedOnWallCollision(t *testing.T) {
 	world := setupProjectileWorld()
-	var tick uint64 = 1
+	var tick ports.Tick = 1
 	ps := NewProjectileSystem(world, &tick)
 
 	// Add wall at Y=45 (center=45, halfSize=2x2, so Y range is 43-47)
@@ -161,7 +162,7 @@ func TestProjectile_DestroyedOnWallCollision(t *testing.T) {
 
 func TestProjectile_HitsPlayer_NotOwner(t *testing.T) {
 	world := setupProjectileWorld()
-	var tick uint64 = 1
+	var tick ports.Tick = 1
 	ps := NewProjectileSystem(world, &tick)
 
 	// Create owner player
@@ -229,7 +230,7 @@ func TestProjectile_HitsPlayer_NotOwner(t *testing.T) {
 
 func TestProjectile_DoesNotHitOwner(t *testing.T) {
 	world := setupProjectileWorld()
-	var tick uint64 = 1
+	var tick ports.Tick = 1
 	ps := NewProjectileSystem(world, &tick)
 
 	// Create owner at the projectile spawn point
@@ -268,7 +269,7 @@ func TestProjectile_DoesNotHitOwner(t *testing.T) {
 
 func TestProjectile_DirectionAffectsMovement(t *testing.T) {
 	world := setupProjectileWorld()
-	var tick uint64 = 1
+	var tick ports.Tick = 1
 	ps := NewProjectileSystem(world, &tick)
 
 	// Direction Pi/2 means facing "east" (sin(Pi/2)=1, -cos(Pi/2)=0)
@@ -304,7 +305,7 @@ func TestProjectile_DirectionAffectsMovement(t *testing.T) {
 
 func TestProjectile_WallCollisionAtBoundary(t *testing.T) {
 	world := setupProjectileWorld()
-	var tick uint64 = 1
+	var tick ports.Tick = 1
 	ps := NewProjectileSystem(world, &tick)
 
 	// Place a large wall covering center of map

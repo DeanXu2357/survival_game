@@ -101,7 +101,7 @@ func switchWeapon(t *testing.T, world *state.World, playerID state.EntityID, wea
 
 func TestWeaponFire_SpawnsProjectileOnFire(t *testing.T) {
 	world := setupProjectileWorld()
-	var tick uint64 = 5
+	var tick ports.Tick = 5
 
 	playerID, _, _, _ := createPlayerWithWeapons(t, world)
 
@@ -140,7 +140,7 @@ func TestWeaponFire_SpawnsProjectileOnFire(t *testing.T) {
 		t.Errorf("Expected Damage=%d, got %d", expectedDamage, foundProj.Damage)
 	}
 
-	expectedExpiredAt := tick + uint64(expectedRange/expectedSpeed*ports.TargetTickRate)
+	expectedExpiredAt := tick + ports.Tick(expectedRange/expectedSpeed*ports.TargetTickRate)
 	if foundProj.ExpiredAt != expectedExpiredAt {
 		t.Errorf("Expected ExpiredAt=%d, got %d", expectedExpiredAt, foundProj.ExpiredAt)
 	}
@@ -148,7 +148,7 @@ func TestWeaponFire_SpawnsProjectileOnFire(t *testing.T) {
 
 func TestWeaponFire_NoProjectileWithoutFireInput(t *testing.T) {
 	world := setupProjectileWorld()
-	var tick uint64 = 5
+	var tick ports.Tick = 5
 
 	playerID, _, _, _ := createPlayerWithWeapons(t, world)
 
@@ -172,7 +172,7 @@ func TestWeaponFire_NoProjectileWithoutFireInput(t *testing.T) {
 
 func TestWeaponFire_ProjectileSpawnsAtPlayerPosition(t *testing.T) {
 	world := setupProjectileWorld()
-	var tick uint64 = 5
+	var tick ports.Tick = 5
 
 	playerPos := state.Position{X: 30, Y: 40}
 	playerDir := state.Direction(1.5)
@@ -216,7 +216,7 @@ func TestWeaponFire_ProjectileSpawnsAtPlayerPosition(t *testing.T) {
 
 func TestWeaponFire_FireRateLimiting(t *testing.T) {
 	world := setupProjectileWorld()
-	var tick uint64 = 100
+	var tick ports.Tick = 100
 
 	playerID, _, _, _ := createPlayerWithWeapons(t, world)
 
@@ -254,7 +254,7 @@ func TestWeaponFire_FireRateLimiting(t *testing.T) {
 
 func TestWeaponFire_PerWeaponLastFireTick(t *testing.T) {
 	world := setupProjectileWorld()
-	var tick uint64 = 100
+	var tick ports.Tick = 100
 
 	playerID, _, _, _ := createPlayerWithWeapons(t, world)
 
@@ -295,7 +295,7 @@ func TestWeaponFire_PerWeaponLastFireTick(t *testing.T) {
 
 func TestWeaponFire_KnifeSpawnsProjectile(t *testing.T) {
 	world := setupProjectileWorld()
-	var tick uint64 = 5
+	var tick ports.Tick = 5
 
 	playerID, _, _, _ := createPlayerWithWeapons(t, world)
 	switchWeapon(t, world, playerID, 1) // Knife
@@ -331,7 +331,7 @@ func TestWeaponFire_KnifeSpawnsProjectile(t *testing.T) {
 
 func TestWeaponFire_FistSpawnsProjectile(t *testing.T) {
 	world := setupProjectileWorld()
-	var tick uint64 = 5
+	var tick ports.Tick = 5
 
 	playerID, _, _, _ := createPlayerWithWeapons(t, world)
 	switchWeapon(t, world, playerID, 0) // Fist
@@ -364,7 +364,7 @@ func TestWeaponFire_FistSpawnsProjectile(t *testing.T) {
 		t.Errorf("Expected fist projectile Range=5, got %f", foundProj.Range)
 	}
 
-	expectedExpiredAt := tick + uint64(5.0/50.0*ports.TargetTickRate)
+	expectedExpiredAt := tick + ports.Tick(5.0/50.0*ports.TargetTickRate)
 	if foundProj.ExpiredAt != expectedExpiredAt {
 		t.Errorf("Expected fist ExpiredAt=%d, got %d", expectedExpiredAt, foundProj.ExpiredAt)
 	}
@@ -372,7 +372,7 @@ func TestWeaponFire_FistSpawnsProjectile(t *testing.T) {
 
 func TestWeaponFire_FistFallback(t *testing.T) {
 	world := setupProjectileWorld()
-	var tick uint64 = 5
+	var tick ports.Tick = 5
 
 	// Create player with only fist (no other weapons)
 	fistDefID := createFistDef(t, world)

@@ -1,5 +1,7 @@
 package state
 
+import "survival/internal/engine/ports"
+
 type WeaponType uint8
 
 const (
@@ -42,11 +44,11 @@ const (
 // WeaponSlot represents a weapon equipped in the player's weapon loadout.
 type WeaponSlot struct {
 	ItemID          EntityID   // 0 = empty (slot 0 always has FistDefID)
-	LastFireTick    uint64     // per-weapon fire cooldown
+	LastFireTick    ports.Tick // per-weapon fire cooldown
 	LoadedMagID     EntityID   // which magazine type is loaded (0 = none)
 	LoadedMagAmmo   int        // bullets remaining in loaded magazine
 	MagCapacity     int        // max bullets for loaded magazine (copied from ItemConfig at load time)
-	ReloadStartTick uint64     // tick when reload began (0 = not reloading)
+	ReloadStartTick ports.Tick // tick when reload began (0 = not reloading)
 	ReloadType      ReloadType // which reload type is in progress
 }
 

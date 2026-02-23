@@ -1,6 +1,7 @@
 package system
 
 import (
+	"survival/internal/engine/ports"
 	"survival/internal/engine/state"
 	"survival/internal/engine/vector"
 )
@@ -9,10 +10,10 @@ var _ state.System = (*ProjectileSystem)(nil)
 
 type ProjectileSystem struct {
 	world       *state.World
-	currentTick *uint64
+	currentTick *ports.Tick
 }
 
-func NewProjectileSystem(world *state.World, currentTick *uint64) *ProjectileSystem {
+func NewProjectileSystem(world *state.World, currentTick *ports.Tick) *ProjectileSystem {
 	return &ProjectileSystem{world: world, currentTick: currentTick}
 }
 

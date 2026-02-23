@@ -17,10 +17,10 @@ type Game struct {
 	fistDefID state.EntityID // EntityID for the Fist weapon definition
 
 	// Tick-based time tracking
-	currentTick   uint64    // Current game tick (increments each Update call)
-	startTime     time.Time // Wall-clock time when game loop started
-	lastUpdate    time.Time // Wall-clock time of last Update() call
-	isInitialized bool      // Whether StartGameLoop() has been called
+	currentTick   ports.Tick // Current game tick (increments each Update call)
+	startTime     time.Time  // Wall-clock time when game loop started
+	lastUpdate    time.Time  // Wall-clock time of last Update() call
+	isInitialized bool       // Whether StartGameLoop() has been called
 }
 
 func NewGame(mapConfig *MapConfig) (*Game, error) {
@@ -199,14 +199,14 @@ func (g *Game) MapInfo() state.MapInfo {
 
 // CurrentTick returns the current game tick count.
 // Each tick represents one Update() call at the target tick rate (60 FPS).
-func (g *Game) CurrentTick() uint64 {
+func (g *Game) CurrentTick() ports.Tick {
 	return g.currentTick
 }
 
 // ElapsedSeconds returns the total simulated game time in seconds.
 // Calculated from tick count: seconds = ticks / TickRate
 func (g *Game) ElapsedSeconds() float64 {
-	return float64(g.currentTick) / ports.TargetTickRate
+	return g.currentTick.Seconds()
 }
 
 // StartTime returns the wall-clock time when the game loop was started.

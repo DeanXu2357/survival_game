@@ -6,18 +6,16 @@ import (
 	"survival/internal/engine/vector"
 )
 
-const (
-	weaponSwitchCooldownTicks = 15 // ~0.25s at 60 FPS
-)
+var weaponSwitchCooldownTicks = ports.TicksFromSeconds(0.25)
 
 var _ state.System = (*InventorySystem)(nil)
 
 type InventorySystem struct {
 	world       *state.World
-	currentTick *uint64
+	currentTick *ports.Tick
 }
 
-func NewInventorySystem(world *state.World, currentTick *uint64) *InventorySystem {
+func NewInventorySystem(world *state.World, currentTick *ports.Tick) *InventorySystem {
 	return &InventorySystem{world: world, currentTick: currentTick}
 }
 
@@ -366,7 +364,7 @@ func findFullestCompatibleMag(inv state.Inventory, ammoCategory state.AmmoCatego
 }
 
 // reloadDuration returns the number of ticks for a given reload type.
-func reloadDuration(rt state.ReloadType) uint64 {
+func reloadDuration(rt state.ReloadType) ports.Tick {
 	switch rt {
 	case state.ReloadTypeNormal:
 		return ports.NormalReloadTicks
