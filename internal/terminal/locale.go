@@ -68,7 +68,7 @@ var (
 		SPJoiningRoom:  "加入房間中...",
 		SPDisconnected: "連線中斷",
 		SPError:        "錯誤",
-		SPStatusHint:   "WASD 移動, Q/E 轉向, ESC 返回",
+		SPStatusHint:   "WASD 移動, Q/E 轉向, Tab 切換武器, F 射擊, R 裝填, ESC 返回",
 	}
 
 	LangEN = LocaleData{
@@ -103,6 +103,6 @@ var (
 		SPJoiningRoom:  "Joining room...",
 		SPDisconnected: "Disconnected",
 		SPError:        "Error",
-		SPStatusHint:   "WASD move, Q/E turn, ESC back",
+		SPStatusHint:   "WASD move, Q/E turn, Tab switch, F fire, R reload, ESC back",
 	}
 )

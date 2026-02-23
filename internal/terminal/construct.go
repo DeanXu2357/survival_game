@@ -35,4 +35,7 @@ const (
 	InputTurnRight
 	InputAction
 	InputCancel
+	InputFire
+	InputSwitchWeapon
+	InputReload
 )

@@ -83,6 +83,73 @@ func (s *MainMenuState) startSinglePlayer() terminal.Command {
 		return terminal.Command{Type: terminal.CmdNone}
 	}
 
+	knifeDefID, err := game.RegisterItemDef(state.ItemConfig{
+		Name:     "Knife",
+		Type:     state.ItemTypeWeapon,
+		MaxStack: 1,
+		WeaponConfig: state.WeaponConfig{
+			Type:     state.WeaponTypeKnife,
+			Range:    3,
+			FireRate: 2,
+			Damage:   30,
+			Speed:    0,
+		},
+	})
+	if err != nil {
+		s.logger.Error("Failed to register knife", "error", err)
+		return terminal.Command{Type: terminal.CmdNone}
+	}
+
+	gunDefID, err := game.RegisterItemDef(state.ItemConfig{
+		Name:     "Pistol",
+		Type:     state.ItemTypeWeapon,
+		MaxStack: 1,
+		WeaponConfig: state.WeaponConfig{
+			Type:         state.WeaponTypeGun,
+			Range:        50,
+			FireRate:     2,
+			Damage:       25,
+			Speed:        100,
+			AmmoCategory: state.AmmoCategoryPistol,
+		},
+		AmmoCategory: state.AmmoCategoryPistol,
+	})
+	if err != nil {
+		s.logger.Error("Failed to register pistol", "error", err)
+		return terminal.Command{Type: terminal.CmdNone}
+	}
+
+	magDefID, err := game.RegisterItemDef(state.ItemConfig{
+		Name:         "PistolMag",
+		Type:         state.ItemTypeMagazine,
+		MaxStack:     1,
+		MagCapacity:  12,
+		AmmoCategory: state.AmmoCategoryPistol,
+	})
+	if err != nil {
+		s.logger.Error("Failed to register pistol magazine", "error", err)
+		return terminal.Command{Type: terminal.CmdNone}
+	}
+
+	inv, ok := game.PlayerInventory(entityID)
+	if !ok {
+		s.logger.Error("Failed to get player inventory")
+		return terminal.Command{Type: terminal.CmdNone}
+	}
+	inv.Weapons[1] = state.WeaponSlot{ItemID: knifeDefID}
+	inv.Weapons[2] = state.WeaponSlot{
+		ItemID:        gunDefID,
+		LoadedMagID:   magDefID,
+		LoadedMagAmmo: 12,
+		MagCapacity:   12,
+	}
+	inv.Items[0] = state.ItemSlot{ItemDefID: magDefID, Quantity: 1, Ammo: 12}
+	inv.Items[1] = state.ItemSlot{ItemDefID: magDefID, Quantity: 1, Ammo: 12}
+	if err := game.SetPlayerInventory(entityID, inv); err != nil {
+		s.logger.Error("Failed to set player inventory", "error", err)
+		return terminal.Command{Type: terminal.CmdNone}
+	}
+
 	sess := session.NewGameSession(game, entityID)
 	colliders := staticEntitiesToColliders(game.Statics())
 

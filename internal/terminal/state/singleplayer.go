@@ -73,6 +73,12 @@ func (s *SinglePlayerState) handleGameInput(input terminal.InputEvent) {
 		s.currentInput.LookHorizontal = -1
 	case terminal.InputTurnRight:
 		s.currentInput.LookHorizontal = 1
+	case terminal.InputFire:
+		s.currentInput.Fire = true
+	case terminal.InputSwitchWeapon:
+		s.currentInput.SwitchWeapon = true
+	case terminal.InputReload:
+		s.currentInput.Reload = true
 	case terminal.InputNone:
 		s.currentInput = ports.PlayerInput{}
 	}
@@ -106,7 +112,60 @@ func (s *SinglePlayerState) drawCenteredMessage(buf *bytes.Buffer, width, height
 	buf.WriteString(resetFontColor)
 }
 
+func weaponTypeFromSlotIndex(idx int) state.WeaponType {
+	switch idx {
+	case 1:
+		return state.WeaponTypeKnife
+	case 2:
+		return state.WeaponTypeGun
+	default:
+		return state.WeaponTypeFist
+	}
+}
+
+func weaponNameFromSlotIndex(idx int) string {
+	switch idx {
+	case 1:
+		return "Knife"
+	case 2:
+		return "Pistol"
+	default:
+		return "Fist"
+	}
+}
+
 func (s *SinglePlayerState) drawGameView(buf *bytes.Buffer, width, height int, playerX, playerY, playerDir float64) {
+	if inv, ok := s.session.PlayerInventory(); ok {
+		var slots [3]ui.WeaponSlotInfo
+		for i, ws := range inv.Weapons {
+			spareMags := 0
+			if ws.LoadedMagID != 0 {
+				for _, item := range inv.Items {
+					if item.ItemDefID == ws.LoadedMagID && item.Ammo > 0 {
+						spareMags++
+					}
+				}
+			}
+			slots[i] = ui.WeaponSlotInfo{
+				Type:      weaponTypeFromSlotIndex(i),
+				Name:      weaponNameFromSlotIndex(i),
+				Occupied:  !ws.IsEmpty(),
+				Ammo:      ws.LoadedMagAmmo,
+				MaxAmmo:   ws.MagCapacity,
+				SpareMags: spareMags,
+			}
+		}
+		s.uiLayer.SetWeaponSlots(slots, inv.CurrentWeaponIndex)
+
+		currentTick := s.session.CurrentTick()
+		ws := inv.Weapons[inv.CurrentWeaponIndex]
+		s.uiLayer.SetFireState(currentTick, ws.LastFireTick)
+		s.uiLayer.SetReloadState(ws.ReloadStartTick, reloadDurationForType(ws.ReloadType))
+	}
+	if hp, ok := s.session.PlayerHealth(); ok {
+		s.uiLayer.SetHealth(int(hp))
+	}
+
 	colliders := s.colliders
 
 	numRays := width
@@ -123,4 +182,15 @@ func (s *SinglePlayerState) drawGameView(buf *bytes.Buffer, width, height int, p
 	locale := terminal.AppDefaultConfig.Locale
 	statusLine := fmt.Sprintf("X:%.1f Y:%.1f Dir:%.2f | %s", playerX, playerY, playerDir, locale.SPStatusHint)
 	drawCenteredLine(buf, width, statusLine)
+}
+
+func reloadDurationForType(rt state.ReloadType) ports.Tick {
+	switch rt {
+	case state.ReloadTypeNormal:
+		return ports.NormalReloadTicks
+	case state.ReloadTypeFast:
+		return ports.FastReloadTicks
+	default:
+		return 0
+	}
 }

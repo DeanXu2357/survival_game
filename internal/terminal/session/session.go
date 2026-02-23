@@ -37,3 +37,15 @@ func (s *GameSession) PlayerState() (x, y, dir float64, ok bool) {
 func (s *GameSession) Statics() []state.StaticEntity {
 	return s.game.Statics()
 }
+
+func (s *GameSession) PlayerInventory() (state.Inventory, bool) {
+	return s.game.PlayerInventory(s.entityID)
+}
+
+func (s *GameSession) PlayerHealth() (state.Health, bool) {
+	return s.game.PlayerHealth(s.entityID)
+}
+
+func (s *GameSession) CurrentTick() ports.Tick {
+	return s.game.CurrentTick()
+}
