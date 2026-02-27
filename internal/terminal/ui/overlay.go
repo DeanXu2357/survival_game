@@ -90,7 +90,9 @@ func (u *UILayer) Overlay(buffer [][]rune, colors [][]raycast.ColorPair) {
 	}
 
 	if u.weaponEnabled {
+		u.drawBulletTrail(buffer, colors)
 		u.drawWeapon(buffer, colors)
+		u.drawMuzzleFlash(buffer, colors)
 	}
 }
 
@@ -297,6 +299,99 @@ func meleeYOffset(elapsed, duration, riseTicks ports.Tick, peakOffset int) int {
 	remaining := duration - elapsed
 	fallTicks := duration - riseTicks
 	return int(remaining) * peakOffset / int(fallTicks)
+}
+
+const (
+	muzzleFlashDuration ports.Tick = 4
+	bulletTrailDuration ports.Tick = 3
+)
+
+var (
+	muzzleFlashColors = [4]int{226, 208, 172, 172}
+	bulletTrailColors = [3]int{231, 245, 240}
+)
+
+func (u *UILayer) gunFireElapsed() (ports.Tick, bool) {
+	if u.currentWeaponType != state.WeaponTypeGun {
+		return 0, false
+	}
+	if u.lastFireTick == 0 || u.currentTick < u.lastFireTick {
+		return 0, false
+	}
+	isReloading := u.reloadStartTick > 0 && u.currentTick >= u.reloadStartTick &&
+		(u.currentTick-u.reloadStartTick) < u.reloadDurationTicks
+	if isReloading {
+		return 0, false
+	}
+	return u.currentTick - u.lastFireTick, true
+}
+
+func (u *UILayer) drawMuzzleFlash(buffer [][]rune, colors [][]raycast.ColorPair) {
+	elapsed, active := u.gunFireElapsed()
+	if !active || elapsed >= muzzleFlashDuration {
+		return
+	}
+
+	sprite := weaponSprites[state.WeaponTypeGun]
+	spriteHeight := len(sprite)
+	baseY := u.height - spriteHeight - recoilOffset(elapsed)
+	centerX := u.width / 2
+
+	fg := muzzleFlashColors[elapsed]
+
+	type flashCell struct {
+		dx, dy int
+		ch     rune
+	}
+
+	var pattern []flashCell
+	if elapsed <= 1 {
+		pattern = []flashCell{
+			{-2, -2, '·'}, {0, -2, '*'}, {2, -2, '·'},
+			{-1, -1, '*'}, {0, -1, '*'}, {1, -1, '*'},
+			{0, 0, '*'},
+		}
+	} else {
+		pattern = []flashCell{
+			{0, -1, '*'},
+			{0, 0, '*'},
+		}
+	}
+
+	for _, p := range pattern {
+		x := centerX + p.dx
+		y := baseY + p.dy
+		if y >= 0 && y < len(buffer) && x >= 0 && x < len(buffer[y]) {
+			buffer[y][x] = p.ch
+			if colors != nil {
+				colors[y][x] = raycast.ColorPair{Fg: fg, Bg: colors[y][x].Bg}
+			}
+		}
+	}
+}
+
+func (u *UILayer) drawBulletTrail(buffer [][]rune, colors [][]raycast.ColorPair) {
+	elapsed, active := u.gunFireElapsed()
+	if !active || elapsed >= bulletTrailDuration {
+		return
+	}
+
+	sprite := weaponSprites[state.WeaponTypeGun]
+	spriteHeight := len(sprite)
+	gunTopY := u.height - spriteHeight - recoilOffset(elapsed)
+	crosshairY := u.height / 2
+	centerX := u.width / 2
+
+	fg := bulletTrailColors[elapsed]
+
+	for y := crosshairY + 1; y < gunTopY-2; y++ {
+		if y >= 0 && y < len(buffer) && centerX >= 0 && centerX < len(buffer[y]) {
+			buffer[y][centerX] = '│'
+			if colors != nil {
+				colors[y][centerX] = raycast.ColorPair{Fg: fg, Bg: colors[y][centerX].Bg}
+			}
+		}
+	}
 }
 
 func (u *UILayer) drawWeapon(buffer [][]rune, colors [][]raycast.ColorPair) {
