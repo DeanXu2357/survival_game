@@ -18,7 +18,7 @@ func NewProjectileSystem(world *state.World, currentTick *ports.Tick) *Projectil
 }
 
 func (ps *ProjectileSystem) ReadMeta() state.Meta {
-	return state.ComponentProjectile | state.ComponentPosition | state.ComponentDirection | state.ComponentPlayerHitbox
+	return state.ComponentProjectile | state.ComponentPosition | state.ComponentDirection | state.ComponentCollider
 }
 
 func (ps *ProjectileSystem) WriteMeta() state.Meta {
@@ -105,27 +105,26 @@ func (ps *ProjectileSystem) checkWallCollision(point vector.Vector2D) bool {
 }
 
 // checkPlayerHit tests if a projectile point hits any player (except the owner).
-// Uses point-in-circle test against PlayerHitbox.
-// Applies damage immediately on hit.
+// Uses point-in-circle test against circular Colliders with Health.
+// Applies damage immediately on hit. Dead entities (Health <= 0) are skipped.
 func (ps *ProjectileSystem) checkPlayerHit(projectileID state.EntityID, proj state.ProjectileData, point vector.Vector2D) bool {
 	world := ps.world
 
-	for entityID, hitbox := range world.PlayerHitbox.All() {
-		// Skip owner
+	for entityID, col := range world.Collider.All() {
 		if entityID == proj.OwnerID {
 			continue
 		}
+		if col.ShapeType != state.ColliderCircle {
+			continue
+		}
+		health, hOk := world.Health.Get(entityID)
+		if !hOk || int(health) <= 0 {
+			continue
+		}
 
-		// Point-in-circle test
-		center := vector.Vector2D(hitbox.Center)
-		dist := point.DistanceTo(center)
-		if dist <= hitbox.Radius {
-			// Apply damage immediately
-			health, hOk := world.Health.Get(entityID)
-			if hOk {
-				newHealth := state.Health(int(health) - proj.Damage)
-				world.Health.Set(entityID, newHealth)
-			}
+		center := vector.Vector2D(col.Center)
+		if point.DistanceTo(center) <= col.Radius {
+			world.Health.Set(entityID, state.Health(int(health)-proj.Damage))
 			return true
 		}
 	}

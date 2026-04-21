@@ -12,7 +12,6 @@ type WorldCommand struct {
 	Meta           Meta
 	RotationSpeed  RotationSpeed
 	MovementSpeed  MovementSpeed
-	PlayerShape    PlayerHitbox
 	Health         Health
 	Collider       Collider
 	VerticalBody   VerticalBody

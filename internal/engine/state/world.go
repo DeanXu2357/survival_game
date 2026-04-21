@@ -18,8 +18,7 @@ type World struct {
 	MovementSpeed ComponentManager[MovementSpeed]
 	RotationSpeed ComponentManager[RotationSpeed]
 
-	ViewIDs      ComponentManager[ViewIDs]
-	PlayerHitbox ComponentManager[PlayerHitbox]
+	ViewIDs ComponentManager[ViewIDs]
 
 	Health   ComponentManager[Health]
 	Collider ComponentManager[Collider]
@@ -52,7 +51,6 @@ func NewWorld(gridCellSize float64, gridWidth, gridHeight int) *World {
 		MovementSpeed:  *NewComponentManager[MovementSpeed](),
 		RotationSpeed:  *NewComponentManager[RotationSpeed](),
 		ViewIDs:        *NewComponentManager[ViewIDs](),
-		PlayerHitbox:   *NewComponentManager[PlayerHitbox](),
 		Health:         *NewComponentManager[Health](),
 		Collider:       *NewComponentManager[Collider](),
 		VerticalBody:   *NewComponentManager[VerticalBody](),
@@ -102,7 +100,7 @@ func (w *World) CreatePlayer(cfg CreatePlayer) (EntityID, bool) {
 			MovementSpeed: cfg.MovementSpeed,
 			RotationSpeed: cfg.RotationSpeed,
 			Meta:          PlayerMeta,
-			PlayerHitbox:  PlayerHitbox{cfg.Position, cfg.Radius},
+			Collider:      Collider{ShapeType: ColliderCircle, Center: cfg.Position, Radius: cfg.Radius},
 			Health:        cfg.Health,
 			Inventory:     DefaultInventory(cfg.FistDefID, ports.ItemSlotCount),
 		},
@@ -131,7 +129,7 @@ func (w *World) UpdatePlayer(id EntityID, player UpdatePlayer) {
 		Meta:          player.Meta,
 		RotationSpeed: player.RotationSpeed,
 		MovementSpeed: player.MovementSpeed,
-		PlayerShape:   player.PlayerHitbox,
+		Collider:      player.Collider,
 		Health:        player.Health,
 		PrePosition:   player.PrePosition,
 		Inventory:     player.Inventory,
@@ -145,7 +143,7 @@ type UpdatePlayer struct {
 	MovementSpeed
 	RotationSpeed
 	Meta
-	PlayerHitbox
+	Collider
 	Health
 	PrePosition
 	Inventory
@@ -230,11 +228,6 @@ func (w *World) ApplyCommands() {
 				// TODO: log error
 			}
 		}
-		if cmd.UpdateMeta.Has(ComponentPlayerHitbox) {
-			if !w.PlayerHitbox.Upsert(entityID, cmd.PlayerShape) {
-				// TODO: log error
-			}
-		}
 		if cmd.UpdateMeta.Has(ComponentHealth) {
 			if !w.Health.Upsert(entityID, cmd.Health) {
 				// TODO: log error
@@ -288,7 +281,6 @@ func (w *World) destroyEntity(id EntityID) {
 	w.MovementSpeed.Remove(id)
 	w.RotationSpeed.Remove(id)
 	w.ViewIDs.Remove(id)
-	w.PlayerHitbox.Remove(id)
 	w.Health.Remove(id)
 	w.Collider.Remove(id)
 	w.VerticalBody.Remove(id)

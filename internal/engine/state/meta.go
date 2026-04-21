@@ -8,7 +8,6 @@ const (
 	ComponentDirection
 	ComponentMovementSpeed
 	ComponentRotationSpeed
-	ComponentPlayerHitbox
 	ComponentHealth
 	ComponentCollider
 	ComponentViewIDs
@@ -21,7 +20,7 @@ const (
 	ComponentGroundItem
 
 	PlayerMeta = ComponentMeta | ComponentPosition | ComponentDirection | ComponentMovementSpeed |
-		ComponentRotationSpeed | ComponentPlayerHitbox | ComponentHealth |
+		ComponentRotationSpeed | ComponentCollider | ComponentHealth |
 		ComponentViewIDs | ComponentInput | ComponentPrePosition | ComponentInventory
 
 	WallMeta = ComponentMeta | ComponentPosition | ComponentVerticalBody | ComponentCollider
