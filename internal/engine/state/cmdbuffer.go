@@ -19,6 +19,7 @@ type WorldCommand struct {
 	ProjectileData ProjectileData
 	Inventory      Inventory
 	GroundItem     GroundItem
+	Revive         Revive
 }
 
 // CommandBuffer is a thread-safe buffer for WorldCommands.

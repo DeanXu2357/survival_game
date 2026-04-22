@@ -43,6 +43,7 @@ func NewGame(mapConfig *MapConfig) (*Game, error) {
 	systems.Register(system.NewBasicMovementSystem(world))
 	systems.Register(system.NewProjectileSystem(world, &g.currentTick))
 	systems.Register(system.NewWeaponFireSystem(world, &g.currentTick))
+	systems.Register(system.NewReviveSystem(world, &g.currentTick))
 
 	// Reserve entity 0 so no real entity gets EntityID(0),
 	// which is used as the zero-value sentinel in IsEmpty() checks.
@@ -114,6 +115,53 @@ const (
 	defaultPlayerRadius        float64 = 0.5
 	defaultPlayerHealth        int     = 100
 )
+
+const (
+	defaultDummySpawnOffset    float64 = 8.0
+	defaultDummyRespawnSeconds float64 = 3.0
+)
+
+// SpawnTrainingDummyNearSpawn spawns a stationary, auto-respawning training
+// dummy a short distance in front of the map's primary spawn point. The
+// dummy is modeled as a zero-speed player with an attached Revive component.
+// Intended for single-player practice; safe to skip for tests or multiplayer.
+func (g *Game) SpawnTrainingDummyNearSpawn() (state.EntityID, error) {
+	spawn := g.mapConfig.GetRandomSpawnPoint()
+	if spawn == nil {
+		return 0, fmt.Errorf("no spawn point available")
+	}
+
+	pos := state.Position{
+		X: spawn.Position.X,
+		Y: spawn.Position.Y - defaultDummySpawnOffset,
+	}
+	hp := state.Health(defaultPlayerHealth)
+
+	id, ok := g.world.CreatePlayer(state.CreatePlayer{
+		Position:      pos,
+		Direction:     0,
+		MovementSpeed: 0,
+		RotationSpeed: 0,
+		Radius:        defaultPlayerRadius,
+		Health:        hp,
+		FistDefID:     g.fistDefID,
+	})
+	if !ok {
+		return 0, fmt.Errorf("failed to allocate dummy entity")
+	}
+
+	g.world.UpdatePlayer(id, state.UpdatePlayer{
+		UpdateMeta: state.ComponentMeta | state.ComponentRevive,
+		Meta:       state.PlayerMeta | state.ComponentRevive,
+		Revive: state.Revive{
+			SpawnHealth:       hp,
+			RespawnDelayTicks: ports.TicksFromSeconds(defaultDummyRespawnSeconds),
+		},
+	})
+
+	g.world.ApplyCommands()
+	return id, nil
+}
 
 func (g *Game) JoinPlayer() (state.EntityID, error) {
 	spawnPoint := g.mapConfig.GetRandomSpawnPoint()

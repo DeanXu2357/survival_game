@@ -32,6 +32,8 @@ type World struct {
 	inputMapBuffer map[EntityID]Input
 	inputMutex     *sync.Mutex
 
+	Revive ComponentManager[Revive]
+
 	Grid Grid
 
 	buf *CommandBuffer
@@ -58,6 +60,7 @@ func NewWorld(gridCellSize float64, gridWidth, gridHeight int) *World {
 		Input:          *NewComponentManager[Input](),
 		inputMapBuffer: make(map[EntityID]Input),
 		inputMutex:     &sync.Mutex{},
+		Revive:         *NewComponentManager[Revive](),
 		Grid:           *NewGrid(gridCellSize, gridWidth, gridHeight),
 		buf:            NewCommandBuffer(),
 		Width:          0,
@@ -136,6 +139,7 @@ func (w *World) UpdatePlayer(id EntityID, player UpdatePlayer) {
 		Health:        player.Health,
 		PrePosition:   player.PrePosition,
 		Inventory:     player.Inventory,
+		Revive:        player.Revive,
 	})
 }
 
@@ -150,6 +154,7 @@ type UpdatePlayer struct {
 	Health
 	PrePosition
 	Inventory
+	Revive
 }
 
 type CreateProjectile struct {
@@ -266,6 +271,11 @@ func (w *World) ApplyCommands() {
 				// TODO: log error
 			}
 		}
+		if cmd.UpdateMeta.Has(ComponentRevive) {
+			if !w.Revive.Upsert(entityID, cmd.Revive) {
+				// TODO: log error
+			}
+		}
 	}
 }
 
@@ -286,6 +296,7 @@ func (w *World) destroyEntity(id EntityID) {
 	w.ItemConfig.Remove(id)
 	w.GroundItem.Remove(id)
 	w.Input.Remove(id)
+	w.Revive.Remove(id)
 	w.Entity.Free(id)
 }
 

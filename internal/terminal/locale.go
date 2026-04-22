@@ -12,12 +12,13 @@ type LocaleData struct {
 	BoxBorderV    string
 	SettingsTitle string
 	SettingsHint  string
-	MenuTitle     string
-	MenuStart     string
-	MenuMulti     string
-	MenuSettings  string
-	MenuExit      string
-	MenuHint      string
+	MenuTitle         string
+	MenuStart         string
+	MenuPracticeRange string
+	MenuMulti         string
+	MenuSettings      string
+	MenuExit          string
+	MenuHint          string
 
 	SettingScreenSize string
 	SettingLanguage   string
@@ -48,12 +49,13 @@ var (
 		BoxBorderV:    "║",
 		SettingsTitle: "設定 (SETTINGS)",
 		SettingsHint:  "方向鍵選擇，Enter 變更，Esc 返回",
-		MenuTitle:     "SURVIVAL",
-		MenuStart:     "開始遊戲",
-		MenuMulti:     "多人遊戲",
-		MenuSettings:  "設定",
-		MenuExit:      "離開",
-		MenuHint:      "方向鍵選擇，Enter 確認",
+		MenuTitle:         "SURVIVAL",
+		MenuStart:         "開始遊戲",
+		MenuPracticeRange: "靶場",
+		MenuMulti:         "多人遊戲",
+		MenuSettings:      "設定",
+		MenuExit:          "離開",
+		MenuHint:          "方向鍵選擇，Enter 確認",
 
 		SettingScreenSize: "螢幕尺寸",
 		SettingLanguage:   "語言",
@@ -83,12 +85,13 @@ var (
 		BoxBorderV:    "|",
 		SettingsTitle: "SETTINGS",
 		SettingsHint:  "Arrows to select, Enter to change, Esc to back",
-		MenuTitle:     "SURVIVAL",
-		MenuStart:     "Start Game",
-		MenuMulti:     "Multiplayer",
-		MenuSettings:  "Settings",
-		MenuExit:      "Exit",
-		MenuHint:      "Arrows to select, Enter to confirm",
+		MenuTitle:         "SURVIVAL",
+		MenuStart:         "Start Game",
+		MenuPracticeRange: "Practice Range",
+		MenuMulti:         "Multiplayer",
+		MenuSettings:      "Settings",
+		MenuExit:          "Exit",
+		MenuHint:          "Arrows to select, Enter to confirm",
 
 		SettingScreenSize: "Screen Size",
 		SettingLanguage:   "Language",
