@@ -15,8 +15,3 @@ type RotationSpeed float64
 type Health int
 
 type ViewIDs []EntityID
-
-type VerticalBody struct {
-	BaseElevation float64
-	Height        float64
-}

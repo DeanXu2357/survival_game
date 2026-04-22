@@ -35,7 +35,12 @@ func (s *GameSession) PlayerState() (x, y, dir float64, ok bool) {
 }
 
 func (s *GameSession) Statics() []state.StaticEntity {
-	return s.game.Statics()
+	return s.game.WallEntities()
+}
+
+// PlayerColliders returns renderable player entities excluding this session's own player.
+func (s *GameSession) PlayerColliders() []state.StaticEntity {
+	return s.game.PlayerColliders(s.entityID)
 }
 
 func (s *GameSession) PlayerInventory() (state.Inventory, bool) {

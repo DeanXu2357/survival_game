@@ -14,7 +14,6 @@ type WorldCommand struct {
 	MovementSpeed  MovementSpeed
 	Health         Health
 	Collider       Collider
-	VerticalBody   VerticalBody
 	Input          Input
 	PrePosition    PrePosition
 	ProjectileData ProjectileData

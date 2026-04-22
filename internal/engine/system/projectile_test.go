@@ -228,6 +228,55 @@ func TestProjectile_HitsPlayer_NotOwner(t *testing.T) {
 	}
 }
 
+func TestProjectile_SkipsDeadPlayer(t *testing.T) {
+	world := setupProjectileWorld()
+	var tick ports.Tick = 1
+	ps := NewProjectileSystem(world, &tick)
+
+	ownerID, _ := world.CreatePlayer(state.CreatePlayer{
+		Position:      state.Position{X: 10, Y: 50},
+		Direction:     0,
+		MovementSpeed: 5.0,
+		RotationSpeed: 2.0,
+		Radius:        0.5,
+		Health:        100,
+	})
+	world.ApplyCommands()
+
+	targetID, _ := world.CreatePlayer(state.CreatePlayer{
+		Position:      state.Position{X: 50, Y: 48},
+		Direction:     0,
+		MovementSpeed: 5.0,
+		RotationSpeed: 2.0,
+		Radius:        0.5,
+		Health:        0,
+	})
+	world.ApplyCommands()
+
+	spawnProjectile(t, world, state.Position{X: 50, Y: 50}, 0, state.ProjectileData{
+		Speed:     20.0,
+		Range:     50.0,
+		Damage:    25,
+		OwnerID:   ownerID,
+		Height:    1.5,
+		ExpiredAt: 1000,
+	})
+
+	dt := 1.0 / 60.0
+	for i := 0; i < 30; i++ {
+		ps.Update(dt)
+		world.ApplyCommands()
+	}
+
+	targetHealth, ok := world.Health.Get(targetID)
+	if !ok {
+		t.Fatal("target health not found")
+	}
+	if int(targetHealth) != 0 {
+		t.Errorf("Expected dead target health to stay at 0, got %d", int(targetHealth))
+	}
+}
+
 func TestProjectile_DoesNotHitOwner(t *testing.T) {
 	world := setupProjectileWorld()
 	var tick ports.Tick = 1

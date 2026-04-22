@@ -151,7 +151,7 @@ func (s *MainMenuState) startSinglePlayer() terminal.Command {
 	}
 
 	sess := session.NewGameSession(game, entityID)
-	colliders := staticEntitiesToColliders(game.Statics())
+	colliders := staticEntitiesToColliders(game.WallEntities())
 
 	return terminal.Command{
 		Type:      terminal.CmdPush,
@@ -181,8 +181,8 @@ func staticEntitiesToColliders(statics []state.StaticEntity) []ports.Collider {
 			Radius:        entity.Collider.Radius,
 			ShapeType:     uint8(entity.Collider.ShapeType),
 			Rotation:      0,
-			Height:        entity.VerticalBody.Height,
-			BaseElevation: entity.VerticalBody.BaseElevation,
+			Height:        entity.Collider.Height,
+			BaseElevation: entity.Collider.BaseElevation,
 		}
 	}
 	return colliders

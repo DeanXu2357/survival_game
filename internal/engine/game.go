@@ -84,22 +84,18 @@ func (g *Game) loadMapEntities(mapConfig *MapConfig) error {
 			return fmt.Errorf("failed to allocate entity for wall %d", i)
 		}
 
-		collider := state.Collider{
-			Center:    state.Position{X: wallCfg.Center.X, Y: wallCfg.Center.Y},
-			HalfSize:  wallCfg.HalfSize,
-			ShapeType: state.ColliderBox,
-		}
-		g.world.Collider.Upsert(id, collider)
-
 		height := wallCfg.Height
 		if height == 0 {
 			height = state.DefaultWallHeight
 		}
-		vertBody := state.VerticalBody{
+		collider := state.Collider{
+			Center:        state.Position{X: wallCfg.Center.X, Y: wallCfg.Center.Y},
+			HalfSize:      wallCfg.HalfSize,
+			ShapeType:     state.ColliderBox,
 			BaseElevation: wallCfg.BaseElevation,
 			Height:        height,
 		}
-		g.world.VerticalBody.Upsert(id, vertBody)
+		g.world.Collider.Upsert(id, collider)
 
 		g.world.EntityMeta.Upsert(id, state.WallMeta)
 
@@ -185,8 +181,33 @@ func (g *Game) SetPlayerInput(entityID state.EntityID, input ports.PlayerInput) 
 	})
 }
 
-func (g *Game) Statics() []state.StaticEntity {
-	return g.world.StaticEntities()
+// WallEntities returns renderable entities that are not damageable (walls).
+func (g *Game) WallEntities() []state.StaticEntity {
+	all := g.world.StaticEntities()
+	walls := make([]state.StaticEntity, 0, len(all))
+	for _, entity := range all {
+		if _, hasHealth := g.world.Health.Get(entity.ID); hasHealth {
+			continue
+		}
+		walls = append(walls, entity)
+	}
+	return walls
+}
+
+// PlayerColliders returns renderable entities that can take damage (players, dummies), excluding the viewer.
+func (g *Game) PlayerColliders(exclude state.EntityID) []state.StaticEntity {
+	all := g.world.StaticEntities()
+	players := make([]state.StaticEntity, 0, len(all))
+	for _, entity := range all {
+		if entity.ID == exclude {
+			continue
+		}
+		if _, hasHealth := g.world.Health.Get(entity.ID); !hasHealth {
+			continue
+		}
+		players = append(players, entity)
+	}
+	return players
 }
 
 func (g *Game) PlayerSnapshotWithLocation(playerID state.EntityID) (state.PlayerSnapshotWithView, bool) {

@@ -11,7 +11,6 @@ const (
 	ComponentHealth
 	ComponentCollider
 	ComponentViewIDs
-	ComponentVerticalBody
 	ComponentInput
 	ComponentPrePosition
 	ComponentProjectile
@@ -23,7 +22,7 @@ const (
 		ComponentRotationSpeed | ComponentCollider | ComponentHealth |
 		ComponentViewIDs | ComponentInput | ComponentPrePosition | ComponentInventory
 
-	WallMeta = ComponentMeta | ComponentPosition | ComponentVerticalBody | ComponentCollider
+	WallMeta = ComponentMeta | ComponentPosition | ComponentCollider
 
 	ProjectileMeta = ComponentMeta | ComponentPosition | ComponentDirection | ComponentProjectile
 
@@ -35,6 +34,7 @@ const (
 	DefaultWallHeight        = 3.0
 	DefaultWallBaseElevation = 0.0
 	DefaultPlayerViewHeight  = 1.7
+	DefaultPlayerBodyHeight  = 1.8
 )
 
 func (m Meta) Has(mask Meta) bool {

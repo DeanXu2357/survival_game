@@ -11,6 +11,9 @@ type Collider struct {
 	ShapeType ColliderShape
 	Radius    float64
 	Offset    vector.Vector2D
+
+	BaseElevation float64
+	Height        float64
 }
 
 type ColliderShape uint8

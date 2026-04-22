@@ -53,13 +53,24 @@ func CastRays(playerX, playerY, playerDir, viewHeight float64, colliders []ports
 	return results
 }
 
+// Wire-format values mirror state.ColliderShape (state/collider.go).
+const (
+	shapeCircle uint8 = 1
+)
+
 func castSingleRay(originX, originY, dirX, dirY float64, colliders []ports.Collider) (float64, bool, *ports.Collider) {
 	closestDist := MaxDistance
 	hitAnything := false
 	var hitCollider *ports.Collider
 
 	for i := range colliders {
-		dist, hit := rayBoxIntersect(originX, originY, dirX, dirY, colliders[i])
+		var dist float64
+		var hit bool
+		if colliders[i].ShapeType == shapeCircle {
+			dist, hit = rayCircleIntersect(originX, originY, dirX, dirY, colliders[i])
+		} else {
+			dist, hit = rayBoxIntersect(originX, originY, dirX, dirY, colliders[i])
+		}
 		if hit && dist < closestDist && dist > 0.001 {
 			closestDist = dist
 			hitAnything = true
@@ -68,6 +79,31 @@ func castSingleRay(originX, originY, dirX, dirY float64, colliders []ports.Colli
 	}
 
 	return closestDist, hitAnything, hitCollider
+}
+
+func rayCircleIntersect(originX, originY, dirX, dirY float64, circle ports.Collider) (float64, bool) {
+	ox := originX - circle.X
+	oy := originY - circle.Y
+
+	b := ox*dirX + oy*dirY
+	c := ox*ox + oy*oy - circle.Radius*circle.Radius
+
+	discriminant := b*b - c
+	if discriminant < 0 {
+		return 0, false
+	}
+
+	sqrtDisc := math.Sqrt(discriminant)
+	t := -b - sqrtDisc
+	if t < 0 {
+		return 0, false
+	}
+
+	if t > MaxDistance {
+		return MaxDistance, false
+	}
+
+	return t, true
 }
 
 func rayBoxIntersect(originX, originY, dirX, dirY float64, box ports.Collider) (float64, bool) {

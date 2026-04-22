@@ -23,8 +23,6 @@ type World struct {
 	Health   ComponentManager[Health]
 	Collider ComponentManager[Collider]
 
-	VerticalBody ComponentManager[VerticalBody]
-
 	Projectile ComponentManager[ProjectileData]
 	Inventory  ComponentManager[Inventory]
 	ItemConfig ComponentManager[ItemConfig]
@@ -53,7 +51,6 @@ func NewWorld(gridCellSize float64, gridWidth, gridHeight int) *World {
 		ViewIDs:        *NewComponentManager[ViewIDs](),
 		Health:         *NewComponentManager[Health](),
 		Collider:       *NewComponentManager[Collider](),
-		VerticalBody:   *NewComponentManager[VerticalBody](),
 		Projectile:     *NewComponentManager[ProjectileData](),
 		Inventory:      *NewComponentManager[Inventory](),
 		ItemConfig:     *NewComponentManager[ItemConfig](),
@@ -100,8 +97,14 @@ func (w *World) CreatePlayer(cfg CreatePlayer) (EntityID, bool) {
 			MovementSpeed: cfg.MovementSpeed,
 			RotationSpeed: cfg.RotationSpeed,
 			Meta:          PlayerMeta,
-			Collider:      Collider{ShapeType: ColliderCircle, Center: cfg.Position, Radius: cfg.Radius},
-			Health:        cfg.Health,
+			Collider: Collider{
+				ShapeType:     ColliderCircle,
+				Center:        cfg.Position,
+				Radius:        cfg.Radius,
+				BaseElevation: 0,
+				Height:        DefaultPlayerBodyHeight,
+			},
+			Health: cfg.Health,
 			Inventory:     DefaultInventory(cfg.FistDefID, ports.ItemSlotCount),
 		},
 	)
@@ -238,11 +241,6 @@ func (w *World) ApplyCommands() {
 				// TODO: log error
 			}
 		}
-		if cmd.UpdateMeta.Has(ComponentVerticalBody) {
-			if !w.VerticalBody.Upsert(entityID, cmd.VerticalBody) {
-				// TODO: log error
-			}
-		}
 		if cmd.UpdateMeta.Has(ComponentInput) {
 			if !w.Input.Upsert(entityID, cmd.Input) {
 				// TODO: log error
@@ -283,7 +281,6 @@ func (w *World) destroyEntity(id EntityID) {
 	w.ViewIDs.Remove(id)
 	w.Health.Remove(id)
 	w.Collider.Remove(id)
-	w.VerticalBody.Remove(id)
 	w.Projectile.Remove(id)
 	w.Inventory.Remove(id)
 	w.ItemConfig.Remove(id)
@@ -333,15 +330,10 @@ func (w *World) PlayerSnapshotWithView(id EntityID) (PlayerSnapshotWithView, boo
 func (w *World) StaticEntities() []StaticEntity {
 	staticEntities := make([]StaticEntity, 0)
 	for entityID, collider := range w.Collider.All() {
-		entity := StaticEntity{
+		staticEntities = append(staticEntities, StaticEntity{
 			ID:       entityID,
 			Collider: collider,
-		}
-		if vertBody, ok := w.VerticalBody.Get(entityID); ok {
-			entity.VerticalBody = vertBody
-			entity.HasVerticalBody = true
-		}
-		staticEntities = append(staticEntities, entity)
+		})
 	}
 	return staticEntities
 }
