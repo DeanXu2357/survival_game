@@ -18,13 +18,10 @@ type World struct {
 	MovementSpeed ComponentManager[MovementSpeed]
 	RotationSpeed ComponentManager[RotationSpeed]
 
-	ViewIDs      ComponentManager[ViewIDs]
-	PlayerHitbox ComponentManager[PlayerHitbox]
+	ViewIDs ComponentManager[ViewIDs]
 
 	Health   ComponentManager[Health]
 	Collider ComponentManager[Collider]
-
-	VerticalBody ComponentManager[VerticalBody]
 
 	Projectile ComponentManager[ProjectileData]
 	Inventory  ComponentManager[Inventory]
@@ -34,6 +31,8 @@ type World struct {
 	Input          ComponentManager[Input]
 	inputMapBuffer map[EntityID]Input
 	inputMutex     *sync.Mutex
+
+	Revive ComponentManager[Revive]
 
 	Grid Grid
 
@@ -52,10 +51,8 @@ func NewWorld(gridCellSize float64, gridWidth, gridHeight int) *World {
 		MovementSpeed:  *NewComponentManager[MovementSpeed](),
 		RotationSpeed:  *NewComponentManager[RotationSpeed](),
 		ViewIDs:        *NewComponentManager[ViewIDs](),
-		PlayerHitbox:   *NewComponentManager[PlayerHitbox](),
 		Health:         *NewComponentManager[Health](),
 		Collider:       *NewComponentManager[Collider](),
-		VerticalBody:   *NewComponentManager[VerticalBody](),
 		Projectile:     *NewComponentManager[ProjectileData](),
 		Inventory:      *NewComponentManager[Inventory](),
 		ItemConfig:     *NewComponentManager[ItemConfig](),
@@ -63,6 +60,7 @@ func NewWorld(gridCellSize float64, gridWidth, gridHeight int) *World {
 		Input:          *NewComponentManager[Input](),
 		inputMapBuffer: make(map[EntityID]Input),
 		inputMutex:     &sync.Mutex{},
+		Revive:         *NewComponentManager[Revive](),
 		Grid:           *NewGrid(gridCellSize, gridWidth, gridHeight),
 		buf:            NewCommandBuffer(),
 		Width:          0,
@@ -102,8 +100,14 @@ func (w *World) CreatePlayer(cfg CreatePlayer) (EntityID, bool) {
 			MovementSpeed: cfg.MovementSpeed,
 			RotationSpeed: cfg.RotationSpeed,
 			Meta:          PlayerMeta,
-			PlayerHitbox:  PlayerHitbox{cfg.Position, cfg.Radius},
-			Health:        cfg.Health,
+			Collider: Collider{
+				ShapeType:     ColliderCircle,
+				Center:        cfg.Position,
+				Radius:        cfg.Radius,
+				BaseElevation: 0,
+				Height:        DefaultPlayerBodyHeight,
+			},
+			Health: cfg.Health,
 			Inventory:     DefaultInventory(cfg.FistDefID, ports.ItemSlotCount),
 		},
 	)
@@ -131,10 +135,11 @@ func (w *World) UpdatePlayer(id EntityID, player UpdatePlayer) {
 		Meta:          player.Meta,
 		RotationSpeed: player.RotationSpeed,
 		MovementSpeed: player.MovementSpeed,
-		PlayerShape:   player.PlayerHitbox,
+		Collider:      player.Collider,
 		Health:        player.Health,
 		PrePosition:   player.PrePosition,
 		Inventory:     player.Inventory,
+		Revive:        player.Revive,
 	})
 }
 
@@ -145,10 +150,11 @@ type UpdatePlayer struct {
 	MovementSpeed
 	RotationSpeed
 	Meta
-	PlayerHitbox
+	Collider
 	Health
 	PrePosition
 	Inventory
+	Revive
 }
 
 type CreateProjectile struct {
@@ -230,11 +236,6 @@ func (w *World) ApplyCommands() {
 				// TODO: log error
 			}
 		}
-		if cmd.UpdateMeta.Has(ComponentPlayerHitbox) {
-			if !w.PlayerHitbox.Upsert(entityID, cmd.PlayerShape) {
-				// TODO: log error
-			}
-		}
 		if cmd.UpdateMeta.Has(ComponentHealth) {
 			if !w.Health.Upsert(entityID, cmd.Health) {
 				// TODO: log error
@@ -242,11 +243,6 @@ func (w *World) ApplyCommands() {
 		}
 		if cmd.UpdateMeta.Has(ComponentCollider) {
 			if !w.Collider.Upsert(entityID, cmd.Collider) {
-				// TODO: log error
-			}
-		}
-		if cmd.UpdateMeta.Has(ComponentVerticalBody) {
-			if !w.VerticalBody.Upsert(entityID, cmd.VerticalBody) {
 				// TODO: log error
 			}
 		}
@@ -275,6 +271,11 @@ func (w *World) ApplyCommands() {
 				// TODO: log error
 			}
 		}
+		if cmd.UpdateMeta.Has(ComponentRevive) {
+			if !w.Revive.Upsert(entityID, cmd.Revive) {
+				// TODO: log error
+			}
+		}
 	}
 }
 
@@ -288,15 +289,14 @@ func (w *World) destroyEntity(id EntityID) {
 	w.MovementSpeed.Remove(id)
 	w.RotationSpeed.Remove(id)
 	w.ViewIDs.Remove(id)
-	w.PlayerHitbox.Remove(id)
 	w.Health.Remove(id)
 	w.Collider.Remove(id)
-	w.VerticalBody.Remove(id)
 	w.Projectile.Remove(id)
 	w.Inventory.Remove(id)
 	w.ItemConfig.Remove(id)
 	w.GroundItem.Remove(id)
 	w.Input.Remove(id)
+	w.Revive.Remove(id)
 	w.Entity.Free(id)
 }
 
@@ -341,15 +341,10 @@ func (w *World) PlayerSnapshotWithView(id EntityID) (PlayerSnapshotWithView, boo
 func (w *World) StaticEntities() []StaticEntity {
 	staticEntities := make([]StaticEntity, 0)
 	for entityID, collider := range w.Collider.All() {
-		entity := StaticEntity{
+		staticEntities = append(staticEntities, StaticEntity{
 			ID:       entityID,
 			Collider: collider,
-		}
-		if vertBody, ok := w.VerticalBody.Get(entityID); ok {
-			entity.VerticalBody = vertBody
-			entity.HasVerticalBody = true
-		}
-		staticEntities = append(staticEntities, entity)
+		})
 	}
 	return staticEntities
 }

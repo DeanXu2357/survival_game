@@ -34,7 +34,7 @@ func (s *MainMenuState) Init() {
 }
 
 func (s *MainMenuState) Update(input terminal.InputEvent, dt time.Duration) terminal.Command {
-	menuItemCount := 4
+	menuItemCount := 5
 
 	switch input {
 	case terminal.InputMoveBackward:
@@ -54,10 +54,12 @@ func (s *MainMenuState) Update(input terminal.InputEvent, dt time.Duration) term
 		case 0:
 			return s.startSinglePlayer()
 		case 1:
-			return terminal.Command{Type: terminal.CmdPush, NextState: NewMultiplayerState(s.fd, s.logger)}
+			return s.startPracticeRange()
 		case 2:
-			return terminal.Command{Type: terminal.CmdPush, NextState: NewSettingState(s.fd, s.logger)}
+			return terminal.Command{Type: terminal.CmdPush, NextState: NewMultiplayerState(s.fd, s.logger)}
 		case 3:
+			return terminal.Command{Type: terminal.CmdPush, NextState: NewSettingState(s.fd, s.logger)}
+		case 4:
 			return terminal.Command{Type: terminal.CmdQuit}
 		}
 
@@ -69,6 +71,14 @@ func (s *MainMenuState) Update(input terminal.InputEvent, dt time.Duration) term
 }
 
 func (s *MainMenuState) startSinglePlayer() terminal.Command {
+	return s.startGame(false)
+}
+
+func (s *MainMenuState) startPracticeRange() terminal.Command {
+	return s.startGame(true)
+}
+
+func (s *MainMenuState) startGame(spawnDummy bool) terminal.Command {
 	mapConfig := loadMapOrDefault(s.logger)
 
 	game, err := engine.NewGame(mapConfig)
@@ -150,8 +160,14 @@ func (s *MainMenuState) startSinglePlayer() terminal.Command {
 		return terminal.Command{Type: terminal.CmdNone}
 	}
 
+	if spawnDummy {
+		if _, err := game.SpawnTrainingDummyNearSpawn(); err != nil {
+			s.logger.Warn("Failed to spawn training dummy", "error", err)
+		}
+	}
+
 	sess := session.NewGameSession(game, entityID)
-	colliders := staticEntitiesToColliders(game.Statics())
+	colliders := staticEntitiesToColliders(game.WallEntities())
 
 	return terminal.Command{
 		Type:      terminal.CmdPush,
@@ -181,8 +197,8 @@ func staticEntitiesToColliders(statics []state.StaticEntity) []ports.Collider {
 			Radius:        entity.Collider.Radius,
 			ShapeType:     uint8(entity.Collider.ShapeType),
 			Rotation:      0,
-			Height:        entity.VerticalBody.Height,
-			BaseElevation: entity.VerticalBody.BaseElevation,
+			Height:        entity.Collider.Height,
+			BaseElevation: entity.Collider.BaseElevation,
 		}
 	}
 	return colliders
@@ -194,6 +210,7 @@ func (s *MainMenuState) Draw(buf *bytes.Buffer, width, height int) {
 
 	menuItems := []string{
 		locale.MenuStart,
+		locale.MenuPracticeRange,
 		locale.MenuMulti,
 		locale.MenuSettings,
 		locale.MenuExit,

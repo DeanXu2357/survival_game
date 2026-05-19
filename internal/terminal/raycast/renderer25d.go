@@ -19,15 +19,21 @@ const (
 	ColorWallNear
 	ColorWallMid
 	ColorWallFar
+	ColorDummyNear
+	ColorDummyMid
+	ColorDummyFar
 )
 
 var colorTo256 = map[Color]int{
-	ColorBlack:    0,
-	ColorFloor:    238,
-	ColorCeiling:  235,
-	ColorWallNear: 255,
-	ColorWallMid:  245,
-	ColorWallFar:  240,
+	ColorBlack:     0,
+	ColorFloor:     238,
+	ColorCeiling:   235,
+	ColorWallNear:  255,
+	ColorWallMid:   245,
+	ColorWallFar:   240,
+	ColorDummyNear: 229, // light yellow near
+	ColorDummyMid:  221, // light yellow mid
+	ColorDummyFar:  178, // golden yellow far
 }
 
 type ColorPair struct {
@@ -81,10 +87,10 @@ func NewRenderer25D(termWidth, termHeight int, viewHeight float64) *Renderer25D 
 	}
 }
 
-func (r *Renderer25D) Render(results []RaycastResult) {
+func (r *Renderer25D) Render(rayHits [][]RaycastResult) {
 	r.clearBuffer()
 
-	numRays := len(results)
+	numRays := len(rayHits)
 	if numRays == 0 {
 		r.mergeToOutput()
 		return
@@ -92,35 +98,41 @@ func (r *Renderer25D) Render(results []RaycastResult) {
 
 	colWidth := float64(r.logicalWidth) / float64(numRays)
 
-	for i, result := range results {
+	for i, hits := range rayHits {
 		startCol := int(float64(i) * colWidth)
 		endCol := int(float64(i+1) * colWidth)
 		if endCol > r.logicalWidth {
 			endCol = r.logicalWidth
 		}
 
-		if !result.Hit {
-			for col := startCol; col < endCol; col++ {
-				r.drawColumn(col, r.horizon, r.horizon)
+		// Hits are sorted farthest first, so painting in-order overlays
+		// nearer surfaces on top of farther ones only within their own
+		// vertical span — floor/ceiling remain visible above/below.
+		for _, hit := range hits {
+			zDepth := hit.Distance
+			if zDepth < 0.001 {
+				zDepth = 0.001
 			}
-			continue
-		}
 
-		wallHeight := result.WallHeight
-		baseElev := result.BaseElevation
-		zDepth := result.Distance
+			yTop := r.horizon - int(((hit.BaseElevation+hit.WallHeight-r.viewHeight)/zDepth)*r.projDist)
+			yBottom := r.horizon - int(((hit.BaseElevation-r.viewHeight)/zDepth)*r.projDist)
 
-		if zDepth < 0.001 {
-			zDepth = 0.001
-		}
+			if yTop < 0 {
+				yTop = 0
+			}
+			if yBottom > r.logicalHeight {
+				yBottom = r.logicalHeight
+			}
+			if yTop >= yBottom {
+				continue
+			}
 
-		yTop := r.horizon - int(((baseElev+wallHeight-r.viewHeight)/zDepth)*r.projDist)
-		yBottom := r.horizon - int(((baseElev-r.viewHeight)/zDepth)*r.projDist)
-
-		wallColor := r.getWallColor(result.Distance)
-
-		for col := startCol; col < endCol; col++ {
-			r.drawColumnWithWall(col, yTop, yBottom, wallColor)
+			wallColor := r.getColor(hit.Distance, hit.ShapeType)
+			for col := startCol; col < endCol; col++ {
+				for y := yTop; y < yBottom; y++ {
+					r.logicalBuffer[y][col] = wallColor
+				}
+			}
 		}
 	}
 
@@ -139,37 +151,18 @@ func (r *Renderer25D) clearBuffer() {
 	}
 }
 
-func (r *Renderer25D) drawColumn(col, yTop, yBottom int) {
-	for y := 0; y < r.logicalHeight; y++ {
-		if y < r.horizon {
-			r.logicalBuffer[y][col] = ColorCeiling
-		} else {
-			r.logicalBuffer[y][col] = ColorFloor
-		}
-	}
-}
-
-func (r *Renderer25D) drawColumnWithWall(col, yTop, yBottom int, wallColor Color) {
-	if yTop < 0 {
-		yTop = 0
-	}
-	if yBottom > r.logicalHeight {
-		yBottom = r.logicalHeight
-	}
-
-	for y := 0; y < r.logicalHeight; y++ {
-		if y < yTop {
-			r.logicalBuffer[y][col] = ColorCeiling
-		} else if y >= yTop && y < yBottom {
-			r.logicalBuffer[y][col] = wallColor
-		} else {
-			r.logicalBuffer[y][col] = ColorFloor
-		}
-	}
-}
-
-func (r *Renderer25D) getWallColor(distance float64) Color {
+func (r *Renderer25D) getColor(distance float64, shapeType uint8) Color {
 	normalizedDist := distance / MaxDistance
+
+	if shapeType == shapeCircle {
+		if normalizedDist < 0.33 {
+			return ColorDummyNear
+		} else if normalizedDist < 0.66 {
+			return ColorDummyMid
+		}
+		return ColorDummyFar
+	}
+
 	if normalizedDist < 0.33 {
 		return ColorWallNear
 	} else if normalizedDist < 0.66 {

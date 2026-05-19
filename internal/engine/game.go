@@ -43,6 +43,7 @@ func NewGame(mapConfig *MapConfig) (*Game, error) {
 	systems.Register(system.NewBasicMovementSystem(world))
 	systems.Register(system.NewProjectileSystem(world, &g.currentTick))
 	systems.Register(system.NewWeaponFireSystem(world, &g.currentTick))
+	systems.Register(system.NewReviveSystem(world, &g.currentTick))
 
 	// Reserve entity 0 so no real entity gets EntityID(0),
 	// which is used as the zero-value sentinel in IsEmpty() checks.
@@ -84,22 +85,18 @@ func (g *Game) loadMapEntities(mapConfig *MapConfig) error {
 			return fmt.Errorf("failed to allocate entity for wall %d", i)
 		}
 
-		collider := state.Collider{
-			Center:    state.Position{X: wallCfg.Center.X, Y: wallCfg.Center.Y},
-			HalfSize:  wallCfg.HalfSize,
-			ShapeType: state.ColliderBox,
-		}
-		g.world.Collider.Upsert(id, collider)
-
 		height := wallCfg.Height
 		if height == 0 {
 			height = state.DefaultWallHeight
 		}
-		vertBody := state.VerticalBody{
+		collider := state.Collider{
+			Center:        state.Position{X: wallCfg.Center.X, Y: wallCfg.Center.Y},
+			HalfSize:      wallCfg.HalfSize,
+			ShapeType:     state.ColliderBox,
 			BaseElevation: wallCfg.BaseElevation,
 			Height:        height,
 		}
-		g.world.VerticalBody.Upsert(id, vertBody)
+		g.world.Collider.Upsert(id, collider)
 
 		g.world.EntityMeta.Upsert(id, state.WallMeta)
 
@@ -118,6 +115,53 @@ const (
 	defaultPlayerRadius        float64 = 0.5
 	defaultPlayerHealth        int     = 100
 )
+
+const (
+	defaultDummySpawnOffset    float64 = 8.0
+	defaultDummyRespawnSeconds float64 = 3.0
+)
+
+// SpawnTrainingDummyNearSpawn spawns a stationary, auto-respawning training
+// dummy a short distance in front of the map's primary spawn point. The
+// dummy is modeled as a zero-speed player with an attached Revive component.
+// Intended for single-player practice; safe to skip for tests or multiplayer.
+func (g *Game) SpawnTrainingDummyNearSpawn() (state.EntityID, error) {
+	spawn := g.mapConfig.GetRandomSpawnPoint()
+	if spawn == nil {
+		return 0, fmt.Errorf("no spawn point available")
+	}
+
+	pos := state.Position{
+		X: spawn.Position.X,
+		Y: spawn.Position.Y - defaultDummySpawnOffset,
+	}
+	hp := state.Health(defaultPlayerHealth)
+
+	id, ok := g.world.CreatePlayer(state.CreatePlayer{
+		Position:      pos,
+		Direction:     0,
+		MovementSpeed: 0,
+		RotationSpeed: 0,
+		Radius:        defaultPlayerRadius,
+		Health:        hp,
+		FistDefID:     g.fistDefID,
+	})
+	if !ok {
+		return 0, fmt.Errorf("failed to allocate dummy entity")
+	}
+
+	g.world.UpdatePlayer(id, state.UpdatePlayer{
+		UpdateMeta: state.ComponentMeta | state.ComponentRevive,
+		Meta:       state.PlayerMeta | state.ComponentRevive,
+		Revive: state.Revive{
+			SpawnHealth:       hp,
+			RespawnDelayTicks: ports.TicksFromSeconds(defaultDummyRespawnSeconds),
+		},
+	})
+
+	g.world.ApplyCommands()
+	return id, nil
+}
 
 func (g *Game) JoinPlayer() (state.EntityID, error) {
 	spawnPoint := g.mapConfig.GetRandomSpawnPoint()
@@ -185,8 +229,33 @@ func (g *Game) SetPlayerInput(entityID state.EntityID, input ports.PlayerInput) 
 	})
 }
 
-func (g *Game) Statics() []state.StaticEntity {
-	return g.world.StaticEntities()
+// WallEntities returns renderable entities that are not damageable (walls).
+func (g *Game) WallEntities() []state.StaticEntity {
+	all := g.world.StaticEntities()
+	walls := make([]state.StaticEntity, 0, len(all))
+	for _, entity := range all {
+		if _, hasHealth := g.world.Health.Get(entity.ID); hasHealth {
+			continue
+		}
+		walls = append(walls, entity)
+	}
+	return walls
+}
+
+// PlayerColliders returns renderable entities that can take damage (players, dummies), excluding the viewer.
+func (g *Game) PlayerColliders(exclude state.EntityID) []state.StaticEntity {
+	all := g.world.StaticEntities()
+	players := make([]state.StaticEntity, 0, len(all))
+	for _, entity := range all {
+		if entity.ID == exclude {
+			continue
+		}
+		if _, hasHealth := g.world.Health.Get(entity.ID); !hasHealth {
+			continue
+		}
+		players = append(players, entity)
+	}
+	return players
 }
 
 func (g *Game) PlayerSnapshotWithLocation(playerID state.EntityID) (state.PlayerSnapshotWithView, bool) {

@@ -12,10 +12,8 @@ type PlayerSnapshotWithView struct {
 }
 
 type StaticEntity struct {
-	ID              EntityID     `json:"id"`
-	Collider        Collider     `json:"collider"`
-	VerticalBody    VerticalBody `json:"vertical_body"`
-	HasVerticalBody bool         `json:"has_vertical_body"`
+	ID       EntityID `json:"id"`
+	Collider Collider `json:"collider"`
 }
 
 type GroundItemSnapshot struct {

@@ -12,15 +12,14 @@ type WorldCommand struct {
 	Meta           Meta
 	RotationSpeed  RotationSpeed
 	MovementSpeed  MovementSpeed
-	PlayerShape    PlayerHitbox
 	Health         Health
 	Collider       Collider
-	VerticalBody   VerticalBody
 	Input          Input
 	PrePosition    PrePosition
 	ProjectileData ProjectileData
 	Inventory      Inventory
 	GroundItem     GroundItem
+	Revive         Revive
 }
 
 // CommandBuffer is a thread-safe buffer for WorldCommands.

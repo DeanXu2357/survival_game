@@ -726,9 +726,8 @@ func TestIntegration_ProjectileHitsPlayer(t *testing.T) {
 	noop := noopInput()
 
 	// Move A south so the projectile (fired north) travels toward B's hitbox.
-	// Note: the movement system updates Position but not PlayerHitbox.Center,
-	// so hitboxes stay at the spawn point (50,50). We exploit this: move A away,
-	// then fire back toward the spawn point where B's hitbox still sits.
+	// B stays at the spawn point (50,50); A moves away and then fires back
+	// north toward B's position.
 	moveDown := noopInput()
 	moveDown.MoveVertical = 1.0 // south in Y-down coords
 	for i := 0; i < 60; i++ {

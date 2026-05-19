@@ -17,11 +17,11 @@ func NewBasicMovementSystem(world *state.World) *BasicMovementSystem {
 
 func (ms *BasicMovementSystem) ReadMeta() state.Meta {
 	return state.ComponentInput | state.ComponentPosition | state.ComponentDirection |
-		state.ComponentMovementSpeed | state.ComponentRotationSpeed | state.ComponentPlayerHitbox
+		state.ComponentMovementSpeed | state.ComponentRotationSpeed | state.ComponentCollider
 }
 
 func (ms *BasicMovementSystem) WriteMeta() state.Meta {
-	return state.ComponentPosition | state.ComponentDirection | state.ComponentPrePosition | state.ComponentPlayerHitbox
+	return state.ComponentPosition | state.ComponentDirection | state.ComponentPrePosition | state.ComponentCollider
 }
 
 func (ms *BasicMovementSystem) Update(dt float64) {
@@ -46,7 +46,7 @@ func (ms *BasicMovementSystem) Update(dt float64) {
 		pos, posExist := world.Position.Get(entityID)
 		dir, dirExist := world.Direction.Get(entityID)
 		rotSpeed, rotSpeedExist := world.RotationSpeed.Get(entityID)
-		playerShape, playerShapeExist := world.PlayerHitbox.Get(entityID)
+		playerShape, playerShapeExist := world.Collider.Get(entityID)
 
 		if !posExist || !dirExist || !rotSpeedExist || !playerShapeExist {
 			continue
@@ -67,6 +67,7 @@ func (ms *BasicMovementSystem) Update(dt float64) {
 
 		if newPos != pos {
 			updateMeta = updateMeta.Set(state.ComponentPosition)
+			updateMeta = updateMeta.Set(state.ComponentCollider)
 		}
 		if newDir != dir {
 			updateMeta = updateMeta.Set(state.ComponentDirection)
@@ -78,7 +79,7 @@ func (ms *BasicMovementSystem) Update(dt float64) {
 			Direction:     newDir,
 			MovementSpeed: moveSpeed,
 			RotationSpeed: rotSpeed,
-			PlayerHitbox:  state.PlayerHitbox{Center: newPos, Radius: playerShape.Radius},
+			Collider:      state.Collider{ShapeType: state.ColliderCircle, Center: newPos, Radius: playerShape.Radius},
 			PrePosition:   prePos,
 		})
 	}

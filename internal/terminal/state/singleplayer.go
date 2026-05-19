@@ -166,7 +166,8 @@ func (s *SinglePlayerState) drawGameView(buf *bytes.Buffer, width, height int, p
 		s.uiLayer.SetHealth(int(hp))
 	}
 
-	colliders := s.colliders
+	playerColliders := staticEntitiesToColliders(s.session.PlayerColliders())
+	colliders := append(s.colliders[:len(s.colliders):len(s.colliders)], playerColliders...)
 
 	numRays := width
 	results := raycast.CastRays(playerX, playerY, playerDir, s.viewHeight, colliders, numRays)
