@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"sync"
+
+	"survival/internal/engine/ports"
 )
 
 type World struct {
@@ -16,17 +18,21 @@ type World struct {
 	MovementSpeed ComponentManager[MovementSpeed]
 	RotationSpeed ComponentManager[RotationSpeed]
 
-	ViewIDs      ComponentManager[ViewIDs]
-	PlayerHitbox ComponentManager[PlayerHitbox]
+	ViewIDs ComponentManager[ViewIDs]
 
 	Health   ComponentManager[Health]
 	Collider ComponentManager[Collider]
 
-	VerticalBody ComponentManager[VerticalBody]
+	Projectile ComponentManager[ProjectileData]
+	Inventory  ComponentManager[Inventory]
+	ItemConfig ComponentManager[ItemConfig]
+	GroundItem ComponentManager[GroundItem]
 
 	Input          ComponentManager[Input]
 	inputMapBuffer map[EntityID]Input
 	inputMutex     *sync.Mutex
+
+	Revive ComponentManager[Revive]
 
 	Grid Grid
 
@@ -45,13 +51,16 @@ func NewWorld(gridCellSize float64, gridWidth, gridHeight int) *World {
 		MovementSpeed:  *NewComponentManager[MovementSpeed](),
 		RotationSpeed:  *NewComponentManager[RotationSpeed](),
 		ViewIDs:        *NewComponentManager[ViewIDs](),
-		PlayerHitbox:   *NewComponentManager[PlayerHitbox](),
 		Health:         *NewComponentManager[Health](),
 		Collider:       *NewComponentManager[Collider](),
-		VerticalBody:   *NewComponentManager[VerticalBody](),
+		Projectile:     *NewComponentManager[ProjectileData](),
+		Inventory:      *NewComponentManager[Inventory](),
+		ItemConfig:     *NewComponentManager[ItemConfig](),
+		GroundItem:     *NewComponentManager[GroundItem](),
 		Input:          *NewComponentManager[Input](),
 		inputMapBuffer: make(map[EntityID]Input),
 		inputMutex:     &sync.Mutex{},
+		Revive:         *NewComponentManager[Revive](),
 		Grid:           *NewGrid(gridCellSize, gridWidth, gridHeight),
 		buf:            NewCommandBuffer(),
 		Width:          0,
@@ -91,8 +100,15 @@ func (w *World) CreatePlayer(cfg CreatePlayer) (EntityID, bool) {
 			MovementSpeed: cfg.MovementSpeed,
 			RotationSpeed: cfg.RotationSpeed,
 			Meta:          PlayerMeta,
-			PlayerHitbox:  PlayerHitbox{cfg.Position, cfg.Radius},
-			Health:        cfg.Health,
+			Collider: Collider{
+				ShapeType:     ColliderCircle,
+				Center:        cfg.Position,
+				Radius:        cfg.Radius,
+				BaseElevation: 0,
+				Height:        DefaultPlayerBodyHeight,
+			},
+			Health: cfg.Health,
+			Inventory:     DefaultInventory(cfg.FistDefID, ports.ItemSlotCount),
 		},
 	)
 
@@ -106,6 +122,7 @@ type CreatePlayer struct {
 	RotationSpeed RotationSpeed
 	Radius        float64
 	Health        Health
+	FistDefID     EntityID
 }
 
 func (w *World) UpdatePlayer(id EntityID, player UpdatePlayer) {
@@ -118,9 +135,11 @@ func (w *World) UpdatePlayer(id EntityID, player UpdatePlayer) {
 		Meta:          player.Meta,
 		RotationSpeed: player.RotationSpeed,
 		MovementSpeed: player.MovementSpeed,
-		PlayerShape:   player.PlayerHitbox,
+		Collider:      player.Collider,
 		Health:        player.Health,
 		PrePosition:   player.PrePosition,
+		Inventory:     player.Inventory,
+		Revive:        player.Revive,
 	})
 }
 
@@ -131,9 +150,44 @@ type UpdatePlayer struct {
 	MovementSpeed
 	RotationSpeed
 	Meta
-	PlayerHitbox
+	Collider
 	Health
 	PrePosition
+	Inventory
+	Revive
+}
+
+type CreateProjectile struct {
+	Position  Position
+	Direction Direction
+	ProjectileData
+}
+
+// CreateProjectileEntity allocates a projectile entity and queues its components via command buffer.
+func (w *World) CreateProjectileEntity(cfg CreateProjectile) (EntityID, bool) {
+	id, ok := w.Entity.Alloc()
+	if !ok {
+		return 0, false
+	}
+
+	w.buf.Push(WorldCommand{
+		EntityID:       id,
+		UpdateMeta:     ProjectileMeta,
+		Position:       cfg.Position,
+		Direction:      cfg.Direction,
+		Meta:           ProjectileMeta,
+		ProjectileData: cfg.ProjectileData,
+	})
+
+	return id, true
+}
+
+// QueueDestroyEntity queues an entity for destruction in the next ApplyCommands call.
+func (w *World) QueueDestroyEntity(id EntityID) {
+	w.buf.Push(WorldCommand{
+		EntityID: id,
+		Destroy:  true,
+	})
 }
 
 func (w *World) ApplyCommands() {
@@ -147,6 +201,11 @@ func (w *World) ApplyCommands() {
 		entityID := cmd.EntityID
 		if !w.Entity.IsAlive(entityID) {
 			log.Printf("ApplyCommands: EntityID %d is not alive, skipping command", entityID)
+			continue
+		}
+
+		if cmd.Destroy {
+			w.destroyEntity(entityID)
 			continue
 		}
 
@@ -177,11 +236,6 @@ func (w *World) ApplyCommands() {
 				// TODO: log error
 			}
 		}
-		if cmd.UpdateMeta.Has(ComponentPlayerHitbox) {
-			if !w.PlayerHitbox.Upsert(entityID, cmd.PlayerShape) {
-				// TODO: log error
-			}
-		}
 		if cmd.UpdateMeta.Has(ComponentHealth) {
 			if !w.Health.Upsert(entityID, cmd.Health) {
 				// TODO: log error
@@ -189,11 +243,6 @@ func (w *World) ApplyCommands() {
 		}
 		if cmd.UpdateMeta.Has(ComponentCollider) {
 			if !w.Collider.Upsert(entityID, cmd.Collider) {
-				// TODO: log error
-			}
-		}
-		if cmd.UpdateMeta.Has(ComponentVerticalBody) {
-			if !w.VerticalBody.Upsert(entityID, cmd.VerticalBody) {
 				// TODO: log error
 			}
 		}
@@ -207,7 +256,48 @@ func (w *World) ApplyCommands() {
 				// TODO: log error
 			}
 		}
+		if cmd.UpdateMeta.Has(ComponentProjectile) {
+			if !w.Projectile.Upsert(entityID, cmd.ProjectileData) {
+				// TODO: log error
+			}
+		}
+		if cmd.UpdateMeta.Has(ComponentInventory) {
+			if !w.Inventory.Upsert(entityID, cmd.Inventory) {
+				// TODO: log error
+			}
+		}
+		if cmd.UpdateMeta.Has(ComponentGroundItem) {
+			if !w.GroundItem.Upsert(entityID, cmd.GroundItem) {
+				// TODO: log error
+			}
+		}
+		if cmd.UpdateMeta.Has(ComponentRevive) {
+			if !w.Revive.Upsert(entityID, cmd.Revive) {
+				// TODO: log error
+			}
+		}
 	}
+}
+
+// destroyEntity removes all components for an entity and frees its EntityID.
+func (w *World) destroyEntity(id EntityID) {
+	// TODO: optimize this by keeping track of which components an entity has in its Meta
+	w.EntityMeta.Remove(id)
+	w.Position.Remove(id)
+	w.PrePosition.Remove(id)
+	w.Direction.Remove(id)
+	w.MovementSpeed.Remove(id)
+	w.RotationSpeed.Remove(id)
+	w.ViewIDs.Remove(id)
+	w.Health.Remove(id)
+	w.Collider.Remove(id)
+	w.Projectile.Remove(id)
+	w.Inventory.Remove(id)
+	w.ItemConfig.Remove(id)
+	w.GroundItem.Remove(id)
+	w.Input.Remove(id)
+	w.Revive.Remove(id)
+	w.Entity.Free(id)
 }
 
 func (w *World) PlayerSnapshot(id EntityID) (PlayerSnapshot, bool) {
@@ -251,15 +341,10 @@ func (w *World) PlayerSnapshotWithView(id EntityID) (PlayerSnapshotWithView, boo
 func (w *World) StaticEntities() []StaticEntity {
 	staticEntities := make([]StaticEntity, 0)
 	for entityID, collider := range w.Collider.All() {
-		entity := StaticEntity{
+		staticEntities = append(staticEntities, StaticEntity{
 			ID:       entityID,
 			Collider: collider,
-		}
-		if vertBody, ok := w.VerticalBody.Get(entityID); ok {
-			entity.VerticalBody = vertBody
-			entity.HasVerticalBody = true
-		}
-		staticEntities = append(staticEntities, entity)
+		})
 	}
 	return staticEntities
 }
@@ -300,27 +385,57 @@ func (w *World) playerLocation(id EntityID) (PlayerSnapshot, bool) {
 	return snapshot, true
 }
 
-type PlayerSnapshot struct {
-	ID        EntityID  `json:"id"`
-	Direction Direction `json:"direction"`
-	Position  Position  `json:"position"`
+// DefaultInventory returns the initial inventory for a new player.
+// fistDefID is the EntityID of the Fist item definition (always occupies slot 0).
+func DefaultInventory(fistDefID EntityID, maxItemCapacity int) Inventory {
+	return Inventory{
+		Weapons: [3]WeaponSlot{
+			{ItemID: fistDefID}, // Slot 0: Fist (always occupied)
+			{},                  // Slot 1: Knife (empty)
+			{},                  // Slot 2: Gun (empty)
+		},
+		CurrentWeaponIndex: 0, // default to Fist
+		MaxItemCapacity:    maxItemCapacity,
+	}
 }
 
-type PlayerSnapshotWithView struct {
-	Player PlayerSnapshot   `json:"player"`
-	Views  []PlayerSnapshot `json:"views"`
+type CreateGroundItem struct {
+	Position  Position
+	ItemDefID EntityID
+	Quantity  int
+	Ammo      int
 }
 
-type StaticEntity struct {
-	ID              EntityID     `json:"id"`
-	Collider        Collider     `json:"collider"`
-	VerticalBody    VerticalBody `json:"vertical_body"`
-	HasVerticalBody bool         `json:"has_vertical_body"`
+// CreateGroundItemEntity allocates a ground item entity referencing an item definition config entity.
+func (w *World) CreateGroundItemEntity(cfg CreateGroundItem) (EntityID, bool) {
+	id, ok := w.Entity.Alloc()
+	if !ok {
+		return 0, false
+	}
+
+	w.buf.Push(WorldCommand{
+		EntityID:   id,
+		UpdateMeta: GroundItemMeta,
+		Position:   cfg.Position,
+		Meta:       GroundItemMeta,
+		GroundItem: GroundItem{ItemDefID: cfg.ItemDefID, Quantity: cfg.Quantity, Ammo: cfg.Ammo},
+	})
+
+	return id, true
 }
 
-type MapInfo struct {
-	Width  float64
-	Height float64
+// CreateItemDefEntity allocates an item definition config entity (persists forever).
+// ItemDefs are immutable config data, so they are written directly (no command buffer).
+func (w *World) CreateItemDefEntity(def ItemConfig) (EntityID, bool) {
+	id, ok := w.Entity.Alloc()
+	if !ok {
+		return 0, false
+	}
+
+	w.EntityMeta.Upsert(id, ItemDefMeta)
+	w.ItemConfig.Upsert(id, def)
+
+	return id, true
 }
 
 // SetInput buffers the input for an entity.
@@ -331,6 +446,17 @@ func (w *World) SetInput(entityID EntityID, input Input) {
 	defer w.inputMutex.Unlock()
 
 	old := w.inputMapBuffer[entityID]
+
+	dropSlotIndex := old.DropSlotIndex
+	if input.DropSlotIndex != NoDrop {
+		dropSlotIndex = input.DropSlotIndex
+	}
+
+	pickupEntityID := old.PickupEntityID
+	if input.PickupEntityID != NoPickup {
+		pickupEntityID = input.PickupEntityID
+	}
+
 	w.inputMapBuffer[entityID] = Input{
 		MoveVertical:   input.MoveVertical,
 		MoveHorizontal: input.MoveHorizontal,
@@ -340,6 +466,8 @@ func (w *World) SetInput(entityID EntityID, input Input) {
 		SwitchWeapon:   old.SwitchWeapon || input.SwitchWeapon,
 		Reload:         old.Reload || input.Reload,
 		FastReload:     old.FastReload || input.FastReload,
+		PickupEntityID: pickupEntityID,
+		DropSlotIndex:  dropSlotIndex,
 		Timestamp:      input.Timestamp,
 	}
 }

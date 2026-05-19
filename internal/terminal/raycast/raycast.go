@@ -2,6 +2,7 @@ package raycast
 
 import (
 	"math"
+	"sort"
 
 	"survival/internal/engine/ports"
 )
@@ -17,10 +18,11 @@ type RaycastResult struct {
 	WallHeight    float64
 	BaseElevation float64
 	EntityID      uint64
+	ShapeType     uint8
 }
 
-func CastRays(playerX, playerY, playerDir, viewHeight float64, colliders []ports.Collider, numRays int) []RaycastResult {
-	results := make([]RaycastResult, numRays)
+func CastRays(playerX, playerY, playerDir, viewHeight float64, colliders []ports.Collider, numRays int) [][]RaycastResult {
+	results := make([][]RaycastResult, numRays)
 
 	halfFOV := FOVAngle / 2
 	startAngle := playerDir - halfFOV
@@ -31,43 +33,81 @@ func CastRays(playerX, playerY, playerDir, viewHeight float64, colliders []ports
 		rayDirX := math.Sin(rayAngle)
 		rayDirY := -math.Cos(rayAngle)
 
-		distance, hit, hitCollider := castSingleRay(playerX, playerY, rayDirX, rayDirY, colliders)
+		hits := castSingleRay(playerX, playerY, rayDirX, rayDirY, colliders)
 
+		// Fisheye correction: project each distance onto the view axis.
 		angleDiff := rayAngle - playerDir
-		distance *= math.Cos(angleDiff)
-
-		result := RaycastResult{
-			Distance: distance,
-			Hit:      hit,
+		cosDiff := math.Cos(angleDiff)
+		for j := range hits {
+			hits[j].Distance *= cosDiff
 		}
 
-		if hit && hitCollider != nil {
-			result.WallHeight = hitCollider.Height
-			result.BaseElevation = hitCollider.BaseElevation
-			result.EntityID = hitCollider.ID
-		}
-
-		results[i] = result
+		results[i] = hits
 	}
 
 	return results
 }
 
-func castSingleRay(originX, originY, dirX, dirY float64, colliders []ports.Collider) (float64, bool, *ports.Collider) {
-	closestDist := MaxDistance
-	hitAnything := false
-	var hitCollider *ports.Collider
+// Wire-format values mirror state.ColliderShape (state/collider.go).
+const (
+	shapeCircle uint8 = 1
+)
+
+func castSingleRay(originX, originY, dirX, dirY float64, colliders []ports.Collider) []RaycastResult {
+	var hits []RaycastResult
 
 	for i := range colliders {
-		dist, hit := rayBoxIntersect(originX, originY, dirX, dirY, colliders[i])
-		if hit && dist < closestDist && dist > 0.001 {
-			closestDist = dist
-			hitAnything = true
-			hitCollider = &colliders[i]
+		var dist float64
+		var hit bool
+		if colliders[i].ShapeType == shapeCircle {
+			dist, hit = rayCircleIntersect(originX, originY, dirX, dirY, colliders[i])
+		} else {
+			dist, hit = rayBoxIntersect(originX, originY, dirX, dirY, colliders[i])
 		}
+		if !hit || dist <= 0.001 || dist >= MaxDistance {
+			continue
+		}
+		hits = append(hits, RaycastResult{
+			Distance:      dist,
+			Hit:           true,
+			WallHeight:    colliders[i].Height,
+			BaseElevation: colliders[i].BaseElevation,
+			EntityID:      colliders[i].ID,
+			ShapeType:     colliders[i].ShapeType,
+		})
 	}
 
-	return closestDist, hitAnything, hitCollider
+	// Farthest first so the renderer paints back-to-front.
+	sort.Slice(hits, func(i, j int) bool {
+		return hits[i].Distance > hits[j].Distance
+	})
+
+	return hits
+}
+
+func rayCircleIntersect(originX, originY, dirX, dirY float64, circle ports.Collider) (float64, bool) {
+	ox := originX - circle.X
+	oy := originY - circle.Y
+
+	b := ox*dirX + oy*dirY
+	c := ox*ox + oy*oy - circle.Radius*circle.Radius
+
+	discriminant := b*b - c
+	if discriminant < 0 {
+		return 0, false
+	}
+
+	sqrtDisc := math.Sqrt(discriminant)
+	t := -b - sqrtDisc
+	if t < 0 {
+		return 0, false
+	}
+
+	if t > MaxDistance {
+		return MaxDistance, false
+	}
+
+	return t, true
 }
 
 func rayBoxIntersect(originX, originY, dirX, dirY float64, box ports.Collider) (float64, bool) {

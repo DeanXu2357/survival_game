@@ -77,6 +77,12 @@ func parseInput(input KeyEvent) InputEvent {
 		return InputTurnLeft
 	case "e", "E":
 		return InputTurnRight
+	case "f", "F":
+		return InputFire
+	case "\t":
+		return InputSwitchWeapon
+	case "r", "R":
+		return InputReload
 	}
 	return InputNone
 }

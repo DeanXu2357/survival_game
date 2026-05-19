@@ -5,18 +5,21 @@ import "sync"
 type WorldCommand struct {
 	EntityID   EntityID
 	UpdateMeta Meta
+	Destroy    bool
 
-	Position      Position
-	Direction     Direction
-	Meta          Meta
-	RotationSpeed RotationSpeed
-	MovementSpeed MovementSpeed
-	PlayerShape   PlayerHitbox
-	Health        Health
-	Collider      Collider
-	VerticalBody  VerticalBody
-	Input         Input
-	PrePosition   PrePosition
+	Position       Position
+	Direction      Direction
+	Meta           Meta
+	RotationSpeed  RotationSpeed
+	MovementSpeed  MovementSpeed
+	Health         Health
+	Collider       Collider
+	Input          Input
+	PrePosition    PrePosition
+	ProjectileData ProjectileData
+	Inventory      Inventory
+	GroundItem     GroundItem
+	Revive         Revive
 }
 
 // CommandBuffer is a thread-safe buffer for WorldCommands.

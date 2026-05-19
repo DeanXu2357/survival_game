@@ -67,6 +67,11 @@ type RequestCommand struct {
 	ReceivedTime  time.Time
 }
 
+const (
+	NoPickup = -1 // sentinel: no pickup action
+	NoDrop   = -1 // sentinel: no drop action
+)
+
 type PlayerInput struct {
 	MoveVertical   float64      `json:"MoveVertical"`
 	MoveHorizontal float64      `json:"MoveHorizontal"`
@@ -76,6 +81,8 @@ type PlayerInput struct {
 	Reload         bool         `json:"Reload"`
 	FastReload     bool         `json:"FastReload"`
 	Fire           bool         `json:"Fire"`
+	PickupEntityID int64        `json:"PickupEntityID"` // -1 = no pickup
+	DropSlotIndex  int          `json:"DropSlotIndex"`  // -1 = no drop
 	Timestamp      int64        `json:"Timestamp"`
 }
 

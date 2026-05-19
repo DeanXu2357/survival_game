@@ -34,7 +34,7 @@ func (s *MainMenuState) Init() {
 }
 
 func (s *MainMenuState) Update(input terminal.InputEvent, dt time.Duration) terminal.Command {
-	menuItemCount := 4
+	menuItemCount := 5
 
 	switch input {
 	case terminal.InputMoveBackward:
@@ -54,10 +54,12 @@ func (s *MainMenuState) Update(input terminal.InputEvent, dt time.Duration) term
 		case 0:
 			return s.startSinglePlayer()
 		case 1:
-			return terminal.Command{Type: terminal.CmdPush, NextState: NewMultiplayerState(s.fd, s.logger)}
+			return s.startPracticeRange()
 		case 2:
-			return terminal.Command{Type: terminal.CmdPush, NextState: NewSettingState(s.fd, s.logger)}
+			return terminal.Command{Type: terminal.CmdPush, NextState: NewMultiplayerState(s.fd, s.logger)}
 		case 3:
+			return terminal.Command{Type: terminal.CmdPush, NextState: NewSettingState(s.fd, s.logger)}
+		case 4:
 			return terminal.Command{Type: terminal.CmdQuit}
 		}
 
@@ -69,6 +71,14 @@ func (s *MainMenuState) Update(input terminal.InputEvent, dt time.Duration) term
 }
 
 func (s *MainMenuState) startSinglePlayer() terminal.Command {
+	return s.startGame(false)
+}
+
+func (s *MainMenuState) startPracticeRange() terminal.Command {
+	return s.startGame(true)
+}
+
+func (s *MainMenuState) startGame(spawnDummy bool) terminal.Command {
 	mapConfig := loadMapOrDefault(s.logger)
 
 	game, err := engine.NewGame(mapConfig)
@@ -83,8 +93,81 @@ func (s *MainMenuState) startSinglePlayer() terminal.Command {
 		return terminal.Command{Type: terminal.CmdNone}
 	}
 
+	knifeDefID, err := game.RegisterItemDef(state.ItemConfig{
+		Name:     "Knife",
+		Type:     state.ItemTypeWeapon,
+		MaxStack: 1,
+		WeaponConfig: state.WeaponConfig{
+			Type:     state.WeaponTypeKnife,
+			Range:    3,
+			FireRate: 2,
+			Damage:   30,
+			Speed:    0,
+		},
+	})
+	if err != nil {
+		s.logger.Error("Failed to register knife", "error", err)
+		return terminal.Command{Type: terminal.CmdNone}
+	}
+
+	gunDefID, err := game.RegisterItemDef(state.ItemConfig{
+		Name:     "Pistol",
+		Type:     state.ItemTypeWeapon,
+		MaxStack: 1,
+		WeaponConfig: state.WeaponConfig{
+			Type:         state.WeaponTypeGun,
+			Range:        50,
+			FireRate:     2,
+			Damage:       25,
+			Speed:        100,
+			AmmoCategory: state.AmmoCategoryPistol,
+		},
+		AmmoCategory: state.AmmoCategoryPistol,
+	})
+	if err != nil {
+		s.logger.Error("Failed to register pistol", "error", err)
+		return terminal.Command{Type: terminal.CmdNone}
+	}
+
+	magDefID, err := game.RegisterItemDef(state.ItemConfig{
+		Name:         "PistolMag",
+		Type:         state.ItemTypeMagazine,
+		MaxStack:     1,
+		MagCapacity:  12,
+		AmmoCategory: state.AmmoCategoryPistol,
+	})
+	if err != nil {
+		s.logger.Error("Failed to register pistol magazine", "error", err)
+		return terminal.Command{Type: terminal.CmdNone}
+	}
+
+	inv, ok := game.PlayerInventory(entityID)
+	if !ok {
+		s.logger.Error("Failed to get player inventory")
+		return terminal.Command{Type: terminal.CmdNone}
+	}
+	inv.Weapons[1] = state.WeaponSlot{ItemID: knifeDefID}
+	inv.Weapons[2] = state.WeaponSlot{
+		ItemID:        gunDefID,
+		LoadedMagID:   magDefID,
+		LoadedMagAmmo: 12,
+		MagCapacity:   12,
+	}
+	inv.Items[0] = state.ItemSlot{ItemDefID: magDefID, Quantity: 1, Ammo: 12}
+	inv.Items[1] = state.ItemSlot{ItemDefID: magDefID, Quantity: 1, Ammo: 12}
+	if err := game.SetPlayerInventory(entityID, inv); err != nil {
+		s.logger.Error("Failed to set player inventory", "error", err)
+		return terminal.Command{Type: terminal.CmdNone}
+	}
+
+	if spawnDummy {
+		if _, err := game.SpawnTrainingDummyNearSpawn(); err != nil {
+			s.logger.Warn("Failed to spawn training dummy", "error", err)
+		}
+	}
+
 	sess := session.NewGameSession(game, entityID)
-	colliders := staticEntitiesToColliders(game.Statics())
+	colliders := staticEntitiesToColliders(game.WallEntities())
 
 	return terminal.Command{
 		Type:      terminal.CmdPush,
@@ -114,8 +197,8 @@ func staticEntitiesToColliders(statics []state.StaticEntity) []ports.Collider {
 			Radius:        entity.Collider.Radius,
 			ShapeType:     uint8(entity.Collider.ShapeType),
 			Rotation:      0,
-			Height:        entity.VerticalBody.Height,
-			BaseElevation: entity.VerticalBody.BaseElevation,
+			Height:        entity.Collider.Height,
+			BaseElevation: entity.Collider.BaseElevation,
 		}
 	}
 	return colliders
@@ -127,6 +210,7 @@ func (s *MainMenuState) Draw(buf *bytes.Buffer, width, height int) {
 
 	menuItems := []string{
 		locale.MenuStart,
+		locale.MenuPracticeRange,
 		locale.MenuMulti,
 		locale.MenuSettings,
 		locale.MenuExit,

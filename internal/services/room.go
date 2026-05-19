@@ -45,6 +45,9 @@ func NewRoomWithMap(ctx context.Context, id string, mapConfig *engine.MapConfig)
 		return nil, fmt.Errorf("failed to create game: %w", err)
 	}
 
+	// Initialize game loop timer
+	game.StartGameLoop()
+
 	return &Room{
 		ID:         id,
 		mapConfig:  mapConfig,
@@ -187,7 +190,7 @@ func (r *Room) addPlayer(client Client) error {
 
 // SendStaticData sends static map data (walls, dimensions) to specific clients
 func (r *Room) SendStaticData(sessionIDs []string) {
-	staticData := r.game.Statics()
+	staticData := r.game.WallEntities()
 	mapInfo := r.game.MapInfo()
 
 	log.Printf("[SendStaticData] Sending %d colliders, map: %.0fx%.0f to sessions: %v",
@@ -204,8 +207,8 @@ func (r *Room) SendStaticData(sessionIDs []string) {
 			Radius:        entity.Collider.Radius,
 			ShapeType:     uint8(entity.Collider.ShapeType),
 			Rotation:      0,
-			Height:        entity.VerticalBody.Height,
-			BaseElevation: entity.VerticalBody.BaseElevation,
+			Height:        entity.Collider.Height,
+			BaseElevation: entity.Collider.BaseElevation,
 		}
 	}
 
