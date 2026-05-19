@@ -34,19 +34,25 @@ func TestRayCircleIntersect_BehindOrigin(t *testing.T) {
 	}
 }
 
-func TestCastSingleRay_DispatchesOnShape(t *testing.T) {
+func TestCastSingleRay_ReturnsAllHitsFarthestFirst(t *testing.T) {
 	colliders := []ports.Collider{
 		{X: 10, Y: 0, HalfX: 1, HalfY: 1, ShapeType: 2},
 		{X: 3, Y: 0, Radius: 0.5, ShapeType: shapeCircle},
 	}
-	dist, hit, hitCol := castSingleRay(0, 0, 1, 0, colliders)
-	if !hit {
-		t.Fatalf("expected hit")
+	hits := castSingleRay(0, 0, 1, 0, colliders)
+	if len(hits) != 2 {
+		t.Fatalf("expected 2 hits, got %d", len(hits))
 	}
-	if hitCol == nil || hitCol.ShapeType != shapeCircle {
-		t.Fatalf("expected circle to be nearest hit, got %+v", hitCol)
+	if hits[0].ShapeType != 2 {
+		t.Fatalf("expected farthest hit (box) first, got shape %d", hits[0].ShapeType)
 	}
-	if math.Abs(dist-2.5) > 1e-6 {
-		t.Fatalf("expected dist ≈ 2.5, got %v", dist)
+	if hits[1].ShapeType != shapeCircle {
+		t.Fatalf("expected nearest hit (circle) second, got shape %d", hits[1].ShapeType)
+	}
+	if math.Abs(hits[1].Distance-2.5) > 1e-6 {
+		t.Fatalf("expected circle dist ≈ 2.5, got %v", hits[1].Distance)
+	}
+	if math.Abs(hits[0].Distance-9.0) > 1e-6 {
+		t.Fatalf("expected box dist ≈ 9.0, got %v", hits[0].Distance)
 	}
 }

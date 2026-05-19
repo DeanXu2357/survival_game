@@ -44,8 +44,8 @@ func NewRenderer(width, height, mainWidth, debugWidth, sepWidth int, viewRadius 
 	}
 }
 
-func (r *Renderer) Render(results []raycast.RaycastResult, playerX, playerY, playerDir float64, colliders []ports.Collider) {
-	r.raycast.Render(results)
+func (r *Renderer) Render(rayHits [][]raycast.RaycastResult, playerX, playerY, playerDir float64, colliders []ports.Collider) {
+	r.raycast.Render(rayHits)
 	//r.debugMap.Render(playerX, playerY, playerDir, colliders)
 	r.compose()
 }
