@@ -86,18 +86,43 @@ Reset:      \033[0m
 | Wall (near) | 255 | Bright white |
 | Wall (mid) | 245 | Medium gray |
 | Wall (far) | 240 | Dim gray |
+| Dummy (near) | 229 | Light yellow |
+| Dummy (mid) | 221 | Light yellow |
+| Dummy (far) | 178 | Golden yellow |
+
+Per-entity surface colors (e.g. the training dummy uses the Dummy palette) are selected by the renderer based on `ShapeType` / entity context.
+
+## Collider Shapes
+
+The raycaster supports two collider footprints, dispatched on `RaycastResult.ShapeType`:
+
+- **AABB** (`rayBoxIntersect`): slab test against `HalfX` / `HalfY`. Used for walls and rectangular obstacles.
+- **Circle** (`rayCircleIntersect`, `ShapeType == 1`): quadratic intersect against `Radius`. Used for player/character pillars.
+
+Both intersection tests are purely 2D on the XY plane; vertical visibility (`WallHeight` + `BaseElevation`) is resolved later in the projection step, so tall and short objects render correctly as long as their footprint is hit by a ray.
 
 ## File Structure
 
 ```
 internal/terminal/
+├── construct.go        # Terminal setup (raw mode, signals)
+├── locale.go           # Localization
+├── manager.go          # Game manager / main loop
 ├── raycast/
-│   ├── raycast.go      # Ray casting algorithm
+│   ├── raycast.go      # 2D ray-vs-collider intersection (AABB + circle)
+│   ├── raycast_test.go # Raycast tests
 │   └── renderer25d.go  # 2.5D half-block renderer
 ├── ui/
 │   └── overlay.go      # UI layer (crosshair, HUD, weapon)
 ├── state/
-│   └── singleplayer.go # Game state integration
+│   ├── mainmenu.go     # Main menu state
+│   ├── setting.go      # Settings state
+│   ├── singleplayer.go # Single-player game state
+│   ├── multiplayer.go  # Multi-player game state
+│   └── resize.go       # Terminal resize handling
+├── network/            # WebSocket client
+├── session/            # Session/reconnect support
+├── debug/              # Debug overlays (e.g. mini-map)
 └── README.md           # This file
 ```
 
@@ -105,13 +130,16 @@ internal/terminal/
 
 ```go
 type RaycastResult struct {
-    Distance      float64  // Perpendicular distance to wall
-    Hit           bool     // Whether ray hit anything
-    WallHeight    float64  // Height of hit wall
-    BaseElevation float64  // Base elevation of hit wall
-    EntityID      uint64   // ID of hit entity
+    Distance      float64 // Perpendicular distance (fish-eye corrected)
+    Hit           bool    // Whether ray hit anything
+    WallHeight    float64 // Height of hit collider in world units
+    BaseElevation float64 // Base elevation of hit collider in world units
+    EntityID      uint64  // ID of hit entity
+    ShapeType     uint8   // 0 = AABB, 1 = circle (mirrors state.ColliderShape)
 }
 ```
+
+`CastRays` returns `[][]RaycastResult` — one slice per ray, sorted **farthest first** so the renderer can paint back-to-front (painter's algorithm).
 
 ## Renderer25D Usage
 
