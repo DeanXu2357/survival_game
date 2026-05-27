@@ -2,11 +2,14 @@ package engine
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	"survival/internal/engine/ports"
 	"survival/internal/engine/state"
 	"survival/internal/engine/system"
+	"survival/internal/engine/system/ai"
+	"survival/internal/engine/system/ai/turret"
 )
 
 type Game struct {
@@ -14,7 +17,10 @@ type Game struct {
 	mapConfig *MapConfig
 	systems   *state.SystemManager
 
-	fistDefID state.EntityID // EntityID for the Fist weapon definition
+	fistDefID   state.EntityID // EntityID for the Fist weapon definition
+	turretDefID state.EntityID // EntityID for the Turret weapon definition
+
+	enemyAI *system.EnemyAISystem
 
 	// Tick-based time tracking
 	currentTick   ports.Tick // Current game tick (increments each Update call)
@@ -39,9 +45,15 @@ func NewGame(mapConfig *MapConfig) (*Game, error) {
 		systems:   systems,
 	}
 
+	aiRegistry := map[string]ai.Behavior{
+		turret.StationaryTurretKey: turret.NewStationaryTurretBehavior(),
+	}
+	g.enemyAI = system.NewEnemyAISystem(world, &g.currentTick, aiRegistry)
+
 	systems.Register(system.NewInventorySystem(world, &g.currentTick))
 	systems.Register(system.NewBasicMovementSystem(world))
 	systems.Register(system.NewProjectileSystem(world, &g.currentTick))
+	systems.Register(g.enemyAI)
 	systems.Register(system.NewWeaponFireSystem(world, &g.currentTick))
 	systems.Register(system.NewReviveSystem(world, &g.currentTick))
 
@@ -60,6 +72,17 @@ func NewGame(mapConfig *MapConfig) (*Game, error) {
 		return nil, fmt.Errorf("failed to create fist item definition")
 	}
 	g.fistDefID = fistDefID
+
+	turretDefID, ok := world.CreateItemDefEntity(state.ItemConfig{
+		Name:         "Turret",
+		Type:         state.ItemTypeWeapon,
+		MaxStack:     1,
+		WeaponConfig: state.TurretSpec,
+	})
+	if !ok {
+		return nil, fmt.Errorf("failed to create turret item definition")
+	}
+	g.turretDefID = turretDefID
 
 	if err := g.loadMapEntities(mapConfig); err != nil {
 		return nil, err
@@ -121,6 +144,13 @@ const (
 	defaultDummyRespawnSeconds float64 = 3.0
 )
 
+const (
+	defaultTurretSpawnOffset    float64 = 12.0
+	defaultTurretRespawnSeconds float64 = 5.0
+	defaultTurretRadius         float64 = 0.6
+	defaultTurretHealth         int     = 100
+)
+
 // SpawnTrainingDummyNearSpawn spawns a stationary, auto-respawning training
 // dummy a short distance in front of the map's primary spawn point. The
 // dummy is modeled as a zero-speed player with an attached Revive component.
@@ -161,6 +191,61 @@ func (g *Game) SpawnTrainingDummyNearSpawn() (state.EntityID, error) {
 
 	g.world.ApplyCommands()
 	return id, nil
+}
+
+// SpawnTrainingTurretNearSpawn spawns a stationary, auto-respawning turret
+// a short distance from the map's primary spawn point, facing the spawn so
+// its frontal cone covers anyone who walks toward it. Intended for
+// single-player training; safe to skip for tests or multiplayer.
+func (g *Game) SpawnTrainingTurretNearSpawn() (state.EntityID, error) {
+	spawn := g.mapConfig.GetRandomSpawnPoint()
+	if spawn == nil {
+		return 0, fmt.Errorf("no spawn point available")
+	}
+
+	pos := state.Position{
+		X: spawn.Position.X,
+		Y: spawn.Position.Y + defaultTurretSpawnOffset,
+	}
+	// Face back toward the spawn point (negative Y direction). With the
+	// Forward convention (0 = north/up), Direction = math.Pi points down.
+	const facingSpawn state.Direction = state.Direction(math.Pi)
+
+	hp := state.Health(defaultTurretHealth)
+	id, ok := g.world.CreatePlayer(state.CreatePlayer{
+		Position:      pos,
+		Direction:     facingSpawn,
+		MovementSpeed: 0,
+		RotationSpeed: 0,
+		Radius:        defaultTurretRadius,
+		Health:        hp,
+		FistDefID:     g.fistDefID,
+	})
+	if !ok {
+		return 0, fmt.Errorf("failed to allocate turret entity")
+	}
+
+	inv := state.DefaultInventory(g.fistDefID, ports.ItemSlotCount)
+	inv.Weapons[2] = state.WeaponSlot{ItemID: g.turretDefID}
+	inv.CurrentWeaponIndex = 2
+
+	g.world.UpdatePlayer(id, state.UpdatePlayer{
+		UpdateMeta: state.ComponentMeta | state.ComponentRevive | state.ComponentInventory,
+		Meta:       state.PlayerMeta | state.ComponentRevive,
+		Revive: state.Revive{
+			SpawnHealth:       hp,
+			RespawnDelayTicks: ports.TicksFromSeconds(defaultTurretRespawnSeconds),
+		},
+		Inventory: inv,
+	})
+
+	g.world.ApplyCommands()
+	g.world.AI.Upsert(id, state.AIBehavior{Key: turret.StationaryTurretKey})
+	return id, nil
+}
+
+func (g *Game) ThreatIndicators() []state.ThreatIndicator {
+	return g.enemyAI.Indicators()
 }
 
 func (g *Game) JoinPlayer() (state.EntityID, error) {

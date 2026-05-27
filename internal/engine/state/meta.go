@@ -18,6 +18,7 @@ const (
 	ComponentItemDef
 	ComponentGroundItem
 	ComponentRevive
+	ComponentAIBehavior
 
 	PlayerMeta = ComponentMeta | ComponentPosition | ComponentDirection | ComponentMovementSpeed |
 		ComponentRotationSpeed | ComponentCollider | ComponentHealth |
