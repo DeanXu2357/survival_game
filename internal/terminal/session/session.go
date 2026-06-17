@@ -54,3 +54,7 @@ func (s *GameSession) PlayerHealth() (state.Health, bool) {
 func (s *GameSession) CurrentTick() ports.Tick {
 	return s.game.CurrentTick()
 }
+
+func (s *GameSession) ThreatIndicators() []state.ThreatIndicator {
+	return s.game.ThreatIndicators()
+}
