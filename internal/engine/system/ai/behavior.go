@@ -7,7 +7,7 @@ import (
 
 type Context struct {
 	World       *state.World
-	CurrentTick *ports.Tick
+	CurrentTick ports.Tick
 	DT          float64
 }
 

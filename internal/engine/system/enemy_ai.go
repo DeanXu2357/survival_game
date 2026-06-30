@@ -36,7 +36,7 @@ func (s *EnemyAISystem) WriteMeta() state.Meta {
 }
 
 func (s *EnemyAISystem) Update(dt float64) {
-	ctx := ai.Context{World: s.world, CurrentTick: s.currentTick, DT: dt}
+	ctx := ai.Context{World: s.world, CurrentTick: *s.currentTick, DT: dt}
 	for id, ab := range s.world.AI.All() {
 		behavior, ok := s.registry[ab.Key]
 		if !ok {
@@ -47,7 +47,7 @@ func (s *EnemyAISystem) Update(dt float64) {
 }
 
 func (s *EnemyAISystem) Indicators() []state.ThreatIndicator {
-	ctx := ai.Context{World: s.world, CurrentTick: s.currentTick}
+	ctx := ai.Context{World: s.world, CurrentTick: *s.currentTick}
 	out := make([]state.ThreatIndicator, 0)
 	for id, ab := range s.world.AI.All() {
 		behavior, ok := s.registry[ab.Key]

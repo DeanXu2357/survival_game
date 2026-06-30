@@ -28,7 +28,7 @@ func NewStationaryTurretBehavior() *StationaryTurretBehavior {
 
 func (b *StationaryTurretBehavior) Update(ctx ai.Context, id state.EntityID) {
 	world := ctx.World
-	tick := *ctx.CurrentTick
+	tick := ctx.CurrentTick
 	aimDuration := ports.TicksFromSeconds(TurretAimSeconds)
 	cooldownDuration := ports.TicksFromSeconds(TurretCooldownSeconds)
 
