@@ -172,7 +172,8 @@ func (s *SinglePlayerState) drawGameView(buf *bytes.Buffer, width, height int, p
 	numRays := width
 	results := raycast.CastRays(playerX, playerY, playerDir, s.viewHeight, colliders, numRays)
 
-	s.renderer25D.Render(results)
+	cones := threatIndicatorsToCones(s.session.ThreatIndicators())
+	s.renderer25D.RenderWithCones(results, playerX, playerY, playerDir, cones)
 
 	outputBuf := s.renderer25D.GetOutputBuffer()
 	colorBuf := s.renderer25D.GetColorBuffer()
@@ -183,6 +184,26 @@ func (s *SinglePlayerState) drawGameView(buf *bytes.Buffer, width, height int, p
 	locale := terminal.AppDefaultConfig.Locale
 	statusLine := fmt.Sprintf("X:%.1f Y:%.1f Dir:%.2f | %s", playerX, playerY, playerDir, locale.SPStatusHint)
 	drawCenteredLine(buf, width, statusLine)
+}
+
+func threatIndicatorsToCones(indicators []state.ThreatIndicator) []raycast.ConeIndicator {
+	if len(indicators) == 0 {
+		return nil
+	}
+	cones := make([]raycast.ConeIndicator, 0, len(indicators))
+	for _, ind := range indicators {
+		if ind.Shape != state.IndicatorShapeCone {
+			continue
+		}
+		cones = append(cones, raycast.ConeIndicator{
+			X:         ind.X,
+			Y:         ind.Y,
+			Direction: ind.Direction,
+			HalfAngle: ind.HalfAngle,
+			Range:     ind.Range,
+		})
+	}
+	return cones
 }
 
 func reloadDurationForType(rt state.ReloadType) ports.Tick {

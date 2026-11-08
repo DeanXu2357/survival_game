@@ -3,7 +3,17 @@ package raycast
 import (
 	"bytes"
 	"fmt"
+	"math"
 )
+
+// ConeIndicator describes a flat fan-shaped ground decal centered at (X,Y)
+// pointing along Direction with a frontal half-angle and max range.
+type ConeIndicator struct {
+	X, Y      float64
+	Direction float64
+	HalfAngle float64
+	Range     float64
+}
 
 const (
 	HalfBlockUpper = '\u2580' // ▀
@@ -22,6 +32,9 @@ const (
 	ColorDummyNear
 	ColorDummyMid
 	ColorDummyFar
+	ColorConeNear
+	ColorConeMid
+	ColorConeFar
 )
 
 var colorTo256 = map[Color]int{
@@ -34,6 +47,9 @@ var colorTo256 = map[Color]int{
 	ColorDummyNear: 229, // light yellow near
 	ColorDummyMid:  221, // light yellow mid
 	ColorDummyFar:  178, // golden yellow far
+	ColorConeNear:  196, // bright red near
+	ColorConeMid:   160, // mid red
+	ColorConeFar:   124, // deep red far
 }
 
 type ColorPair struct {
@@ -87,12 +103,28 @@ func NewRenderer25D(termWidth, termHeight int, viewHeight float64) *Renderer25D 
 	}
 }
 
+// RenderWithCones renders the scene like Render() but additionally paints
+// each ConeIndicator as a red ground decal. Cones are tinted onto floor
+// pixels only — wall pixels still occlude them because cone painting runs
+// before wall painting via the shared logical buffer.
+func (r *Renderer25D) RenderWithCones(rayHits [][]RaycastResult, playerX, playerY, playerDir float64, cones []ConeIndicator) {
+	r.clearBuffer()
+	if len(cones) > 0 {
+		r.paintCones(rayHits, playerX, playerY, playerDir, cones)
+	}
+	r.paintHits(rayHits)
+	r.mergeToOutput()
+}
+
 func (r *Renderer25D) Render(rayHits [][]RaycastResult) {
 	r.clearBuffer()
+	r.paintHits(rayHits)
+	r.mergeToOutput()
+}
 
+func (r *Renderer25D) paintHits(rayHits [][]RaycastResult) {
 	numRays := len(rayHits)
 	if numRays == 0 {
-		r.mergeToOutput()
 		return
 	}
 
@@ -135,8 +167,106 @@ func (r *Renderer25D) Render(rayHits [][]RaycastResult) {
 			}
 		}
 	}
+}
 
-	r.mergeToOutput()
+// paintCones tints floor pixels that fall inside any cone. For each ray
+// (one per logical column), iterate the floor pixels (y > horizon) and
+// reconstruct the world coordinate they map to, then test against every
+// cone. Walls drawn afterward naturally occlude cone tint behind them.
+func (r *Renderer25D) paintCones(rayHits [][]RaycastResult, playerX, playerY, playerDir float64, cones []ConeIndicator) {
+	numRays := len(rayHits)
+	if numRays == 0 || numRays < 2 {
+		return
+	}
+
+	colWidth := float64(r.logicalWidth) / float64(numRays)
+	halfFOV := FOVAngle / 2
+	startAngle := playerDir - halfFOV
+	angleStep := FOVAngle / float64(numRays-1)
+
+	cosLimits := make([]float64, len(cones))
+	rangeSq := make([]float64, len(cones))
+	forwardX := make([]float64, len(cones))
+	forwardY := make([]float64, len(cones))
+	for i, c := range cones {
+		cosLimits[i] = math.Cos(c.HalfAngle)
+		rangeSq[i] = c.Range * c.Range
+		forwardX[i] = math.Sin(c.Direction)
+		forwardY[i] = -math.Cos(c.Direction)
+	}
+
+	for i := 0; i < numRays; i++ {
+		rayAngle := startAngle + float64(i)*angleStep
+		dx := math.Sin(rayAngle)
+		dy := -math.Cos(rayAngle)
+		cosDiff := math.Cos(rayAngle - playerDir) // fisheye correction
+		if cosDiff < 1e-6 {
+			continue
+		}
+
+		startCol := int(float64(i) * colWidth)
+		endCol := int(float64(i+1) * colWidth)
+		if endCol > r.logicalWidth {
+			endCol = r.logicalWidth
+		}
+
+		for y := r.horizon + 1; y < r.logicalHeight; y++ {
+			// Invert the wall projection (BaseElevation=0): floor pixel at
+			// vertical offset (y - horizon) corresponds to projected depth
+			// `r.viewHeight * projDist / (y - horizon)`. That value is the
+			// view-axis distance (already fisheye-corrected); divide by
+			// cosDiff to recover the actual ray distance.
+			rowOffset := float64(y - r.horizon)
+			viewDepth := r.viewHeight * r.projDist / rowOffset
+			rayDist := viewDepth / cosDiff
+			worldX := playerX + dx*rayDist
+			worldY := playerY + dy*rayDist
+
+			matched := -1
+			for ci, c := range cones {
+				ddx := worldX - c.X
+				ddy := worldY - c.Y
+				distSq := ddx*ddx + ddy*ddy
+				if distSq > rangeSq[ci] {
+					continue
+				}
+				if distSq < 1e-9 {
+					matched = ci
+					break
+				}
+				dist := math.Sqrt(distSq)
+				cosAngle := (forwardX[ci]*ddx + forwardY[ci]*ddy) / dist
+				if cosAngle >= cosLimits[ci] {
+					matched = ci
+					break
+				}
+			}
+			if matched < 0 {
+				continue
+			}
+
+			coneDist := math.Sqrt((worldX-cones[matched].X)*(worldX-cones[matched].X) +
+				(worldY-cones[matched].Y)*(worldY-cones[matched].Y))
+			color := coneColorFor(coneDist, cones[matched].Range)
+			for col := startCol; col < endCol; col++ {
+				r.logicalBuffer[y][col] = color
+			}
+		}
+	}
+}
+
+func coneColorFor(dist, rng float64) Color {
+	if rng <= 0 {
+		return ColorConeFar
+	}
+	n := dist / rng
+	if n < 0.33 {
+		return ColorConeNear
+	}
+	if n < 0.66 {
+		return ColorConeMid
+	}
+	return ColorConeFar
 }
 
 func (r *Renderer25D) clearBuffer() {

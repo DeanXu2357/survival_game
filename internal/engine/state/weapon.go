@@ -32,6 +32,11 @@ type WeaponConfig struct {
 // FistSpec defines the default fist weapon stats.
 var FistSpec = WeaponConfig{Type: WeaponTypeFist, Range: 5, FireRate: 3, Damage: 5, Speed: 50}
 
+// TurretSpec defines the stats for the stationary training turret's weapon.
+// FireRate=2 means a 0.5s cooldown — matches the turret's re-aim delay.
+// AmmoCategoryNone skips ammo checks, satisfying the "auto-refills" requirement.
+var TurretSpec = WeaponConfig{Type: WeaponTypeGun, Range: 12, FireRate: 2, Damage: 10, Speed: 25, AmmoCategory: AmmoCategoryNone}
+
 // ReloadType indicates which reload action is in progress.
 type ReloadType uint8
 

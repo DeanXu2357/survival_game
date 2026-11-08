@@ -33,6 +33,7 @@ type World struct {
 	inputMutex     *sync.Mutex
 
 	Revive ComponentManager[Revive]
+	AI     ComponentManager[AIBehavior]
 
 	Grid Grid
 
@@ -61,6 +62,7 @@ func NewWorld(gridCellSize float64, gridWidth, gridHeight int) *World {
 		inputMapBuffer: make(map[EntityID]Input),
 		inputMutex:     &sync.Mutex{},
 		Revive:         *NewComponentManager[Revive](),
+		AI:             *NewComponentManager[AIBehavior](),
 		Grid:           *NewGrid(gridCellSize, gridWidth, gridHeight),
 		buf:            NewCommandBuffer(),
 		Width:          0,
@@ -107,8 +109,8 @@ func (w *World) CreatePlayer(cfg CreatePlayer) (EntityID, bool) {
 				BaseElevation: 0,
 				Height:        DefaultPlayerBodyHeight,
 			},
-			Health: cfg.Health,
-			Inventory:     DefaultInventory(cfg.FistDefID, ports.ItemSlotCount),
+			Health:    cfg.Health,
+			Inventory: DefaultInventory(cfg.FistDefID, ports.ItemSlotCount),
 		},
 	)
 
@@ -297,6 +299,7 @@ func (w *World) destroyEntity(id EntityID) {
 	w.GroundItem.Remove(id)
 	w.Input.Remove(id)
 	w.Revive.Remove(id)
+	w.AI.Remove(id)
 	w.Entity.Free(id)
 }
 
