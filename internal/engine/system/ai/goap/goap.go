@@ -35,10 +35,21 @@ type Agent interface {
 	NextInput(world *state.World, currentTick ports.Tick, dt float64, id state.EntityID) (state.Input, bool)
 }
 
-type Project func(perception Perception, id state.EntityID) SymbolSet
+type Project func(perception Perception, blackboard BlackBoard, id state.EntityID) SymbolSet
+
+// Frame carries the per-tick runtime context. It enters a behavior through
+// Perception.Observe once per tick; projection and action runtime read it back
+// via Perception.Frame, so the perception is the single source of truth for
+// "now" (Tick/DT) and the current world.
+type Frame struct {
+	World *state.World
+	Tick  ports.Tick
+	DT    float64
+}
 
 type Perception interface {
-	SetWorld(world *state.World)
+	Observe(frame Frame)
+	Frame() Frame
 	Position(id state.EntityID) (vector.Vector2D, bool)
 }
 

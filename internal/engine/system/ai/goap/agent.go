@@ -40,8 +40,8 @@ type BasicAgent struct {
 }
 
 func (a *BasicAgent) NextInput(world *state.World, currentTick ports.Tick, dt float64, id state.EntityID) (state.Input, bool) {
-	a.observer.SetWorld(world)
-	curState := a.projector(a.observer, id)
+	a.observer.Observe(Frame{World: world, Tick: currentTick, DT: dt})
+	curState := a.projector(a.observer, a.memory, id)
 
 	if len(a.queue) == 0 {
 		// replan
