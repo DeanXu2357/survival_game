@@ -9,6 +9,7 @@ import (
 	"survival/internal/engine/state"
 	"survival/internal/engine/system"
 	"survival/internal/engine/system/ai"
+	goapturret "survival/internal/engine/system/ai/goap/turret"
 	"survival/internal/engine/system/ai/turret"
 )
 
@@ -47,6 +48,7 @@ func NewGame(mapConfig *MapConfig) (*Game, error) {
 
 	aiRegistry := map[string]ai.Behavior{
 		turret.StationaryTurretKey: turret.NewStationaryTurretBehavior(),
+		goapturret.GOAPTurretKey:   goapturret.NewBehavior(),
 	}
 	g.enemyAI = system.NewEnemyAISystem(world, &g.currentTick, aiRegistry)
 
@@ -194,10 +196,22 @@ func (g *Game) SpawnTrainingDummyNearSpawn() (state.EntityID, error) {
 }
 
 // SpawnTrainingTurretNearSpawn spawns a stationary, auto-respawning turret
-// a short distance from the map's primary spawn point, facing the spawn so
-// its frontal cone covers anyone who walks toward it. Intended for
-// single-player training; safe to skip for tests or multiplayer.
+// driven by the legacy state-machine AI.
 func (g *Game) SpawnTrainingTurretNearSpawn() (state.EntityID, error) {
+	return g.spawnTurretNearSpawn(turret.StationaryTurretKey)
+}
+
+// SpawnGOAPTurretNearSpawn spawns the same training turret but driven by the
+// GOAP-based AI behavior.
+func (g *Game) SpawnGOAPTurretNearSpawn() (state.EntityID, error) {
+	return g.spawnTurretNearSpawn(goapturret.GOAPTurretKey)
+}
+
+// spawnTurretNearSpawn spawns a stationary, auto-respawning turret a short
+// distance from the map's primary spawn point, facing the spawn so its frontal
+// cone covers anyone who walks toward it, and assigns the given AI behavior key.
+// Intended for single-player training; safe to skip for tests or multiplayer.
+func (g *Game) spawnTurretNearSpawn(aiKey string) (state.EntityID, error) {
 	spawn := g.mapConfig.GetRandomSpawnPoint()
 	if spawn == nil {
 		return 0, fmt.Errorf("no spawn point available")
@@ -240,7 +254,7 @@ func (g *Game) SpawnTrainingTurretNearSpawn() (state.EntityID, error) {
 	})
 
 	g.world.ApplyCommands()
-	g.world.AI.Upsert(id, state.AIBehavior{Key: turret.StationaryTurretKey})
+	g.world.AI.Upsert(id, state.AIBehavior{Key: aiKey})
 	return id, nil
 }
 

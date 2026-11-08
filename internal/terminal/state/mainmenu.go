@@ -164,7 +164,7 @@ func (s *MainMenuState) startGame(spawnDummy bool) terminal.Command {
 		if _, err := game.SpawnTrainingDummyNearSpawn(); err != nil {
 			s.logger.Warn("Failed to spawn training dummy", "error", err)
 		}
-		if _, err := game.SpawnTrainingTurretNearSpawn(); err != nil {
+		if _, err := game.SpawnGOAPTurretNearSpawn(); err != nil {
 			s.logger.Warn("Failed to spawn training turret", "error", err)
 		}
 	}
